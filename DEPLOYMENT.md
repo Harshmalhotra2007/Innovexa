@@ -1,6 +1,6 @@
-# MeetIQ Ops Console — Deployment Guide
+﻿# Innovexa Ops Console — Deployment Guide
 
-Comprehensive instructions for deploying MeetIQ Ops Console across production environments including Docker, Vercel, Heroku, and automated CI/CD pipelines.
+Comprehensive instructions for deploying Innovexa Ops Console across production environments including Docker, Vercel, Heroku, and automated CI/CD pipelines.
 
 ---
 
@@ -52,12 +52,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: meetiq_postgres
+    container_name: innovexa_postgres
     restart: always
     environment:
-      POSTGRES_USER: meetiq_admin
+      POSTGRES_USER: innovexa_admin
       POSTGRES_PASSWORD: SecretPassword123!
-      POSTGRES_DB: meetiq_production
+      POSTGRES_DB: innovexa_production
     ports:
       - "5432:5432"
     volumes:
@@ -67,13 +67,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: meetiq_app
+    container_name: innovexa_app
     restart: always
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: "postgres://meetiq_admin:SecretPassword123!@postgres:5432/meetiq_production?sslmode=disable"
-      DIRECT_URL: "postgres://meetiq_admin:SecretPassword123!@postgres:5432/meetiq_production?sslmode=disable"
+      DATABASE_URL: "postgres://innovexa_admin:SecretPassword123!@postgres:5432/innovexa_production?sslmode=disable"
+      DIRECT_URL: "postgres://innovexa_admin:SecretPassword123!@postgres:5432/innovexa_production?sslmode=disable"
     depends_on:
       - postgres
 
@@ -111,7 +111,7 @@ docker-compose exec app npx prisma db push
 ```bash
 # 1. Login & create app
 heroku login
-heroku create meetiq-ops-console
+heroku create innovexa-ops-console
 
 # 2. Add PostgreSQL addon
 heroku addons:create heroku-postgresql:mini
@@ -134,7 +134,7 @@ heroku run npx prisma db push
 Create `.github/workflows/ci.yml`:
 
 ```yaml
-name: MeetIQ CI/CD Pipeline
+name: Innovexa CI/CD Pipeline
 
 on:
   push:
@@ -152,7 +152,7 @@ jobs:
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_meetiq
+          POSTGRES_DB: test_innovexa
         ports:
           - 5432:5432
         options: >-
@@ -175,8 +175,8 @@ jobs:
 
       - name: Generate Prisma Client & Migrate DB
         env:
-          DATABASE_URL: "postgres://test_user:test_password@localhost:5432/test_meetiq?sslmode=disable"
-          DIRECT_URL: "postgres://test_user:test_password@localhost:5432/test_meetiq?sslmode=disable"
+          DATABASE_URL: "postgres://test_user:test_password@localhost:5432/test_innovexa?sslmode=disable"
+          DIRECT_URL: "postgres://test_user:test_password@localhost:5432/test_innovexa?sslmode=disable"
         run: |
           npx prisma generate
           npx prisma db push
@@ -192,3 +192,4 @@ jobs:
           npm install -g @lhci/cli
           lhci autorun --collect.staticDistDir=.next
 ```
+

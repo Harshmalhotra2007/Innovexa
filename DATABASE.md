@@ -1,4 +1,4 @@
-# MeetIQ Ops Console — Database & Prisma Architecture
+﻿# Innovexa Ops Console — Database & Prisma Architecture
 
 Comprehensive documentation of the PostgreSQL database schema, Prisma ORM configuration, performance indexes, and migration procedures.
 
@@ -152,10 +152,11 @@ EXPLAIN ANALYZE SELECT * FROM "Task" WHERE status = 'Overdue' AND department = '
 
 ### Database Dump (Backup)
 ```bash
-pg_dump -U postgres -d meetiq_db -F c -b -v -f meetiq_backup.dump
+pg_dump -U postgres -d innovexa_db -F c -b -v -f innovexa_backup.dump
 ```
 
 ### Database Restore
 ```bash
-pg_restore -U postgres -d meetiq_db -v meetiq_backup.dump
+pg_restore -U postgres -d innovexa_db -v innovexa_backup.dump
 ```
+

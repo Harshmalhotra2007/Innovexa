@@ -1,12 +1,12 @@
-# MeetIQ Ops Console — API Specification
+﻿# Innovexa Ops Console — API Specification
 
-Detailed REST API reference for the MeetIQ Ops Console platform.
+Detailed REST API reference for the Innovexa Ops Console platform.
 
 ---
 
 ## 🔒 Authentication & RBAC Authorization
 
-MeetIQ uses role-based header authorization. Protected endpoints (such as `DELETE /api/meetings/:id` and `PATCH /api/tasks/:id/assign`) inspect the `x-user-role` header.
+Innovexa uses role-based header authorization. Protected endpoints (such as `DELETE /api/meetings/:id` and `PATCH /api/tasks/:id/assign`) inspect the `x-user-role` header.
 
 ### Session & Password Security
 - **Algorithm**: Web Crypto API SHA-256 password hashing.
@@ -236,3 +236,4 @@ MeetIQ uses role-based header authorization. Protected endpoints (such as `DELET
 | `404` | `Not Found` | Resource ID does not exist |
 | `429` | `Too Many Requests` | Exceeded rate limit (100 req/min/IP) |
 | `500` | `Internal Server Error` | Server database or runtime exception |
+

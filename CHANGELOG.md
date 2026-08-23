@@ -1,8 +1,14 @@
 # Changelog
 
-All notable changes to the MeetIQ Ops Console project will be documented in this file.
+All notable changes to the Innovexa Ops Console project will be documented in this file.
 
 ---
+
+## [2.0.0] - 2026-08-24
+
+### Changed
+- Rebranded from MeetIQ to Innovexa across all source code, directories, API paths, databases, and local storage events.
+- Transformed the cyberpunk visual theme from amber-yellow to an Innovexa purple, neon-cyan, and magenta terminal palette.
 
 ## [1.2.0] - 2026-08-24
 
@@ -27,3 +33,4 @@ All notable changes to the MeetIQ Ops Console project will be documented in this
 - Legacy JSX prototypes and instructions inside `Code/` folder.
 - Unused devDependencies: `@testing-library/react`, `@testing-library/jest-dom`, and `jest-environment-jsdom` (removing 127 node packages in total).
 - Old build cache assets (`tsconfig.tsbuildinfo`).
+

@@ -1,6 +1,6 @@
-# MeetIQ Ops Console — Architecture Overview
+﻿# Innovexa Ops Console — Architecture Overview
 
-Architectural documentation detailing the system topology, component interactions, data lifecycles, and security model of MeetIQ Ops Console.
+Architectural documentation detailing the system topology, component interactions, data lifecycles, and security model of Innovexa Ops Console.
 
 ---
 
@@ -78,3 +78,4 @@ graph TD
 - **Inactivity Session Guard**: `AuthGuard.tsx` listens to mouse, click, and keypress events. Automatically purges `sessionStorage` and redirects to `/login` if idle for >15 minutes.
 - **Role-Based Access Control (RBAC)**: Destructive and administrative endpoints inspect the custom `x-user-role` HTTP header:
   - Requests containing `x-user-role: participant` calling `DELETE /api/meetings/:id` or `PATCH /api/tasks/:id/assign` are rejected with `403 Forbidden`.
+

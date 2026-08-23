@@ -1,9 +1,9 @@
-# MeetIQ Ops Console — Intelligent Meeting, Decision & Action System
+﻿# Innovexa Ops Console — Intelligent Meeting, Decision & Action System
 
 [![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel&style=flat-square)](https://innovexa-murex.vercel.app)
 [![Jest Test Suite](https://img.shields.io/badge/Jest%20Tests-Passing-success?logo=jest&style=flat-square)](https://github.com/Harshmalhotra2007/Innovexa.git)
 
-MeetIQ Ops Console is an intelligent organizational memory and action-tracking platform. It converts raw meeting speech transcripts into formal decisions, task assignees, and target completion deadlines, backed by semantic vector memory and automated manager escalation workflows.
+Innovexa Ops Console is an intelligent organizational memory and action-tracking platform. It converts raw meeting speech transcripts into formal decisions, task assignees, and target completion deadlines, backed by semantic vector memory and automated manager escalation workflows.
 
 > [!TIP]
 > **Live Demo**: Access the deployed website directly at **[https://innovexa-murex.vercel.app](https://innovexa-murex.vercel.app)**.
@@ -24,7 +24,7 @@ Access the console at `/login` or through default navigation. Authenticated sess
 ## ⚡ Tech Stack & PostgreSQL Architecture
 
 - **Frontend & App Framework**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
-- **Design System & Aesthetic**: MeetIQ Ops Console dark theme (`#0D1315` background, `#182124` panels, `#E8A33D` amber, `#49B9AE` teal, `#E2666A` red, `Space Grotesk` headers, `IBM Plex Mono` code, `Inter` body)
+- **Design System & Aesthetic**: Innovexa Ops Console dark theme (`#131324` background, `#1e1e36` panels, `#9f55ff` amber, `#00ffff` teal, `#ff007f` red, `Space Grotesk` headers, `IBM Plex Mono` code, `Inter` body)
 - **Database & ORM**: PostgreSQL (v15+) managed via Prisma ORM (v5.22+)
 - **PostgreSQL Features**:
   - **Native Enums**: `Role` (`Member`, `Admin`, `Organizer`), `TaskStatus` (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`), `TaskPriority` (`Low`, `Medium`, `High`, `Critical`)
@@ -119,3 +119,4 @@ docker-compose up -d --build
 - [User Guide](file:///c:/Code/Hackathon/USER_GUIDE.md) — Step-by-step user guide and keyboard shortcuts
 - [Architecture Overview](file:///c:/Code/Hackathon/ARCHITECTURE.md) — System architecture diagram and data lifecycles
 - [Performance Benchmarks](file:///c:/Code/Hackathon/PERFORMANCE.md) — Lighthouse scores and database profiling
+

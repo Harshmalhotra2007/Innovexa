@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -157,9 +157,9 @@ export default function Home() {
 
   const deadlineTone = (days: number | null) => {
     if (days === null) return "#5B6A6E";
-    if (days < 0) return "#E2666A";
-    if (days <= 2) return "#E8A33D";
-    return "#49B9AE";
+    if (days < 0) return "#ff007f";
+    if (days <= 2) return "#9f55ff";
+    return "#00ffff";
   };
 
   const deadlineLabel = (days: number | null) => {
@@ -202,8 +202,8 @@ export default function Home() {
     <div className="mx-auto max-w-[1040px] space-y-6 py-2">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#1D272B] border border-[#E8A33D] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
-          <Bell size={14} className="text-[#E8A33D]" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#252542] border border-[#9f55ff] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
+          <Bell size={14} className="text-[#9f55ff]" />
           <span>{toast}</span>
         </div>
       )}
@@ -247,7 +247,7 @@ export default function Home() {
           </div>
           <div
             className="font-display text-2xl font-bold"
-            style={{ color: pendingTasks.length > 0 ? "#E8A33D" : "#E7EEEF" }}
+            style={{ color: pendingTasks.length > 0 ? "#9f55ff" : "#E7EEEF" }}
           >
             {pendingTasks.length}
           </div>
@@ -259,7 +259,7 @@ export default function Home() {
           </div>
           <div
             className="font-display text-2xl font-bold"
-            style={{ color: overdueCount > 0 ? "#E2666A" : "#E7EEEF" }}
+            style={{ color: overdueCount > 0 ? "#ff007f" : "#E7EEEF" }}
           >
             {overdueCount}
           </div>
@@ -269,7 +269,7 @@ export default function Home() {
           <div className="font-mono text-[10.5px] uppercase tracking-wider text-[#5B6A6E] mb-2">
             DECISIONS LOGGED
           </div>
-          <div className="font-display text-2xl font-bold text-[#49B9AE]">{decisionsCount}</div>
+          <div className="font-display text-2xl font-bold text-[#00ffff]">{decisionsCount}</div>
         </div>
       </div>
 
@@ -277,20 +277,20 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Upcoming Meetings Card */}
         <div className="ops-panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#212B2E] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[#2d2345] px-4 py-3">
             <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-              <Calendar size={14} className="text-[#E8A33D]" />
+              <Calendar size={14} className="text-[#9f55ff]" />
               <span>Upcoming meetings</span>
             </div>
             <Link
               href="/meetings"
-              className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] rounded px-2 py-0.5"
+              className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#3e305e] rounded px-2 py-0.5"
             >
               <Plus size={12} /> NEW
             </Link>
           </div>
 
-          <div className="divide-y divide-[#212B2E]">
+          <div className="divide-y divide-[#2d2345]">
             {meetings.length === 0 && (
               <div className="p-5 text-xs text-[#5B6A6E]">No meetings scheduled yet.</div>
             )}
@@ -298,7 +298,7 @@ export default function Home() {
               <Link
                 key={m.id}
                 href={`/meetings/${m.id}`}
-                className="flex items-center justify-between p-3.5 hover:bg-[#1D272B] transition-colors"
+                className="flex items-center justify-between p-3.5 hover:bg-[#252542] transition-colors"
               >
                 <div>
                   <div className="text-xs font-medium text-[#E7EEEF]">{m.title}</div>
@@ -336,16 +336,16 @@ export default function Home() {
 
         {/* Pending Tasks Card */}
         <div className="ops-panel overflow-hidden">
-          <div className="flex flex-col gap-2 border-b border-[#212B2E] px-4 py-3">
+          <div className="flex flex-col gap-2 border-b border-[#2d2345] px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-                <ListChecks size={14} className="text-[#E8A33D]" />
+                <ListChecks size={14} className="text-[#9f55ff]" />
                 <span>Pending tasks</span>
               </div>
               {pendingTasks.length > 0 && (
                 <button
                   onClick={remindAllPending}
-                  className="flex items-center gap-1 font-mono text-[10.5px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] rounded px-2 py-0.5"
+                  className="flex items-center gap-1 font-mono text-[10.5px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#3e305e] rounded px-2 py-0.5"
                 >
                   <Bell size={11} /> REMIND ALL
                 </button>
@@ -356,7 +356,7 @@ export default function Home() {
               <select
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
-                className="bg-[#141C1F] border border-[#212B2E] text-xs text-[#8FA0A4] rounded px-2 py-1 flex-1"
+                className="bg-[#1a1a2f] border border-[#2d2345] text-xs text-[#8FA0A4] rounded px-2 py-1 flex-1"
               >
                 <option value="All">All Assignees</option>
                 {uniqueAssignees.map((a) => (
@@ -366,7 +366,7 @@ export default function Home() {
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="bg-[#141C1F] border border-[#212B2E] text-xs text-[#8FA0A4] rounded px-2 py-1 flex-1"
+                className="bg-[#1a1a2f] border border-[#2d2345] text-xs text-[#8FA0A4] rounded px-2 py-1 flex-1"
               >
                 <option value="All">All Priorities</option>
                 <option value="High">High</option>
@@ -376,7 +376,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="divide-y divide-[#212B2E]">
+          <div className="divide-y divide-[#2d2345]">
             {pendingTasks.length === 0 && (
               <div className="p-5 text-xs text-[#5B6A6E]">All clear — nothing pending.</div>
             )}
@@ -386,7 +386,7 @@ export default function Home() {
                 <div key={t.id} className="flex items-start gap-2.5 p-3.5">
                   <button
                     onClick={() => toggleTaskStatus(t.id, t.status)}
-                    className="mt-0.5 text-[#5B6A6E] hover:text-[#49B9AE]"
+                    className="mt-0.5 text-[#5B6A6E] hover:text-[#00ffff]"
                   >
                     <Circle size={15} />
                   </button>
@@ -410,14 +410,14 @@ export default function Home() {
                       ) : (
                         <span className="text-[#5B6A6E]">{t.ownerName}</span>
                       )}
-                      <span className="text-[#8FA0A4] ml-1 uppercase text-[9px] border border-[#212B2E] px-1 rounded">{t.priority || "Medium"}</span>
+                      <span className="text-[#8FA0A4] ml-1 uppercase text-[9px] border border-[#2d2345] px-1 rounded">{t.priority || "Medium"}</span>
                       <span style={{ color: deadlineTone(d) }} className="ml-1">{deadlineLabel(d)}</span>
                     </div>
                   </div>
                   <button
                     onClick={() => sendReminder(t.ownerName)}
                     title="Send reminder"
-                    className="rounded border border-[#2A363A] p-1 text-[#8FA0A4] hover:border-[#E8A33D] hover:text-[#E8A33D]"
+                    className="rounded border border-[#3e305e] p-1 text-[#8FA0A4] hover:border-[#9f55ff] hover:text-[#9f55ff]"
                   >
                     <Bell size={12} />
                   </button>
@@ -431,15 +431,15 @@ export default function Home() {
       {/* Completed Tasks Box */}
       {completedTasks.length > 0 && (
         <div className="ops-panel overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-[#212B2E] px-4 py-3 font-body text-xs font-semibold text-[#E7EEEF]">
-            <CircleCheck size={14} className="text-[#49B9AE]" />
+          <div className="flex items-center gap-2 border-b border-[#2d2345] px-4 py-3 font-body text-xs font-semibold text-[#E7EEEF]">
+            <CircleCheck size={14} className="text-[#00ffff]" />
             <span>Completed ({completedTasks.length})</span>
           </div>
-          <div className="divide-y divide-[#212B2E]">
+          <div className="divide-y divide-[#2d2345]">
             {completedTasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between p-3 text-xs">
                 <div className="flex items-center gap-2.5">
-                  <button onClick={() => toggleTaskStatus(t.id, t.status)} className="text-[#49B9AE]">
+                  <button onClick={() => toggleTaskStatus(t.id, t.status)} className="text-[#00ffff]">
                     <CircleCheck size={15} />
                   </button>
                   <span className="line-through text-[#5B6A6E]">{t.title}</span>
@@ -453,3 +453,4 @@ export default function Home() {
     </div>
   );
 }
+

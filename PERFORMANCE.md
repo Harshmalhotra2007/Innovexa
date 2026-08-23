@@ -1,6 +1,6 @@
-# MeetIQ Ops Console — Performance Documentation & Benchmarks
+﻿# Innovexa Ops Console — Performance Documentation & Benchmarks
 
-Performance targets, optimization strategies, and database profiling guidelines for the MeetIQ Ops Console platform.
+Performance targets, optimization strategies, and database profiling guidelines for the Innovexa Ops Console platform.
 
 ---
 
@@ -33,7 +33,7 @@ const DynamicAreaChart = dynamic(
 ```
 
 ### 2. Startup Seed Initialization via Instrumentation Hook
-In standard Next.js applications, checking or seeding database records inside API route handlers adds a `SELECT COUNT(*)` round-trip to every user request. In MeetIQ, `ensureSeedData()` is executed **exactly once at server startup** using Next.js `instrumentation.ts`:
+In standard Next.js applications, checking or seeding database records inside API route handlers adds a `SELECT COUNT(*)` round-trip to every user request. In Innovexa, `ensureSeedData()` is executed **exactly once at server startup** using Next.js `instrumentation.ts`:
 
 ```typescript
 // src/instrumentation.ts
@@ -77,3 +77,4 @@ Lighthouse CI (`@lhci/cli`) is executed automatically on every GitHub Pull Reque
 # Run local Lighthouse CI audit
 npx @lhci/cli autorun --collect.staticDistDir=.next
 ```
+

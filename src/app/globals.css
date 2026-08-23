@@ -1,23 +1,23 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #0D1315;
-  --bg-raised: #141C1F;
-  --panel: #182124;
-  --panel-alt: #1D272B;
-  --border: #2A363A;
-  --border-soft: #212B2E;
+  --bg: #131324;
+  --bg-raised: #1a1a2f;
+  --panel: #1e1e36;
+  --panel-alt: #252542;
+  --border: #3e305e;
+  --border-soft: #2d2345;
   --text: #E7EEEF;
   --text-dim: #8FA0A4;
   --text-faint: #5B6A6E;
-  --amber: #E8A33D;
-  --amber-dim: #4A3A1E;
-  --teal: #49B9AE;
-  --teal-dim: #1B3634;
-  --red: #E2666A;
-  --red-dim: #3A2224;
+  --amber: #9f55ff;
+  --amber-dim: #2b0e4a;
+  --teal: #00ffff;
+  --teal-dim: #052e33;
+  --red: #ff007f;
+  --red-dim: #4a0e28;
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-display: var(--font-display), 'Segoe UI', sans-serif;
   --font-body: var(--font-body), 'Segoe UI', sans-serif;
@@ -164,4 +164,5 @@ code, pre, .font-mono, .badge-mono {
   background: #141c1f;
   color: var(--text);
 }
+
 

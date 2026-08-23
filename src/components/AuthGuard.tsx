@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -73,7 +73,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen bg-[#0D1315] text-[#8FA0A4] flex items-center justify-center font-mono text-xs">
+      <div className="min-h-screen bg-[#131324] text-[#8FA0A4] flex items-center justify-center font-mono text-xs">
         Authenticating Session...
       </div>
     );
@@ -85,3 +85,4 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+

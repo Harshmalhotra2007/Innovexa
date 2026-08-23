@@ -1,6 +1,6 @@
-# MeetIQ Ops Console - User Guide
+﻿# Innovexa Ops Console - User Guide
 
-Welcome to the **MeetIQ Ops Console**! This guide describes how to navigate and manage the intelligent organizational memory, action-tracking, and SLA monitoring system.
+Welcome to the **Innovexa Ops Console**! This guide describes how to navigate and manage the intelligent organizational memory, action-tracking, and SLA monitoring system.
 
 ---
 
@@ -55,3 +55,4 @@ The Knowledge Engine runs a semantic natural language search over all logged dec
 - **Keystroke Debounce**: The search bar triggers auto-search queries as you type. Call requests are throttled with a **300ms debounce** to maintain fast rendering.
 - **Sample Queries**: Click any query badge (e.g., "ChromaDB vs Qdrant") to instantly load vector similarities.
 - **Context Traceability**: Click the `Trace Context` link on any result to open the original meeting detail and inspect the surrounding conversation segment.
+

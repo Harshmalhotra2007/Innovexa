@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -88,15 +88,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1315] text-[#E7EEEF] flex items-center justify-center p-4 font-body">
+    <div className="min-h-screen bg-[#131324] text-[#E7EEEF] flex items-center justify-center p-4 font-body">
       <div className="w-full max-w-[420px] space-y-6">
         {/* Brand Title Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#4A3A1E] border border-[#E8A33D] shadow-lg shadow-[#E8A33D]/20 mb-1">
-            <ListChecks size={24} className="text-[#E8A33D]" />
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#2b0e4a] border border-[#9f55ff] shadow-lg shadow-[#9f55ff]/20 mb-1">
+            <ListChecks size={24} className="text-[#9f55ff]" />
           </div>
           <h1 className="font-display text-2xl font-bold text-[#E7EEEF] tracking-tight">
-            Inno<span className="text-[#E8A33D]">vexa</span> Ops Console
+            Inno<span className="text-[#9f55ff]">vexa</span> Ops Console
           </h1>
           <p className="text-xs text-[#8FA0A4]">
             Meeting Intelligence & Action Tracking System
@@ -104,7 +104,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Panel */}
-        <div className="ops-panel p-6 sm:p-8 space-y-6 shadow-2xl border-[#2A363A]">
+        <div className="ops-panel p-6 sm:p-8 space-y-6 shadow-2xl border-[#3e305e]">
           {/* Role Selection */}
           <div className="space-y-2">
             <label className="font-mono text-[11px] uppercase tracking-wider text-[#5B6A6E] block">
@@ -116,11 +116,11 @@ export default function LoginPage() {
                 onClick={() => fillCredentials("organizer")}
                 className={`p-3 text-left rounded-md border transition-all ${
                   role === "organizer"
-                    ? "bg-[#1D272B] border-[#E8A33D] text-[#E7EEEF]"
-                    : "bg-[#141C1F] border-[#2A363A] text-[#8FA0A4] hover:border-[#5B6A6E]"
+                    ? "bg-[#252542] border-[#9f55ff] text-[#E7EEEF]"
+                    : "bg-[#1a1a2f] border-[#3e305e] text-[#8FA0A4] hover:border-[#5B6A6E]"
                 }`}
               >
-                <ShieldCheck size={18} className={role === "organizer" ? "text-[#E8A33D]" : "text-[#5B6A6E]"} />
+                <ShieldCheck size={18} className={role === "organizer" ? "text-[#9f55ff]" : "text-[#5B6A6E]"} />
                 <div className="text-xs font-semibold mt-1.5">Organizer</div>
                 <div className="text-[10px] text-[#5B6A6E] mt-0.5">Full Edit & SLA Access</div>
               </button>
@@ -130,11 +130,11 @@ export default function LoginPage() {
                 onClick={() => fillCredentials("participant")}
                 className={`p-3 text-left rounded-md border transition-all ${
                   role === "participant"
-                    ? "bg-[#1D272B] border-[#49B9AE] text-[#E7EEEF]"
-                    : "bg-[#141C1F] border-[#2A363A] text-[#8FA0A4] hover:border-[#5B6A6E]"
+                    ? "bg-[#252542] border-[#00ffff] text-[#E7EEEF]"
+                    : "bg-[#1a1a2f] border-[#3e305e] text-[#8FA0A4] hover:border-[#5B6A6E]"
                 }`}
               >
-                <User size={18} className={role === "participant" ? "text-[#49B9AE]" : "text-[#5B6A6E]"} />
+                <User size={18} className={role === "participant" ? "text-[#00ffff]" : "text-[#5B6A6E]"} />
                 <div className="text-xs font-semibold mt-1.5">Participant</div>
                 <div className="text-[10px] text-[#5B6A6E] mt-0.5">Read-Only View</div>
               </button>
@@ -180,7 +180,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-[#3A2224] border border-[#E2666A] p-3 text-xs text-[#E2666A] flex items-center gap-2">
+              <div className="rounded-md bg-[#4a0e28] border border-[#ff007f] p-3 text-xs text-[#ff007f] flex items-center gap-2">
                 <AlertCircle size={14} className="flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -190,17 +190,17 @@ export default function LoginPage() {
               id="login-btn"
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 rounded-md bg-[#E8A33D] text-[#1A1305] font-display text-xs font-bold uppercase tracking-wider hover:bg-[#d8932d] transition-all disabled:opacity-50 shadow-md shadow-[#E8A33D]/20"
+              className="w-full py-2.5 rounded-md bg-[#9f55ff] text-[#1A1305] font-display text-xs font-bold uppercase tracking-wider hover:bg-[#d8932d] transition-all disabled:opacity-50 shadow-md shadow-[#9f55ff]/20"
             >
               {isLoading ? "AUTHENTICATING..." : "ENTER CONSOLE"}
             </button>
           </form>
 
           {/* Preset Info Footer */}
-          <div className="rounded-md bg-[#141C1F] border border-[#212B2E] p-3 text-[11px] font-mono text-[#5B6A6E] space-y-1">
+          <div className="rounded-md bg-[#1a1a2f] border border-[#2d2345] p-3 text-[11px] font-mono text-[#5B6A6E] space-y-1">
             <div className="text-[#8FA0A4] font-semibold">Demo Credentials:</div>
-            <div>Organizer: <span className="text-[#E8A33D]">organizer</span> / <span className="text-[#E8A33D]">admin123</span></div>
-            <div>Participant: <span className="text-[#49B9AE]">participant</span> / <span className="text-[#49B9AE]">user123</span></div>
+            <div>Organizer: <span className="text-[#9f55ff]">organizer</span> / <span className="text-[#9f55ff]">admin123</span></div>
+            <div>Participant: <span className="text-[#00ffff]">participant</span> / <span className="text-[#00ffff]">user123</span></div>
           </div>
         </div>
 
@@ -211,3 +211,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
