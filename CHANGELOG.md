@@ -7,7 +7,7 @@ All notable changes to the Innovexa Ops Console project will be documented in th
 ## [2.0.0] - 2026-08-24
 
 ### Changed
-- Rebranded from MeetIQ to Innovexa across all source code, directories, API paths, databases, and local storage events.
+- Rebranded from the legacy meeting console to Innovexa across all source code, directories, API paths, databases, and local storage events.
 - Transformed the cyberpunk visual theme from amber-yellow to an Innovexa purple, neon-cyan, and magenta terminal palette.
 
 ## [1.2.0] - 2026-08-24
