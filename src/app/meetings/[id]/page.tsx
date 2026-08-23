@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft,
   Clock,
@@ -20,10 +20,12 @@ import {
 } from "lucide-react";
 
 export default function MeetingDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
   const [meeting, setMeeting] = useState<any>(null);
   const [transcript, setTranscript] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
   const [userRole, setUserRole] = useState<string>("organizer");
@@ -33,8 +35,21 @@ export default function MeetingDetailPage() {
     if (typeof window !== "undefined") {
       setUserRole(sessionStorage.getItem("userRole") || "organizer");
     }
-    if (id) fetchMeetingDetail();
+    if (id) {
+      fetchMeetingDetail();
+      fetchUsers();
+    }
   }, [id]);
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   async function fetchMeetingDetail() {
     try {
@@ -74,6 +89,62 @@ export default function MeetingDetailPage() {
       console.error(e);
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleDeleteMeeting = async () => {
+    if (userRole !== "organizer") {
+      alert("Forbidden: Only organizers can delete meetings.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "▲ WARNING: SYSTEM PURGE REQUESTED ▲\n\nThis will permanently delete the meeting and all associated tasks/decisions. Proceed?"
+    );
+
+    if (confirmDelete) {
+      try {
+        const res = await fetch(`/api/meetings/${id}`, {
+          method: "DELETE",
+          headers: {
+            "x-user-role": userRole,
+          },
+        });
+        if (res.ok) {
+          router.push("/meetings");
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to delete meeting");
+        }
+      } catch (err: any) {
+        alert("Failed to delete meeting: " + err.message);
+      }
+    }
+  };
+
+  const handleAssignTask = async (taskId: string, assigneeId: string) => {
+    if (userRole !== "organizer") {
+      alert("Forbidden: Only organizers can assign tasks.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/assign`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": userRole,
+        },
+        body: JSON.stringify({ assigneeId }),
+      });
+      if (res.ok) {
+        fetchMeetingDetail();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to assign task");
+      }
+    } catch (err: any) {
+      alert("Failed to assign task: " + err.message);
     }
   };
 
@@ -220,6 +291,15 @@ export default function MeetingDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {userRole === "organizer" && (
+            <button
+              onClick={handleDeleteMeeting}
+              className="cyberpunk-btn delete-btn px-3 py-1.5"
+              aria-label="Delete meeting"
+            >
+              DELETE MEETING
+            </button>
+          )}
           <button
             onClick={exportSummary}
             className="flex items-center gap-1.5 rounded-md border border-[#2A363A] bg-[#182124] px-3 py-1.5 text-xs font-mono text-[#49B9AE] hover:bg-[#1D272B] transition-colors"
@@ -335,9 +415,25 @@ export default function MeetingDetailPage() {
                           {t.title}
                         </div>
                         <div className="flex items-center gap-2 mt-1 font-mono text-[11px]">
-                          <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">
-                            {t.ownerName}
-                          </span>
+                          {userRole === "organizer" ? (
+                            <select
+                              className="cyberpunk-select"
+                              value={t.assigneeId || ""}
+                              onChange={(e) => handleAssignTask(t.id, e.target.value)}
+                              aria-label={`Assign task to user for ${t.title}`}
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">
+                              {t.ownerName}
+                            </span>
+                          )}
                           <span className="ops-badge border-[#2A363A] text-[#E8A33D]">
                             {t.priority || "Medium"}
                           </span>

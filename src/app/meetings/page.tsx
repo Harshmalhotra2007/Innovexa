@@ -39,8 +39,12 @@ export default function MeetingsPage() {
   const [department, setDepartment] = useState("Operations");
   const [transcript, setTranscript] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userRole, setUserRole] = useState("organizer");
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserRole(sessionStorage.getItem("userRole") || "organizer");
+    }
     fetchMeetings();
   }, []);
 
@@ -55,6 +59,36 @@ export default function MeetingsPage() {
       setLoading(false);
     }
   }
+
+  const handleDeleteMeeting = async (id: string) => {
+    if (userRole !== "organizer") {
+      alert("Forbidden: Only organizers can delete meetings.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "▲ WARNING: SYSTEM PURGE REQUESTED ▲\n\nThis will permanently delete the meeting and all associated tasks/decisions. Proceed?"
+    );
+
+    if (confirmDelete) {
+      try {
+        const res = await fetch(`/api/meetings/${id}`, {
+          method: "DELETE",
+          headers: {
+            "x-user-role": userRole,
+          },
+        });
+        if (res.ok) {
+          setMeetings((prev) => prev.filter((m) => m.id !== id));
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to delete meeting");
+        }
+      } catch (err: any) {
+        alert("Failed to delete meeting: " + err.message);
+      }
+    }
+  };
 
   const handleCreateMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,7 +251,22 @@ export default function MeetingsPage() {
                   <span>{m.tasks?.length || 0} tasks</span>
                 </div>
               </div>
-              <ChevronRight size={16} className="text-[#5B6A6E]" />
+              <div className="flex items-center gap-3">
+                {userRole === "organizer" && (
+                  <button
+                    className="cyberpunk-btn delete-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteMeeting(m.id);
+                    }}
+                    aria-label={`Delete meeting ${m.title}`}
+                  >
+                    DELETE MEETING
+                  </button>
+                )}
+                <ChevronRight size={16} className="text-[#5B6A6E]" />
+              </div>
             </Link>
           ))}
         </div>

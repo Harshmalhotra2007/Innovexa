@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { processMeetingTranscript } from "@/lib/ai-engine";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const meetings = await db.meeting.findMany({
     orderBy: { date: "desc" },
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
             context: dec.context,
             rationale: dec.rationale,
             department: dec.department || department || "Engineering",
-            tags: JSON.stringify(dec.tags || []),
+            tags: Array.isArray(dec.tags) ? dec.tags : [],
           })),
         },
       },

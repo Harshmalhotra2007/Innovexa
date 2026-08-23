@@ -24,6 +24,7 @@ export default function Home() {
   const [departmentFilter, setDepartmentFilter] = useState("All");
   const [assigneeFilter, setAssigneeFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -32,7 +33,18 @@ export default function Home() {
       setSession({ name: storedName, role: storedRole });
     }
     loadDashboardData();
+    fetchUsers();
   }, [departmentFilter]);
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (e) {
+      console.error("Failed to fetch users", e);
+    }
+  }
 
   async function loadDashboardData() {
     try {
@@ -77,6 +89,63 @@ export default function Home() {
     if (pendingAssignees.length === 0) return;
     setToast(`Reminder sent to ${pendingAssignees.join(", ")}`);
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleDeleteMeeting = async (id: string) => {
+    if (session.role !== "organizer") {
+      alert("Forbidden: Only organizers can delete meetings.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "▲ WARNING: SYSTEM PURGE REQUESTED ▲\n\nThis will permanently delete the meeting and all associated tasks/decisions. Proceed?"
+    );
+
+    if (confirmDelete) {
+      try {
+        const res = await fetch(`/api/meetings/${id}`, {
+          method: "DELETE",
+          headers: {
+            "x-user-role": session.role,
+          },
+        });
+        if (res.ok) {
+          setMeetings((prev) => prev.filter((m) => m.id !== id));
+          loadDashboardData();
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to delete meeting");
+        }
+      } catch (err: any) {
+        alert("Failed to delete meeting: " + err.message);
+      }
+    }
+  };
+
+  const handleAssignTask = async (taskId: string, assigneeId: string) => {
+    if (session.role !== "organizer") {
+      alert("Forbidden: Only organizers can assign tasks.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/assign`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": session.role,
+        },
+        body: JSON.stringify({ assigneeId }),
+      });
+      if (res.ok) {
+        loadDashboardData();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to assign task");
+      }
+    } catch (err: any) {
+      alert("Failed to assign task: " + err.message);
+    }
   };
 
   const daysUntil = (dateStr: string) => {
@@ -244,7 +313,22 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                <ChevronRight size={15} className="text-[#5B6A6E]" />
+                <div className="flex items-center gap-3">
+                  {session.role === "organizer" && (
+                    <button
+                      className="cyberpunk-btn delete-btn"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeleteMeeting(m.id);
+                      }}
+                      aria-label={`Delete meeting ${m.title}`}
+                    >
+                      DELETE MEETING
+                    </button>
+                  )}
+                  <ChevronRight size={15} className="text-[#5B6A6E]" />
+                </div>
               </Link>
             ))}
           </div>
@@ -309,7 +393,23 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-[#E7EEEF] leading-snug">{t.title}</div>
                     <div className="flex items-center gap-2 mt-1 font-mono text-[11px]">
-                      <span className="text-[#5B6A6E]">{t.ownerName}</span>
+                      {session.role === "organizer" ? (
+                        <select
+                          className="cyberpunk-select mr-2"
+                          value={t.assigneeId || ""}
+                          onChange={(e) => handleAssignTask(t.id, e.target.value)}
+                          aria-label={`Assign task to user for ${t.title}`}
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-[#5B6A6E]">{t.ownerName}</span>
+                      )}
                       <span className="text-[#8FA0A4] ml-1 uppercase text-[9px] border border-[#212B2E] px-1 rounded">{t.priority || "Medium"}</span>
                       <span style={{ color: deadlineTone(d) }} className="ml-1">{deadlineLabel(d)}</span>
                     </div>

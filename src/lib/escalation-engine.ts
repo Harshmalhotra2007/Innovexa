@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { TaskStatus } from "@prisma/client";
 
 export interface EscalationCheckSummary {
   checkedCount: number;
@@ -22,10 +23,7 @@ export async function checkAndEscalateOverdueTasks(): Promise<EscalationCheckSum
   // 1. Fetch active pending / in-progress tasks
   const activeTasks = await db.task.findMany({
     where: {
-      status: { in: ["Pending", "In_Progress", "Overdue"] },
-    },
-    include: {
-      owner: true,
+      status: { in: [TaskStatus.Pending, TaskStatus.In_Progress, TaskStatus.Overdue] },
     },
   });
 
@@ -38,7 +36,7 @@ export async function checkAndEscalateOverdueTasks(): Promise<EscalationCheckSum
       await db.task.update({
         where: { id: task.id },
         data: {
-          status: "Overdue",
+          status: TaskStatus.Overdue,
           escalationLevel: 1,
         },
       });
@@ -69,7 +67,7 @@ export async function checkAndEscalateOverdueTasks(): Promise<EscalationCheckSum
       await db.task.update({
         where: { id: task.id },
         data: {
-          status: "Escalated",
+          status: TaskStatus.Escalated,
           escalationLevel: 2,
           escalatedAt: now,
           escalatedTo: managerName,

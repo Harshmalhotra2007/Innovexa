@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { Role, TaskStatus, TaskPriority } from "@prisma/client";
 
 export async function ensureSeedData() {
   try {
@@ -51,7 +52,7 @@ export async function ensureSeedData() {
       data: {
         name: "Alex Mercer",
         email: "alex.mercer@company.org",
-        role: "Lead Engineer",
+        role: Role.Admin,
         departmentId: engDept.id,
       },
     });
@@ -60,7 +61,7 @@ export async function ensureSeedData() {
       data: {
         name: "Sarah Jenkins",
         email: "sarah.j@company.org",
-        role: "Product Manager",
+        role: Role.Member,
         departmentId: productDept.id,
       },
     });
@@ -69,7 +70,7 @@ export async function ensureSeedData() {
       data: {
         name: "Rohan Verma",
         email: "rohan.v@company.org",
-        role: "DevOps Engineer",
+        role: Role.Member,
         departmentId: engDept.id,
       },
     });
@@ -78,7 +79,7 @@ export async function ensureSeedData() {
       data: {
         name: "Kavita Rao",
         email: "kavita.r@company.org",
-        role: "Security Officer",
+        role: Role.Member,
         departmentId: securityDept.id,
       },
     });
@@ -149,14 +150,14 @@ export async function ensureSeedData() {
               context: "Evaluated local and cloud vector database performance for semantic meeting transcript retrieval.",
               rationale: "ChromaDB provides zero-latency local development while Qdrant handles production enterprise scale.",
               department: "Engineering",
-              tags: JSON.stringify(["VectorDB", "AI Architecture", "ChromaDB"]),
+              tags: ["VectorDB", "AI Architecture", "ChromaDB"],
             },
             {
               title: "Standardize Payload Schemas with Pydantic",
               context: "Inconsistent JSON formats caused ingestion pipeline validation errors.",
               rationale: "Pydantic guarantees strict runtime type safety and OpenAPI spec generation.",
               department: "Product & UI/UX",
-              tags: JSON.stringify(["API", "Schema", "Pydantic"]),
+              tags: ["API", "Schema", "Pydantic"],
             },
           ],
         },
@@ -223,7 +224,7 @@ export async function ensureSeedData() {
               context: "Delayed task completion was hindering cross-department release syncs.",
               rationale: "Automated escalation notifies department leads to reallocate engineering resources quickly.",
               department: "Operations & Logistics",
-              tags: JSON.stringify(["SLA", "Escalation", "Governance"]),
+              tags: ["SLA", "Escalation", "Governance"],
             },
           ],
         },
@@ -240,8 +241,8 @@ export async function ensureSeedData() {
         ownerName: "Alex Mercer",
         ownerEmail: "alex.mercer@company.org",
         department: "Engineering",
-        priority: "High",
-        status: "Escalated",
+        priority: TaskPriority.High,
+        status: TaskStatus.Escalated,
         deadline: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
         escalationLevel: 2,
         escalatedAt: yesterday,
@@ -258,8 +259,8 @@ export async function ensureSeedData() {
         ownerName: "Kavita Rao",
         ownerEmail: "kavita.r@company.org",
         department: "Cybersecurity & Governance",
-        priority: "High",
-        status: "Overdue",
+        priority: TaskPriority.High,
+        status: TaskStatus.Overdue,
         deadline: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
         escalationLevel: 1,
       },
@@ -274,8 +275,8 @@ export async function ensureSeedData() {
         ownerName: "Rohan Verma",
         ownerEmail: "rohan.v@company.org",
         department: "Engineering",
-        priority: "Medium",
-        status: "In_Progress",
+        priority: TaskPriority.Medium,
+        status: TaskStatus.In_Progress,
         deadline: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000), // tomorrow
         escalationLevel: 0,
       },
@@ -290,8 +291,8 @@ export async function ensureSeedData() {
         ownerName: "Sarah Jenkins",
         ownerEmail: "sarah.j@company.org",
         department: "Product & UI/UX",
-        priority: "Medium",
-        status: "Pending",
+        priority: TaskPriority.Medium,
+        status: TaskStatus.Pending,
         deadline: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
         escalationLevel: 0,
       },
@@ -306,8 +307,8 @@ export async function ensureSeedData() {
         ownerName: "Alex Mercer",
         ownerEmail: "alex.mercer@company.org",
         department: "Engineering",
-        priority: "High",
-        status: "Completed",
+        priority: TaskPriority.High,
+        status: TaskStatus.Completed,
         deadline: fiveDaysAgo,
         escalationLevel: 0,
       },

@@ -20,3 +20,29 @@ export async function GET(
 
   return NextResponse.json(meeting);
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userRole = req.headers.get("x-user-role");
+    if (userRole !== "organizer") {
+      return NextResponse.json({ error: "Forbidden: Requester must be an organizer" }, { status: 403 });
+    }
+
+    const { id } = params;
+
+    // Delete associated tasks and decisions first
+    await db.task.deleteMany({ where: { meetingId: id } });
+    await db.decision.deleteMany({ where: { meetingId: id } });
+
+    // Delete the meeting
+    await db.meeting.delete({ where: { id } });
+
+    return NextResponse.json({ message: "Meeting deleted successfully" });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to delete meeting" }, { status: 500 });
+  }
+}
+

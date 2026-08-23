@@ -3,8 +3,30 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  Member
+  Admin
+  Organizer
+}
+
+enum TaskStatus {
+  Pending
+  In_Progress
+  Completed
+  Overdue
+  Escalated
+}
+
+enum TaskPriority {
+  Low
+  Medium
+  High
+  Critical
 }
 
 model Department {
@@ -21,9 +43,10 @@ model User {
   id           String      @id @default(uuid())
   name         String
   email        String      @unique
-  role         String      @default("Member")
+  role         Role        @default(Member)
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
+  tasks        Task[]
   createdAt    DateTime    @default(now())
 }
 
@@ -66,7 +89,7 @@ model Decision {
   context     String
   rationale   String?
   department  String
-  tags        String   @default("[]")
+  tags        String[] @default([])
   createdAt   DateTime @default(now())
 }
 
@@ -78,9 +101,11 @@ model Task {
   description     String?
   ownerName       String
   ownerEmail      String?
+  assigneeId      String?
+  assignee        User?          @relation(fields: [assigneeId], references: [id])
   department      String
-  priority        String         @default("Medium")
-  status          String         @default("Pending")
+  priority        TaskPriority   @default(Medium)
+  status          TaskStatus     @default(Pending)
   deadline        DateTime
   escalationLevel Int            @default(0)
   escalatedAt     DateTime?

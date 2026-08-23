@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma, TaskStatus, TaskPriority } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const department = searchParams.get("department");
@@ -38,7 +40,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
     }
 
-    const updateData: Prisma.TaskUpdateInput = {};
+    const updateData: any = {};
     if (status) updateData.status = status as TaskStatus;
     if (priority) updateData.priority = priority as TaskPriority;
     if (deadline) updateData.deadline = new Date(deadline);

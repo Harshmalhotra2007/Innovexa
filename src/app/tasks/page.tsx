@@ -10,12 +10,28 @@ import {
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState("organizer");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserRole(sessionStorage.getItem("userRole") || "organizer");
+    }
     fetchTasks();
+    fetchUsers();
   }, []);
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(data || []);
+    } catch (e) {
+      console.error("Failed to fetch users", e);
+    }
+  }
 
   async function fetchTasks() {
     try {
@@ -28,6 +44,32 @@ export default function TasksPage() {
       setLoading(false);
     }
   }
+
+  const handleAssignTask = async (taskId: string, assigneeId: string) => {
+    if (userRole !== "organizer") {
+      alert("Forbidden: Only organizers can assign tasks.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/assign`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": userRole,
+        },
+        body: JSON.stringify({ assigneeId }),
+      });
+      if (res.ok) {
+        fetchTasks();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to assign task");
+      }
+    } catch (err: any) {
+      alert("Failed to assign task: " + err.message);
+    }
+  };
 
   const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === "Completed" ? "Pending" : "Completed";
@@ -113,7 +155,23 @@ export default function TasksPage() {
                     {t.title}
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 font-mono text-[11px]">
-                    <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{t.ownerName}</span>
+                    {userRole === "organizer" ? (
+                      <select
+                        className="cyberpunk-select"
+                        value={t.assigneeId || ""}
+                        onChange={(e) => handleAssignTask(t.id, e.target.value)}
+                        aria-label={`Assign task to user for ${t.title}`}
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{t.ownerName}</span>
+                    )}
                     <span className="ops-badge border-[#2A363A] text-[#E8A33D]">{t.department}</span>
                     <span style={{ color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
                   </div>

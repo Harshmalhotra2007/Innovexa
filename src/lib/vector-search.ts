@@ -109,7 +109,11 @@ export async function performSemanticSearch(query: string, departmentFilter?: st
 
     if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase()) || (queryEmbedding && score > 0.3)) {
       let parsedTags: string[] = [];
-      try { parsedTags = JSON.parse(dec.tags); } catch { parsedTags = [dec.department]; }
+      if (Array.isArray(dec.tags)) {
+        parsedTags = dec.tags;
+      } else if (typeof dec.tags === "string") {
+        try { parsedTags = JSON.parse(dec.tags); } catch { parsedTags = [dec.department]; }
+      }
       results.push({
         id: dec.id, type: "decision", title: dec.title,
         content: `${dec.context} — Rationale: ${dec.rationale || "N/A"}`,

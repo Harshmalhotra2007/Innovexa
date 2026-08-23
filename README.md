@@ -18,10 +18,11 @@ Navigate to `/login` to access the system:
 ## ⚡ Core Features
 
 1. **Auth System (`/login`)**: SHA-256 password hashing via Web Crypto API, `sessionStorage` persistence, 15-min inactivity timeout.
-2. **Meeting Ingestion (`/meetings`)**: Multi-speaker transcript diarization, AI structured extraction of decisions and action items.
-3. **Task SLA Board (`/tasks`)**: Status tracking (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`) with automated manager escalation.
+2. **Meeting Ingestion & Deletion (`/meetings`)**: Multi-speaker transcript diarization, AI structured extraction of decisions/tasks, and **Meeting Deletion** (cascade delete of tasks/decisions) with role check and Cyberpunk confirmation modal.
+3. **Task SLA Board & Assignment (`/tasks`)**: Status tracking (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`) with automated manager escalation and **Task Assignment** to active team members via a dropdown.
 4. **Semantic Knowledge Engine (`/knowledge`)**: Cosine-similarity vector search over past decisions and transcript memory.
 5. **Analytics & ROI Dashboard (`/analytics`)**: Real-time closure rates, decision-to-action lag (computed from DB), and department productivity charts.
+6. **Robust Testing Setup (`npm run test`)**: Comprehensive unit and integration test suite targeting deletion, assignment, and authorization gates.
 
 ---
 
@@ -49,8 +50,10 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── meetings/      # GET list, POST create with AI extraction
-│   │   ├── meetings/[id]/ # GET single meeting detail
+│   │   ├── meetings/[id]/ # GET detail, DELETE meeting & cascade associations
 │   │   ├── tasks/         # GET (filterable), PATCH update status
+│   │   ├── tasks/[id]/assign/ # PATCH assign task to user
+│   │   ├── users/         # GET all registered users
 │   │   ├── analytics/     # GET real-time metrics (no hardcoded data)
 │   │   ├── search/        # GET semantic vector search
 │   │   └── cron/escalate/ # POST/GET trigger SLA escalation engine
@@ -72,7 +75,24 @@ src/
 └── instrumentation.ts     # Next.js startup hook — seeds DB exactly once
 ```
 
----
+### 4. Database Setup & Migrations (PostgreSQL)
+
+This project requires **PostgreSQL**.
+1. Copy `.env.local` or setup your `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Add your database credentials in `.env`:
+   ```env
+   DATABASE_URL="postgres://user:password@host:port/dbname?pgbouncer=true&sslmode=require"
+   DIRECT_URL="postgres://user:password@host:port/dbname?sslmode=require"
+   ```
+3. Generate the Prisma Client and run migrations:
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev --name postgres_init
+   ```
+*(Note: Do not use `db push` for production Postgres schemas).*
 
 ## 🧹 Cleanup Notes (August 2026)
 
