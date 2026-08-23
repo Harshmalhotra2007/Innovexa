@@ -116,8 +116,16 @@ The following changes were made to optimize the codebase:
 - Replaced `any` types in tasks API route with `Prisma.TaskWhereInput` / `Prisma.TaskUpdateInput`
 - Deleted stale root files: `WhatsApp Image...jpeg`, `simplified_implementation_plan.md`, `login.md`
 
+### Filesystem Audit & Legacy Purge (August 2026)
+- **Legacy SQLite DB Deleted**: Purged `prisma/dev.db` as PostgreSQL is now the primary database.
+- **Legacy Prototype Purged**: Deleted the entire `Code/` directory containing legacy prototype scripts, PDFs, and redundant plans.
+- **Dependency Pruning**: Uninstalled `@testing-library/react`, `@testing-library/jest-dom`, and `jest-environment-jsdom` from devDependencies since they were completely unused. Removed **127 transitive packages** from `node_modules`.
+
 ### Removed Dependencies
 | Package | Reason |
 |---|---|
 | `clsx` | Zero imports in codebase |
 | `tailwind-merge` | Zero imports in codebase |
+| `@testing-library/react` | Zero imports in test files |
+| `@testing-library/jest-dom` | Zero imports in test files |
+| `jest-environment-jsdom` | Jest runs in `node` test environment |
