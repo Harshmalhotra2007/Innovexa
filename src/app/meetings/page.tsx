@@ -149,6 +149,7 @@ export default function MeetingsPage() {
                 className="ops-input w-full p-2.5 text-xs"
               />
             </div>
+          </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">

@@ -128,6 +128,40 @@ export default function MeetingDetailPage() {
     return `${days}d left`;
   };
 
+  const exportSummary = () => {
+    if (!meeting) return;
+    
+    let md = `# Meeting Summary: ${meeting.title}\n`;
+    md += `**Date:** ${new Date(meeting.date).toLocaleDateString()}\n`;
+    md += `**Department:** ${meeting.department}\n\n`;
+    
+    if (meeting.decisions && meeting.decisions.length > 0) {
+      md += `## Decisions\n`;
+      meeting.decisions.forEach((d: any) => {
+        md += `- **${d.title}**: ${d.context}\n`;
+      });
+      md += `\n`;
+    }
+    
+    if (meeting.tasks && meeting.tasks.length > 0) {
+      md += `## Action Items\n`;
+      meeting.tasks.forEach((t: any) => {
+        md += `- [${t.status === 'Completed' ? 'x' : ' '}] **${t.title}** (Assignee: ${t.ownerName}, Due: ${new Date(t.deadline).toLocaleDateString()})\n`;
+      });
+      md += `\n`;
+    }
+    
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${meeting.title.replace(/\\s+/g, '_')}_Summary.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="py-20 text-center text-xs text-[#8FA0A4]">
@@ -186,6 +220,13 @@ export default function MeetingDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={exportSummary}
+            className="flex items-center gap-1.5 rounded-md border border-[#2A363A] bg-[#182124] px-3 py-1.5 text-xs font-mono text-[#49B9AE] hover:bg-[#1D272B] transition-colors"
+          >
+            <FileText size={13} />
+            <span>EXPORT MD</span>
+          </button>
           {isReadOnly && (
             <span className="ops-badge border-[#49B9AE] text-[#49B9AE] flex items-center gap-1">
               <Lock size={10} /> Read-Only Mode

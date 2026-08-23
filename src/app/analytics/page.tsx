@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Building2 } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, Building2 } from "lucide-react";
 import {
   BarChart,
   Bar,

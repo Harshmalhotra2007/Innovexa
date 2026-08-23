@@ -6,8 +6,6 @@ import {
   Circle,
   CheckCircle2,
   Bell,
-  Clock,
-  User,
 } from "lucide-react";
 
 export default function TasksPage() {

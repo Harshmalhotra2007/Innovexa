@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Department {
@@ -25,6 +24,7 @@ model User {
   role         String      @default("Member")
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
+  tasksOwned   Task[]      @relation("TaskOwner")
   createdAt    DateTime    @default(now())
 }
 
@@ -36,6 +36,7 @@ model Meeting {
   department   String?
   agenda       String?
   objectives   String?
+  audioUrl     String?
   transcript   String?
   status       String           @default("Processed")
   segments     MeetingSegment[]
@@ -76,6 +77,8 @@ model Task {
   description     String?
   ownerName       String
   ownerEmail      String?
+  ownerId         String?
+  owner           User?          @relation("TaskOwner", fields: [ownerId], references: [id])
   department      String
   priority        String         @default("Medium")
   status          String         @default("Pending")
