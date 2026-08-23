@@ -1,46 +1,29 @@
-# MeetIQ Ops Console — Changelog
+# Changelog
 
-All notable changes to the MeetIQ Ops Console platform are documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to the MeetIQ Ops Console project will be documented in this file.
 
 ---
 
-## [v1.2.0] — 2026-08-23 (Latest Production Release)
+## [1.2.0] - 2026-08-24
 
-### 🚀 Added
-- **PostgreSQL Database Provider Integration**: Replaced local SQLite datasource with production PostgreSQL (v15+), adding connection pooling support (`pgbouncer=true`).
-- **PostgreSQL Native Enums**: Introduced schema-enforced enums for `Role` (`Member`, `Admin`, `Organizer`), `TaskStatus` (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`), and `TaskPriority` (`Low`, `Medium`, `High`, `Critical`).
-- **Native Array Columns (`String[]`)**: Migrated `Decision.tags` to PostgreSQL string arrays for faster tag matching.
-- **B-Tree Database Indexing**: Added composite indexes to `Meeting` (`date`, `department`) and `Task` (`status`, `department`, `deadline`, `meetingId`).
-- **Meeting Deletion API (`DELETE /api/meetings/:id`)**: Implemented cascading deletion of meeting records, speech segments, decisions, and associated tasks with `organizer` role authentication.
-- **Task Assignment System (`PATCH /api/tasks/:id/assign`)**: Added user assignment dropdown modal and API endpoint to reassign task ownership to registered team members.
-- **SHA-256 Web Crypto Authentication (`/login`)**: Client-side password hashing, `sessionStorage` persistence, and 15-minute inactivity session expiration (`AuthGuard`).
-- **Recharts Analytics Dashboard (`/analytics`)**: Real-time decision lag metrics, closure rate calculation, department task breakdowns, and responsive area/line/bar charts.
-- **Automated SLA Escalation Engine (`/api/cron/escalate`)**: Audits active action items against target deadline timestamps, setting Level 1 overdue status and Level 2 manager escalations.
+### Added
+- **Cascade Deletion of Meetings**: Permitted organizers to completely delete a meeting record, automatically cascade-purging all associated tasks and decisions. Added a Cyberpunk-styled warning dialog prior to execution.
+- **Dynamic Task Assignment**: Added database models and PATCH API endpoint (`/api/tasks/[id]/assign`) allowing organizers to select team members from a dropdown. Re-assigning dynamically updates the task assignee and updates legacy owner details automatically.
+- **Registered User Lookup**: Created GET endpoint (`/api/users`) to retrieve registered team members ordered alphabetically for dropdown population.
+- **Automated API Testing**: Added a comprehensive Jest unit testing suite covering authorization checks, cascading deletions, and reassignments with Next.js mocks.
 
-### ⚠️ Breaking Changes
-- **Database Datasource Update**: Migrated datasource provider in `prisma/schema.prisma` to `postgresql`. Existing SQLite database instances require `npx prisma migrate dev` or `npx prisma db push`.
-- **RBAC Header Requirement**: `DELETE /api/meetings/:id` and `PATCH /api/tasks/:id/assign` now enforce the `x-user-role: organizer` request header. Unauthorized calls return `403 Forbidden`.
+### Optimized (Performance & Architecture)
+- **PostgreSQL Database Migration**: Migrated the schema from SQLite to PostgreSQL with native DB features:
+  - Native Postgres Enums for `Role`, `TaskStatus`, and `TaskPriority`.
+  - Native String Arrays (`String[]`) for decision tags instead of stringified JSON objects.
+  - Added B-Tree composite indexes: `Task(status, department)`, `Task(assigneeId, deadline)` and `Meeting(date, department)`.
+- **Edge API Caching**: Implemented Vercel Edge caching using Next.js `unstable_cache` with tag-based revalidation (`revalidateTag`) to save database query cycles.
+- **Code Splitting & Dynamic Imports**: Extracted heavy Recharts rendering elements into a separate Client Component, dynamically imported on `/analytics` with `ssr: false` to reduce the initial load bundle footprint.
+- **Search Input Debouncing**: Throttled search submissions on the Knowledge Engine interface using a 300ms timer debounce.
+- **Next.js Font Optimization**: Self-hosted and auto-preloaded Inter, Space Grotesk, and IBM Plex Mono fonts natively using `next/font/google`.
 
-### 🧹 Removed & Deprecated
-- **Removed `Meeting.audioUrl`**: Deleted unused schema field to optimize record overhead.
-- **Removed `Task.ownerId` relation**: Replaced relation with direct `ownerName` / `ownerEmail` mapping and `assigneeId` foreign key.
-- **Purged Legacy Prototype Files**: Deleted `prisma/dev.db`, legacy PDF assets, and prototype scripts.
-- **Pruned Unused Dependencies**: Uninstalled unused testing libraries (`@testing-library/react`, `jest-environment-jsdom`, `clsx`, `tailwind-merge`), reducing 127 transitive packages from `node_modules`.
-
----
-
-## [v1.1.0] — 2026-08-15
-
-### 🚀 Added
-- **Multi-Speaker Transcript Extraction**: Automated AI segment categorization (`discussion`, `decision`, `action_item`).
-- **Cosine-Similarity Semantic Vector Engine**: Natural language vector search across historical decision records.
-- **Cyberpunk UI System**: Integrated dark theme ops console styling.
-
----
-
-## [v1.0.0] — 2026-08-01
-
-### 🚀 Initial Release
-- Core meeting ingestion, basic task tracking, and department seed data initialization.
+### Removed
+- SQLite Database file (`prisma/dev.db`).
+- Legacy JSX prototypes and instructions inside `Code/` folder.
+- Unused devDependencies: `@testing-library/react`, `@testing-library/jest-dom`, and `jest-environment-jsdom` (removing 127 node packages in total).
+- Old build cache assets (`tsconfig.tsbuildinfo`).

@@ -1,6 +1,12 @@
 # MeetIQ Ops Console — Intelligent Meeting, Decision & Action System
 
-MeetIQ Ops Console is a cyberpunk-themed, high-performance meeting management and action-tracking platform designed to transform unstructured meeting audio and transcripts into structured organizational memory, formal decisions, and target SLA action items. Powered by a Next.js 14 App Router core, PostgreSQL with Prisma ORM, real-time task assignment, cosine-similarity semantic vector search, and automated SLA escalation workflows, MeetIQ eliminates operational drift and guarantees accountability across engineering and leadership teams.
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel&style=flat-square)](https://innovexa-murex.vercel.app)
+[![Jest Test Suite](https://img.shields.io/badge/Jest%20Tests-Passing-success?logo=jest&style=flat-square)](https://github.com/Harshmalhotra2007/Innovexa.git)
+
+MeetIQ Ops Console is an intelligent organizational memory and action-tracking platform. It converts raw meeting speech transcripts into formal decisions, task assignees, and target completion deadlines, backed by semantic vector memory and automated manager escalation workflows.
+
+> [!TIP]
+> **Live Demo**: Access the deployed website directly at **[https://innovexa-murex.vercel.app](https://innovexa-murex.vercel.app)**.
 
 ---
 
