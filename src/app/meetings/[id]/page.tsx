@@ -12,7 +12,7 @@ import {
   Gavel,
   ListChecks,
   Bell,
-  CheckCircle2,
+  CircleCheck,
   Circle,
   Loader2,
   AlertTriangle,
@@ -321,7 +321,7 @@ export default function MeetingDetailPage() {
                         className={`mt-0.5 ${isReadOnly ? "cursor-not-allowed opacity-60" : "text-[#5B6A6E] hover:text-[#49B9AE]"}`}
                       >
                         {isDone ? (
-                          <CheckCircle2 size={16} className="text-[#49B9AE]" />
+                          <CircleCheck size={16} className="text-[#49B9AE]" />
                         ) : (
                           <Circle size={16} />
                         )}

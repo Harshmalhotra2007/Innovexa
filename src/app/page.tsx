@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Calendar,
+  Clock,
   Users,
-  CheckCircle2,
+  CircleCheck,
   Circle,
   Bell,
   ChevronRight,
@@ -331,7 +332,7 @@ export default function Home() {
       {completedTasks.length > 0 && (
         <div className="ops-panel overflow-hidden">
           <div className="flex items-center gap-2 border-b border-[#212B2E] px-4 py-3 font-body text-xs font-semibold text-[#E7EEEF]">
-            <CheckCircle2 size={14} className="text-[#49B9AE]" />
+            <CircleCheck size={14} className="text-[#49B9AE]" />
             <span>Completed ({completedTasks.length})</span>
           </div>
           <div className="divide-y divide-[#212B2E]">
@@ -339,7 +340,7 @@ export default function Home() {
               <div key={t.id} className="flex items-center justify-between p-3 text-xs">
                 <div className="flex items-center gap-2.5">
                   <button onClick={() => toggleTaskStatus(t.id, t.status)} className="text-[#49B9AE]">
-                    <CheckCircle2 size={15} />
+                    <CircleCheck size={15} />
                   </button>
                   <span className="line-through text-[#5B6A6E]">{t.title}</span>
                 </div>

@@ -17,7 +17,7 @@ export async function checkAndEscalateOverdueTasks(): Promise<EscalationCheckSum
   let newOverdueCount = 0;
   let newEscalatedCount = 0;
   let notificationsCreated = 0;
-  const newNotifications = [];
+  const newNotifications: any[] = [];
 
   // 1. Fetch active pending / in-progress tasks
   const activeTasks = await db.task.findMany({

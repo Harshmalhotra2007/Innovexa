@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, Clock, AlertCircle, Building2 } from "lucide-react";
+import { CircleCheck, Clock, AlertCircle, Building2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
         {/* Task Closure Rate (Line Chart) */}
         <div className="ops-panel p-5 space-y-4">
           <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-            <CheckCircle2 size={14} className="text-[#49B9AE]" />
+            <CircleCheck size={14} className="text-[#49B9AE]" />
             <span>Task Closure Rate</span>
           </div>
           <div className="h-64 w-full">

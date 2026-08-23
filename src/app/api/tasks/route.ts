@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { Prisma, TaskStatus, TaskPriority } from "@prisma/client";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     where.department = department;
   }
   if (status && status !== "All") {
-    where.status = status;
+    where.status = status as TaskStatus;
   }
 
   const tasks = await db.task.findMany({
@@ -39,8 +39,8 @@ export async function PATCH(req: Request) {
     }
 
     const updateData: Prisma.TaskUpdateInput = {};
-    if (status) updateData.status = status;
-    if (priority) updateData.priority = priority;
+    if (status) updateData.status = status as TaskStatus;
+    if (priority) updateData.priority = priority as TaskPriority;
     if (deadline) updateData.deadline = new Date(deadline);
     if (typeof escalationLevel === "number") updateData.escalationLevel = escalationLevel;
 

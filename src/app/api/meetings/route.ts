@@ -52,7 +52,7 @@ export async function POST(req: Request) {
             context: dec.context,
             rationale: dec.rationale,
             department: dec.department || department || "Engineering",
-            tags: JSON.stringify(dec.tags),
+            tags: JSON.stringify(dec.tags || []),
           })),
         },
       },
