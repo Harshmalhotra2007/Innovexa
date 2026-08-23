@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -44,7 +44,7 @@ export default function AnalyticsPage() {
   const deptStats = data?.departmentStats || [];
   const trendData = data?.trendData || [];
 
-  const COLORS = ["#49B9AE", "#E8A33D", "#E2666A", "#5B6A6E", "#8FA0A4"];
+  const COLORS = ["#00ffff", "#9f55ff", "#ff007f", "#5B6A6E", "#8FA0A4"];
 
   return (
     <div className="mx-auto max-w-[860px] space-y-6 py-2">
@@ -63,7 +63,7 @@ export default function AnalyticsPage() {
           <div className="font-mono text-[10.5px] uppercase tracking-wider text-[#5B6A6E] mb-2">
             CLOSURE RATE
           </div>
-          <div className="font-display text-2xl font-bold text-[#49B9AE]">
+          <div className="font-display text-2xl font-bold text-[#00ffff]">
             {summary.closureRate}%
           </div>
         </div>
@@ -72,7 +72,7 @@ export default function AnalyticsPage() {
           <div className="font-mono text-[10.5px] uppercase tracking-wider text-[#5B6A6E] mb-2">
             DECISION LAG
           </div>
-          <div className="font-display text-2xl font-bold text-[#E8A33D]">
+          <div className="font-display text-2xl font-bold text-[#9f55ff]">
             {summary.avgDecisionLagDays} Days
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
           <div className="font-mono text-[10.5px] uppercase tracking-wider text-[#5B6A6E] mb-2">
             OVERDUE RATE
           </div>
-          <div className="font-display text-2xl font-bold text-[#E2666A]">
+          <div className="font-display text-2xl font-bold text-[#ff007f]">
             {summary.overdueRate}%
           </div>
         </div>

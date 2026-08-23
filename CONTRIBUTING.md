@@ -1,4 +1,4 @@
-# Contributing to Innovexa Ops Console
+﻿# Contributing to Innovexa Ops Console
 
 Thank you for contributing to Innovexa! Follow these guidelines to ensure consistency, security, performance, and code quality.
 
@@ -35,12 +35,12 @@ All UI components must adhere strictly to the **Innovexa Ops Console Dark Palett
 
 | Element / Utility | Hex Color | Tailwind Class | Purpose |
 |---|---|---|---|
-| **Background** | `#0D1315` | `bg-[#0D1315]` | Console canvas |
-| **Panel Surface** | `#182124` | `bg-[#182124]` | Cards, containers, modals |
-| **Panel Border** | `#212B2E` | `border-[#212B2E]` | Subtle structural dividers |
-| **Primary Amber Accent** | `#E8A33D` | `text-[#E8A33D]`, `bg-[#E8A33D]` | Buttons, active tabs, warnings |
-| **Teal Secondary Accent**| `#49B9AE` | `text-[#49B9AE]` | Status indicators, metrics |
-| **Red Alert Accent** | `#E2666A` | `text-[#E2666A]` | Overdue/escalated task badges |
+| **Background** | `#131324` | `bg-[#131324]` | Console canvas |
+| **Panel Surface** | `#1e1e36` | `bg-[#1e1e36]` | Cards, containers, modals |
+| **Panel Border** | `#2d2345` | `border-[#2d2345]` | Subtle structural dividers |
+| **Primary Amber Accent** | `#9f55ff` | `text-[#9f55ff]`, `bg-[#9f55ff]` | Buttons, active tabs, warnings |
+| **Teal Secondary Accent**| `#00ffff` | `text-[#00ffff]` | Status indicators, metrics |
+| **Red Alert Accent** | `#ff007f` | `text-[#ff007f]` | Overdue/escalated task badges |
 | **Muted Text** | `#5B6A6E` | `text-[#5B6A6E]` | Labels, timestamps, mono metadata |
 
 ### Typography Guidelines
