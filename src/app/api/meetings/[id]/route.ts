@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { revalidateTag } from "next/cache";
 
 export async function GET(
   req: Request,
@@ -39,6 +40,9 @@ export async function DELETE(
 
     // Delete the meeting
     await db.meeting.delete({ where: { id } });
+
+    revalidateTag("meetings");
+    revalidateTag("tasks");
 
     return NextResponse.json({ message: "Meeting deleted successfully" });
   } catch (error: any) {

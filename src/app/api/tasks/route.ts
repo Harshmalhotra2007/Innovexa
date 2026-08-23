@@ -1,34 +1,65 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma, TaskStatus, TaskPriority } from "@prisma/client";
+import { unstable_cache, revalidateTag } from "next/cache";
 
-export const dynamic = "force-dynamic";
+const getCachedTasks = (
+  department: string | null,
+  status: string | null,
+  cursor: string | null,
+  limit: number
+) => {
+  return unstable_cache(
+    async () => {
+      const where: Prisma.TaskWhereInput = {};
+      if (department && department !== "All") {
+        where.department = department;
+      }
+      if (status && status !== "All") {
+        where.status = status as TaskStatus;
+      }
+
+      const queryOptions: Prisma.TaskFindManyArgs = {
+        where,
+        orderBy: [{ status: "asc" }, { deadline: "asc" }],
+        include: {
+          meeting: {
+            select: { id: true, title: true, date: true },
+          },
+          notifications: true,
+        },
+      };
+
+      if (limit > 0) {
+        queryOptions.take = limit;
+      }
+      if (cursor) {
+        queryOptions.skip = 1;
+        queryOptions.cursor = { id: cursor };
+      }
+
+      return db.task.findMany(queryOptions);
+    },
+    [`tasks-list-${department || "All"}-${status || "All"}-${cursor || "none"}-${limit}`],
+    { revalidate: 3600, tags: ["tasks"] }
+  )();
+};
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const department = searchParams.get("department");
-  const status = searchParams.get("status");
+  try {
+    const { searchParams } = new URL(req.url);
+    const department = searchParams.get("department");
+    const status = searchParams.get("status");
+    const cursor = searchParams.get("cursor");
+    const limitStr = searchParams.get("limit");
+    const limit = limitStr ? parseInt(limitStr, 10) : 0;
 
-  const where: Prisma.TaskWhereInput = {};
-  if (department && department !== "All") {
-    where.department = department;
+    const tasks = await getCachedTasks(department, status, cursor, limit);
+    return NextResponse.json(tasks);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch tasks";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  if (status && status !== "All") {
-    where.status = status as TaskStatus;
-  }
-
-  const tasks = await db.task.findMany({
-    where,
-    orderBy: [{ status: "asc" }, { deadline: "asc" }],
-    include: {
-      meeting: {
-        select: { id: true, title: true, date: true },
-      },
-      notifications: true,
-    },
-  });
-
-  return NextResponse.json(tasks);
 }
 
 export async function PATCH(req: Request) {
@@ -50,6 +81,8 @@ export async function PATCH(req: Request) {
       where: { id: taskId },
       data: updateData,
     });
+
+    revalidateTag("tasks");
 
     return NextResponse.json({ success: true, task: updatedTask });
   } catch (error: unknown) {

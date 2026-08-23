@@ -22,6 +22,12 @@ jest.mock("../src/lib/db", () => ({
   },
 }));
 
+// Mock Next.js cache utilities
+jest.mock("next/cache", () => ({
+  revalidateTag: jest.fn(),
+  unstable_cache: (fn: any) => fn,
+}));
+
 describe("Meetings DELETE API Endpoint", () => {
   beforeEach(() => {
     jest.clearAllMocks();

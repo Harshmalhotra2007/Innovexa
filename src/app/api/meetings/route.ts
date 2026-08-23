@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { processMeetingTranscript } from "@/lib/ai-engine";
+import { unstable_cache, revalidateTag } from "next/cache";
 
-export const dynamic = "force-dynamic";
+const getCachedMeetings = unstable_cache(
+  async () => {
+    return db.meeting.findMany({
+      orderBy: { date: "desc" },
+      include: {
+        segments: { orderBy: { order: "asc" } },
+        decisions: true,
+        tasks: true,
+      },
+    });
+  },
+  ["meetings-list"],
+  { revalidate: 3600, tags: ["meetings"] }
+);
 
 export async function GET() {
-  const meetings = await db.meeting.findMany({
-    orderBy: { date: "desc" },
-    include: {
-      segments: { orderBy: { order: "asc" } },
-      decisions: true,
-      tasks: true,
-    },
-  });
+  const meetings = await getCachedMeetings();
   return NextResponse.json(meetings);
 }
 
@@ -80,6 +87,8 @@ export async function POST(req: Request) {
         },
       });
     }
+    revalidateTag("meetings");
+    revalidateTag("tasks");
 
     return NextResponse.json({ success: true, meetingId: newMeeting.id });
   } catch (error: unknown) {

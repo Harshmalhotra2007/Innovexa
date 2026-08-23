@@ -118,6 +118,8 @@ model Task {
   @@index([department])
   @@index([deadline])
   @@index([meetingId])
+  @@index([status, department])
+  @@index([assigneeId, deadline])
 }
 
 model Notification {

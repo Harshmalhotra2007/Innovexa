@@ -125,7 +125,7 @@ export function Navigation() {
                 <ListChecks size={15} className="text-[#E8A33D]" />
               </div>
               <span className="font-display text-lg font-bold text-[#E7EEEF]">
-                Meet<span className="text-[#E8A33D]">IQ</span>
+                Inno<span className="text-[#E8A33D]">vexa</span>
               </span>
             </Link>
             <span className="font-mono text-[10px] uppercase tracking-wider text-[#8FA0A4] bg-[#182124] px-2 py-0.5 rounded border border-[#2A363A]">

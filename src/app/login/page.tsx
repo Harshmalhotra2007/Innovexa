@@ -96,7 +96,7 @@ export default function LoginPage() {
             <ListChecks size={24} className="text-[#E8A33D]" />
           </div>
           <h1 className="font-display text-2xl font-bold text-[#E7EEEF] tracking-tight">
-            Meet<span className="text-[#E8A33D]">IQ</span> Ops Console
+            Inno<span className="text-[#E8A33D]">vexa</span> Ops Console
           </h1>
           <p className="text-xs text-[#8FA0A4]">
             Meeting Intelligence & Action Tracking System

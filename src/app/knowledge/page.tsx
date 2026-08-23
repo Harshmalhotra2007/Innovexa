@@ -30,12 +30,16 @@ function KnowledgeSearchContent() {
   ];
 
   useEffect(() => {
-    if (query) {
-      runSearch(query, department);
-    } else {
-      runSearch("vendor contract renewal caching bug", "All");
-    }
-  }, [department]);
+    const delayDebounceFn = setTimeout(() => {
+      if (query.trim()) {
+        runSearch(query, department);
+      } else {
+        runSearch("vendor contract renewal caching bug", department);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query, department]);
 
   async function runSearch(qText: string, deptText: string) {
     if (!qText.trim()) return;
