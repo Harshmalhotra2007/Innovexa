@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -211,7 +211,7 @@ export default function MeetingsPage() {
             <button
               type="submit"
               disabled={isSubmitting || !title.trim()}
-              className="flex items-center gap-2 rounded bg-[#9f55ff] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
+              className="flex items-center gap-2 rounded bg-[#E8A33D] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -227,17 +227,17 @@ export default function MeetingsPage() {
       {/* Scheduled Meetings List */}
       <div className="space-y-3">
         <h2 className="font-display text-lg font-bold text-[#E7EEEF]">All scheduled meetings</h2>
-        <div className="ops-panel overflow-hidden divide-y divide-[#2d2345]">
+        <div className="ops-panel overflow-hidden divide-y divide-[#212B2E]">
           {meetings.map((m) => (
             <Link
               key={m.id}
               href={`/meetings/${m.id}`}
-              className="flex items-center justify-between p-4 hover:bg-[#252542] transition-colors"
+              className="flex items-center justify-between p-4 hover:bg-[#1D272B] transition-colors"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-body text-sm font-semibold text-[#E7EEEF]">{m.title}</span>
-                  <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{m.department}</span>
+                  <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{m.department}</span>
                 </div>
                 <div className="flex items-center gap-4 font-mono text-[11px] text-[#5B6A6E]">
                   <span className="flex items-center gap-1">
@@ -245,7 +245,7 @@ export default function MeetingsPage() {
                     {new Date(m.date).toLocaleDateString()}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Sparkles size={11} className="text-[#9f55ff]" />
+                    <Sparkles size={11} className="text-[#E8A33D]" />
                     {m.decisions?.length || 0} decisions
                   </span>
                   <span>{m.tasks?.length || 0} tasks</span>

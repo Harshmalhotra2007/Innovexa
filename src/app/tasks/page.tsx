@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -99,9 +99,9 @@ export default function TasksPage() {
 
   const deadlineTone = (days: number | null) => {
     if (days === null) return "#5B6A6E";
-    if (days < 0) return "#ff007f";
-    if (days <= 2) return "#9f55ff";
-    return "#00ffff";
+    if (days < 0) return "#E2666A";
+    if (days <= 2) return "#E8A33D";
+    return "#49B9AE";
   };
 
   const deadlineLabel = (days: number | null) => {
@@ -115,8 +115,8 @@ export default function TasksPage() {
     <div className="mx-auto max-w-[860px] space-y-6 py-2">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#252542] border border-[#9f55ff] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
-          <Bell size={14} className="text-[#9f55ff]" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#1D272B] border border-[#E8A33D] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
+          <Bell size={14} className="text-[#E8A33D]" />
           <span>{toast}</span>
         </div>
       )}
@@ -131,14 +131,14 @@ export default function TasksPage() {
 
       {/* Tasks Panel */}
       <div className="ops-panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#2d2345] px-4 py-3">
+        <div className="flex items-center justify-between border-b border-[#212B2E] px-4 py-3">
           <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-            <ListChecks size={14} className="text-[#9f55ff]" />
+            <ListChecks size={14} className="text-[#E8A33D]" />
             <span>All action items ({tasks.length})</span>
           </div>
         </div>
 
-        <div className="divide-y divide-[#2d2345]">
+        <div className="divide-y divide-[#212B2E]">
           {tasks.map((t) => {
             const d = daysUntil(t.deadline);
             const isDone = t.status === "Completed";
@@ -146,9 +146,9 @@ export default function TasksPage() {
               <div key={t.id} className="flex items-start gap-3 p-4">
                 <button
                   onClick={() => toggleTaskStatus(t.id, t.status)}
-                  className="mt-0.5 text-[#5B6A6E] hover:text-[#00ffff]"
+                  className="mt-0.5 text-[#5B6A6E] hover:text-[#49B9AE]"
                 >
-                  {isDone ? <CheckCircle2 size={16} className="text-[#00ffff]" /> : <Circle size={16} />}
+                  {isDone ? <CheckCircle2 size={16} className="text-[#49B9AE]" /> : <Circle size={16} />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className={`text-xs ${isDone ? "line-through text-[#5B6A6E]" : "text-[#E7EEEF]"}`}>
@@ -170,9 +170,9 @@ export default function TasksPage() {
                         ))}
                       </select>
                     ) : (
-                      <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{t.ownerName}</span>
+                      <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{t.ownerName}</span>
                     )}
-                    <span className="ops-badge border-[#3e305e] text-[#9f55ff]">{t.department}</span>
+                    <span className="ops-badge border-[#2A363A] text-[#E8A33D]">{t.department}</span>
                     <span style={{ color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function TasksPage() {
                   <button
                     onClick={() => sendReminder(t.ownerName)}
                     title="Send reminder"
-                    className="rounded border border-[#3e305e] p-1 text-[#8FA0A4] hover:border-[#9f55ff] hover:text-[#9f55ff]"
+                    className="rounded border border-[#2A363A] p-1 text-[#8FA0A4] hover:border-[#E8A33D] hover:text-[#E8A33D]"
                   >
                     <Bell size={12} />
                   </button>

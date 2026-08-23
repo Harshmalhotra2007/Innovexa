@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { CircleCheck, Clock, AlertCircle, Building2 } from "lucide-react";
@@ -36,19 +36,19 @@ export default function AnalyticsCharts({
       {/* Task Closure Rate (Line Chart) */}
       <div className="ops-panel p-5 space-y-4">
         <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <CircleCheck size={14} className="text-[#00ffff]" />
+          <CircleCheck size={14} className="text-[#49B9AE]" />
           <span>Task Closure Rate</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2d2345" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
               <XAxis dataKey="month" stroke="#8FA0A4" fontSize={10} />
               <YAxis stroke="#8FA0A4" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e1e36",
-                  borderColor: "#3e305e",
+                  backgroundColor: "#182124",
+                  borderColor: "#2A363A",
                   borderRadius: "6px",
                 }}
               />
@@ -57,7 +57,7 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="tasksCreated"
                 name="Created"
-                stroke="#9f55ff"
+                stroke="#E8A33D"
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
@@ -65,7 +65,7 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="completedTasks"
                 name="Completed"
-                stroke="#00ffff"
+                stroke="#49B9AE"
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
@@ -77,13 +77,13 @@ export default function AnalyticsCharts({
       {/* Decision-to-action lag (Bar Chart) */}
       <div className="ops-panel p-5 space-y-4">
         <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <Clock size={14} className="text-[#9f55ff]" />
+          <Clock size={14} className="text-[#E8A33D]" />
           <span>Decision-to-Action Lag (Days)</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={deptStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2d2345" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
               <XAxis
                 dataKey="department"
                 stroke="#8FA0A4"
@@ -93,15 +93,15 @@ export default function AnalyticsCharts({
               <YAxis stroke="#8FA0A4" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e1e36",
-                  borderColor: "#3e305e",
+                  backgroundColor: "#182124",
+                  borderColor: "#2A363A",
                   borderRadius: "6px",
                 }}
               />
               <Bar
                 dataKey="avgLag"
                 name="Avg Lag Days"
-                fill="#9f55ff"
+                fill="#E8A33D"
                 radius={[3, 3, 0, 0]}
               />
             </BarChart>
@@ -112,19 +112,19 @@ export default function AnalyticsCharts({
       {/* Overdue Trend (Area Chart) */}
       <div className="ops-panel p-5 space-y-4">
         <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <AlertCircle size={14} className="text-[#ff007f]" />
+          <AlertCircle size={14} className="text-[#E2666A]" />
           <span>Overdue Task Trend</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2d2345" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
               <XAxis dataKey="month" stroke="#8FA0A4" fontSize={10} />
               <YAxis stroke="#8FA0A4" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e1e36",
-                  borderColor: "#3e305e",
+                  backgroundColor: "#182124",
+                  borderColor: "#2A363A",
                   borderRadius: "6px",
                 }}
               />
@@ -132,8 +132,8 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="overdueTasks"
                 name="Overdue"
-                stroke="#ff007f"
-                fill="#ff007f"
+                stroke="#E2666A"
+                fill="#E2666A"
                 fillOpacity={0.2}
               />
             </AreaChart>
@@ -169,8 +169,8 @@ export default function AnalyticsCharts({
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e1e36",
-                  borderColor: "#3e305e",
+                  backgroundColor: "#182124",
+                  borderColor: "#2A363A",
                   borderRadius: "6px",
                   fontSize: "11px",
                 }}

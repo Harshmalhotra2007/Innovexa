@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -77,7 +77,7 @@ function KnowledgeSearchContent() {
             <button
               type="submit"
               disabled={loading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-[#9f55ff] px-3 py-1 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d]"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-[#E8A33D] px-3 py-1 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d]"
             >
               {loading ? "Searching..." : "Vector Search"}
             </button>
@@ -93,7 +93,7 @@ function KnowledgeSearchContent() {
                   setQuery(p);
                   runSearch(p, department);
                 }}
-                className="rounded border border-[#3e305e] bg-[#1a1a2f] px-2 py-0.5 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF]"
+                className="rounded border border-[#2A363A] bg-[#141C1F] px-2 py-0.5 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF]"
               >
                 🔍 {p}
               </button>
@@ -105,7 +105,7 @@ function KnowledgeSearchContent() {
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h2 className="font-display text-base font-bold text-[#E7EEEF] flex items-center gap-2">
-          <Database size={15} className="text-[#00ffff]" />
+          <Database size={15} className="text-[#49B9AE]" />
           <span>Semantic Memory Matches ({results.length})</span>
         </h2>
       </div>
@@ -116,25 +116,25 @@ function KnowledgeSearchContent() {
           <div key={res.id || idx} className="ops-panel p-4 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="ops-badge border-[#3e305e] text-[#9f55ff]">{res.type}</span>
-                <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{res.department}</span>
+                <span className="ops-badge border-[#2A363A] text-[#E8A33D]">{res.type}</span>
+                <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{res.department}</span>
               </div>
-              <span className="font-mono text-[11px] text-[#00ffff]">
+              <span className="font-mono text-[11px] text-[#49B9AE]">
                 Similarity: {Math.round(res.score * 100)}%
               </span>
             </div>
 
             <div>
               <div className="text-xs font-semibold text-[#E7EEEF]">{res.title}</div>
-              <p className="text-xs text-[#8FA0A4] mt-1 bg-[#1a1a2f] p-2.5 rounded border border-[#2d2345] leading-relaxed">
+              <p className="text-xs text-[#8FA0A4] mt-1 bg-[#141C1F] p-2.5 rounded border border-[#212B2E] leading-relaxed">
                 {res.content}
               </p>
             </div>
 
             {res.meetingId && (
-              <div className="flex items-center justify-between pt-2 border-t border-[#2d2345] text-[11px] font-mono text-[#5B6A6E]">
+              <div className="flex items-center justify-between pt-2 border-t border-[#212B2E] text-[11px] font-mono text-[#5B6A6E]">
                 <span>Origin Meeting: {res.meetingTitle || "Record"}</span>
-                <Link href={`/meetings/${res.meetingId}`} className="text-[#9f55ff] hover:underline flex items-center gap-1">
+                <Link href={`/meetings/${res.meetingId}`} className="text-[#E8A33D] hover:underline flex items-center gap-1">
                   <span>Trace Context</span>
                   <ArrowRight size={12} />
                 </Link>

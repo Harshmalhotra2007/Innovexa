@@ -187,9 +187,9 @@ export default function MeetingDetailPage() {
 
   const deadlineTone = (days: number | null) => {
     if (days === null) return "#5B6A6E";
-    if (days < 0) return "#ff007f";
-    if (days <= 2) return "#9f55ff";
-    return "#00ffff";
+    if (days < 0) return "#E2666A";
+    if (days <= 2) return "#E8A33D";
+    return "#49B9AE";
   };
 
   const deadlineLabel = (days: number | null) => {
@@ -236,7 +236,7 @@ export default function MeetingDetailPage() {
   if (loading) {
     return (
       <div className="py-20 text-center text-xs text-[#8FA0A4]">
-        <Loader2 size={20} className="animate-spin text-[#9f55ff] mx-auto mb-2" />
+        <Loader2 size={20} className="animate-spin text-[#E8A33D] mx-auto mb-2" />
         Loading meeting details...
       </div>
     );
@@ -245,9 +245,9 @@ export default function MeetingDetailPage() {
   if (!meeting || meeting.error) {
     return (
       <div className="py-20 text-center space-y-3 text-xs text-[#8FA0A4]">
-        <AlertTriangle size={20} className="text-[#ff007f] mx-auto" />
+        <AlertTriangle size={20} className="text-[#E2666A] mx-auto" />
         <p>Meeting record not found.</p>
-        <Link href="/meetings" className="text-[#9f55ff] underline">
+        <Link href="/meetings" className="text-[#E8A33D] underline">
           Return to meetings
         </Link>
       </div>
@@ -261,8 +261,8 @@ export default function MeetingDetailPage() {
     <div className="mx-auto max-w-[860px] space-y-6 py-2">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#252542] border border-[#9f55ff] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
-          <Bell size={14} className="text-[#9f55ff]" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#1D272B] border border-[#E8A33D] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
+          <Bell size={14} className="text-[#E8A33D]" />
           <span>{toast}</span>
         </div>
       )}
@@ -302,24 +302,24 @@ export default function MeetingDetailPage() {
           )}
           <button
             onClick={exportSummary}
-            className="flex items-center gap-1.5 rounded-md border border-[#3e305e] bg-[#1e1e36] px-3 py-1.5 text-xs font-mono text-[#00ffff] hover:bg-[#252542] transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-[#2A363A] bg-[#182124] px-3 py-1.5 text-xs font-mono text-[#49B9AE] hover:bg-[#1D272B] transition-colors"
           >
             <FileText size={13} />
             <span>EXPORT MD</span>
           </button>
           {isReadOnly && (
-            <span className="ops-badge border-[#00ffff] text-[#00ffff] flex items-center gap-1">
+            <span className="ops-badge border-[#49B9AE] text-[#49B9AE] flex items-center gap-1">
               <Lock size={10} /> Read-Only Mode
             </span>
           )}
-          <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{meeting.department}</span>
+          <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{meeting.department}</span>
         </div>
       </div>
 
       {/* Transcript Box */}
       <div className="ops-panel p-5 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-          <FileText size={14} className="text-[#9f55ff]" />
+          <FileText size={14} className="text-[#E8A33D]" />
           <span>Meeting transcript</span>
         </div>
 
@@ -337,7 +337,7 @@ export default function MeetingDetailPage() {
             <button
               onClick={runExtraction}
               disabled={isExtracting || !transcript.trim()}
-              className="flex items-center gap-2 rounded bg-[#9f55ff] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
+              className="flex items-center gap-2 rounded bg-[#E8A33D] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
             >
               {isExtracting ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -357,10 +357,10 @@ export default function MeetingDetailPage() {
           {meeting.decisions && meeting.decisions.length > 0 && (
             <div className="ops-panel p-5 space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-                <Gavel size={14} className="text-[#00ffff]" />
+                <Gavel size={14} className="text-[#49B9AE]" />
                 <span>Decisions ({meeting.decisions.length})</span>
               </div>
-              <div className="divide-y divide-[#2d2345]">
+              <div className="divide-y divide-[#212B2E]">
                 {meeting.decisions.map((d: any) => (
                   <div key={d.id} className="py-2.5 space-y-0.5">
                     <div className="text-xs font-medium text-[#E7EEEF]">{d.title}</div>
@@ -376,20 +376,20 @@ export default function MeetingDetailPage() {
             <div className="ops-panel p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-                  <ListChecks size={14} className="text-[#9f55ff]" />
+                  <ListChecks size={14} className="text-[#E8A33D]" />
                   <span>Action items ({meeting.tasks.length})</span>
                 </div>
                 {pendingCount > 0 && (
                   <button
                     onClick={remindAllPending}
-                    className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#3e305e] rounded px-2 py-0.5"
+                    className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] rounded px-2 py-0.5"
                   >
                     <Bell size={11} /> REMIND ALL PENDING ({pendingCount})
                   </button>
                 )}
               </div>
 
-              <div className="divide-y divide-[#2d2345]">
+              <div className="divide-y divide-[#212B2E]">
                 {meeting.tasks.map((t: any) => {
                   const d = daysUntil(t.deadline);
                   const isDone = t.status === "Completed";
@@ -398,10 +398,10 @@ export default function MeetingDetailPage() {
                       <button
                         onClick={() => toggleTaskStatus(t.id, t.status)}
                         disabled={isReadOnly}
-                        className={`mt-0.5 ${isReadOnly ? "cursor-not-allowed opacity-60" : "text-[#5B6A6E] hover:text-[#00ffff]"}`}
+                        className={`mt-0.5 ${isReadOnly ? "cursor-not-allowed opacity-60" : "text-[#5B6A6E] hover:text-[#49B9AE]"}`}
                       >
                         {isDone ? (
-                          <CircleCheck size={16} className="text-[#00ffff]" />
+                          <CircleCheck size={16} className="text-[#49B9AE]" />
                         ) : (
                           <Circle size={16} />
                         )}
@@ -430,11 +430,11 @@ export default function MeetingDetailPage() {
                               ))}
                             </select>
                           ) : (
-                            <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">
+                            <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">
                               {t.ownerName}
                             </span>
                           )}
-                          <span className="ops-badge border-[#3e305e] text-[#9f55ff]">
+                          <span className="ops-badge border-[#2A363A] text-[#E8A33D]">
                             {t.priority || "Medium"}
                           </span>
                           <span style={{ color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
@@ -444,7 +444,7 @@ export default function MeetingDetailPage() {
                         <button
                           onClick={() => sendReminder(t.ownerName)}
                           title="Send reminder"
-                          className="rounded border border-[#3e305e] p-1 text-[#8FA0A4] hover:border-[#9f55ff] hover:text-[#9f55ff]"
+                          className="rounded border border-[#2A363A] p-1 text-[#8FA0A4] hover:border-[#E8A33D] hover:text-[#E8A33D]"
                         >
                           <Bell size={12} />
                         </button>

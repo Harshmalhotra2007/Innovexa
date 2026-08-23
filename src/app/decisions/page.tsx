@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { GitCommit, Filter, Search } from "lucide-react";
@@ -46,7 +46,7 @@ export default function DecisionsPage() {
         </p>
       </div>
 
-      <div className="flex items-center gap-3 bg-[#1a1a2f] p-4 rounded-md border border-[#2d2345]">
+      <div className="flex items-center gap-3 bg-[#141C1F] p-4 rounded-md border border-[#212B2E]">
         <Filter size={14} className="text-[#8FA0A4]" />
         <select
           value={deptFilter}
@@ -62,31 +62,31 @@ export default function DecisionsPage() {
       {loading ? (
         <div className="text-center text-xs text-[#5B6A6E] py-10">Loading decision history...</div>
       ) : (
-        <div className="relative border-l border-[#2d2345] ml-3 pl-6 space-y-8">
+        <div className="relative border-l border-[#212B2E] ml-3 pl-6 space-y-8">
           {filtered.length === 0 && (
             <div className="text-xs text-[#5B6A6E]">No decisions logged yet.</div>
           )}
           {filtered.map((dec) => (
             <div key={dec.id} className="relative">
               {/* Timeline dot */}
-              <div className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-[#9f55ff] bg-[#1a1a2f]"></div>
+              <div className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-[#E8A33D] bg-[#141C1F]"></div>
               
               <div className="ops-panel p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-sm text-[#E7EEEF]">{dec.title}</h3>
                     <div className="flex items-center gap-2 mt-1 font-mono text-[10px] text-[#5B6A6E]">
-                      <span className="text-[#00ffff]">{new Date(dec.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[#49B9AE]">{new Date(dec.createdAt).toLocaleDateString()}</span>
                       <span>•</span>
-                      <span className="text-[#9f55ff]">{dec.department}</span>
+                      <span className="text-[#E8A33D]">{dec.department}</span>
                     </div>
                   </div>
-                  <Link href={`/meetings/${dec.meetingId}`} className="text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#3e305e] rounded px-2 py-1 text-[10px] font-mono flex items-center gap-1">
+                  <Link href={`/meetings/${dec.meetingId}`} className="text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] rounded px-2 py-1 text-[10px] font-mono flex items-center gap-1">
                     <GitCommit size={10} /> View Context
                   </Link>
                 </div>
                 
-                <div className="bg-[#1a1a2f] p-3 rounded border border-[#2d2345] mt-3">
+                <div className="bg-[#141C1F] p-3 rounded border border-[#212B2E] mt-3">
                   <div className="text-xs text-[#8FA0A4]">
                     <span className="text-[#5B6A6E] font-mono">Context: </span> {dec.context}
                   </div>
