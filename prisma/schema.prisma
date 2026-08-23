@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Department {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  code         String   @unique
+  managerName  String
+  managerEmail String
+  users        User[]
+  createdAt    DateTime @default(now())
+}
+
+model User {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  role         String      @default("Member")
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime    @default(now())
+}
+
+model Meeting {
+  id           String           @id @default(uuid())
+  title        String
+  date         DateTime
+  durationMins Int              @default(45)
+  department   String?
+  agenda       String?
+  objectives   String?
+  transcript   String?
+  status       String           @default("Processed")
+  segments     MeetingSegment[]
+  decisions    Decision[]
+  tasks        Task[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model MeetingSegment {
+  id        String   @id @default(uuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  speaker   String
+  timestamp String
+  text      String
+  type      String   @default("discussion")
+  order     Int
+}
+
+model Decision {
+  id          String   @id @default(uuid())
+  meetingId   String
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  title       String
+  context     String
+  rationale   String?
+  department  String
+  tags        String   @default("[]")
+  createdAt   DateTime @default(now())
+}
+
+model Task {
+  id              String         @id @default(uuid())
+  meetingId       String?
+  meeting         Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?
+  ownerName       String
+  ownerEmail      String?
+  department      String
+  priority        String         @default("Medium")
+  status          String         @default("Pending")
+  deadline        DateTime
+  escalationLevel Int            @default(0)
+  escalatedAt     DateTime?
+  escalatedTo     String?
+  notifications   Notification[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  recipient String
+  subject   String
+  body      String
+  type      String
+  sentAt    DateTime @default(now())
+  read      Boolean  @default(false)
+}

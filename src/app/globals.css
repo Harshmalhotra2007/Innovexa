@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0D1315;
+  --bg-raised: #141C1F;
+  --panel: #182124;
+  --panel-alt: #1D272B;
+  --border: #2A363A;
+  --border-soft: #212B2E;
+  --text: #E7EEEF;
+  --text-dim: #8FA0A4;
+  --text-faint: #5B6A6E;
+  --amber: #E8A33D;
+  --amber-dim: #4A3A1E;
+  --teal: #49B9AE;
+  --teal-dim: #1B3634;
+  --red: #E2666A;
+  --red-dim: #3A2224;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+}
+
+body {
+  color: var(--text);
+  background-color: var(--bg);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+code, pre, .font-mono, .badge-mono {
+  font-family: var(--font-mono);
+}
+
+.ops-panel {
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.ops-panel-alt {
+  background-color: var(--panel-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+
+.ops-input {
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ops-input:focus {
+  border-color: var(--amber);
+}
+
+.ops-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-overdue {
+  color: var(--red);
+  background-color: var(--red-dim);
+  border: 1px solid var(--red);
+}
+
+.badge-pending {
+  color: var(--amber);
+  background-color: var(--amber-dim);
+  border: 1px solid var(--amber);
+}
+
+.badge-completed {
+  color: var(--teal);
+  background-color: var(--teal-dim);
+  border: 1px solid var(--teal);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}

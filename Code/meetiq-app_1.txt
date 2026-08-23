@@ -1,0 +1,1035 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+    LayoutDashboard, CalendarPlus, Calendar, Clock, Users, Sparkles,
+    CheckCircle2, Circle, Bell, Trash2, ChevronRight, ChevronLeft,
+    ShieldCheck, User, LogOut, AlertTriangle, FileText, Gavel,
+    ListChecks, Loader2, X, Plus, Building2
+} from "lucide-react";
+
+/* ---------------------------------------------------------
+   THEME — "Ops Console" palette (deliberate, not default)
+--------------------------------------------------------- */
+const C = {
+    bg: "#0D1315",
+    bgRaised: "#141C1F",
+    panel: "#182124",
+    panelAlt: "#1D272B",
+    border: "#2A363A",
+    borderSoft: "#212B2E",
+    text: "#E7EEEF",
+    textDim: "#8FA0A4",
+    textFaint: "#5B6A6E",
+    amber: "#E8A33D",
+    amberDim: "#4A3A1E",
+    teal: "#49B9AE",
+    tealDim: "#1B3634",
+    red: "#E2666A",
+    redDim: "#3A2224",
+    mono: "'IBM Plex Mono', ui-monospace, monospace",
+    display: "'Space Grotesk', 'Segoe UI', sans-serif",
+    body: "'Inter', 'Segoe UI', sans-serif",
+};
+
+const FONT_IMPORT_ID = "meetiq-fonts";
+function ensureFonts() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById(FONT_IMPORT_ID)) return;
+    const link = document.createElement("link");
+    link.id = FONT_IMPORT_ID;
+    link.rel = "stylesheet";
+    link.href =
+        "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap";
+    document.head.appendChild(link);
+}
+
+/* ---------------------------------------------------------
+   HELPERS
+--------------------------------------------------------- */
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const target = new Date(dateStr + "T23:59:59");
+    const now = new Date();
+    return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+}
+
+function deadlineTone(days) {
+    if (days === null) return C.textFaint;
+    if (days < 0) return C.red;
+    if (days <= 2) return C.amber;
+    return C.teal;
+}
+
+function deadlineLabel(days) {
+    if (days === null) return "no deadline";
+    if (days < 0) return `${Math.abs(days)}d overdue`;
+    if (days === 0) return "due today";
+    return `${days}d left`;
+}
+
+const SAMPLE_TRANSCRIPT = `Priya: Okay, let's start. First topic — the Q3 vendor contract renewal.
+Rahul: I looked at the numbers, the new vendor quote is 12% lower. I think we should switch.
+Priya: Agreed, let's go with the new vendor. Rahul, can you finalize the contract by next Friday?
+Rahul: Yes, I'll have it signed by then.
+Priya: Great, that's decided. Next — the dashboard bug reported by the sales team.
+Ananya: I've already found the root cause, it's a caching issue. I can push a fix.
+Priya: Ananya, please deploy the fix by Wednesday and loop in QA before release.
+Ananya: Sounds good, will do.
+Priya: Also, just a note — marketing mentioned they might need a new landing page next quarter, nothing to action yet.
+Priya: Last item, the offsite budget. We discussed a few options but haven't decided anything, need more inputs from finance before locking this.
+Priya: Okay, let's wrap up here. Thanks everyone.`;
+
+/* ---------------------------------------------------------
+   STORAGE
+--------------------------------------------------------- */
+async function loadMeetings() {
+    try {
+        const res = await window.storage.get("meetings", false);
+        return res ? JSON.parse(res.value) : null;
+    } catch (e) {
+        return null;
+    }
+}
+async function saveMeetings(meetings) {
+    try {
+        await window.storage.set("meetings", JSON.stringify(meetings), false);
+    } catch (e) {
+        console.error("storage save failed", e);
+    }
+}
+
+const SEED_MEETINGS = [
+    {
+        id: uid(),
+        title: "Weekly Ops Sync",
+        date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+        time: "10:30",
+        department: "Operations",
+        participants: ["Priya", "Rahul", "Ananya"],
+        transcript: "",
+        summary: "",
+        decisions: [],
+        tasks: [
+            {
+                id: uid(),
+                title: "Send updated onboarding doc to new hires",
+                assignee: "Priya",
+                deadline: new Date(Date.now() + 1 * 86400000).toISOString().slice(0, 10),
+                priority: "Medium",
+                status: "pending",
+            },
+        ],
+        createdAt: Date.now() - 86400000,
+    },
+];
+
+/* ---------------------------------------------------------
+   AI EXTRACTION
+--------------------------------------------------------- */
+async function extractFromTranscript(transcript) {
+    const system = `You extract structured meeting intelligence from a raw transcript. Respond with ONLY valid JSON, no markdown fences, no preamble. Schema:
+{
+  "summary": string (2-3 sentences, plain language),
+  "decisions": [ { "title": string, "context": string } ],
+  "tasks": [ { "title": string, "assignee": string, "deadline": string (YYYY-MM-DD, infer a real date from context relative to today's date ${new Date().toISOString().slice(0, 10)}, or "" if unclear), "priority": "High"|"Medium"|"Low" } ]
+}
+Only include formal decisions and concrete action items with a stated or clearly implied owner. Do not include open/undecided discussion topics as decisions or tasks.`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 1000,
+            system,
+            messages: [{ role: "user", content: transcript }],
+        }),
+    });
+    const data = await response.json();
+    const textBlock = (data.content || []).find((b) => b.type === "text");
+    if (!textBlock) throw new Error("No response from model");
+    const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+}
+
+/* ---------------------------------------------------------
+   SMALL UI PRIMITIVES
+--------------------------------------------------------- */
+function Badge({ children, tone = C.textDim, bg = "transparent", border = C.border }) {
+    return (
+        <span
+            style={{
+                color: tone,
+                backgroundColor: bg,
+                border: `1px solid ${border}`,
+                fontFamily: C.mono,
+                fontSize: 11,
+                letterSpacing: 0.4,
+                padding: "2px 8px",
+                borderRadius: 3,
+                textTransform: "uppercase",
+                whiteSpace: "nowrap",
+            }}
+        >
+            {children}
+        </span>
+    );
+}
+
+function IconBtn({ icon: Icon, onClick, tone = C.textDim, title }) {
+    return (
+        <button
+            onClick={onClick}
+            title={title}
+            style={{
+                background: "transparent",
+                border: `1px solid ${C.border}`,
+                borderRadius: 4,
+                padding: 6,
+                color: tone,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = tone)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.border)}
+        >
+            <Icon size={14} />
+        </button>
+    );
+}
+
+function Toast({ message, onDone }) {
+    useEffect(() => {
+        const t = setTimeout(onDone, 2600);
+        return () => clearTimeout(t);
+    }, [onDone]);
+    return (
+        <div
+            style={{
+                position: "fixed",
+                bottom: 24,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: C.panelAlt,
+                border: `1px solid ${C.amber}`,
+                color: C.text,
+                fontFamily: C.body,
+                fontSize: 13.5,
+                padding: "10px 18px",
+                borderRadius: 5,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                zIndex: 100,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+        >
+            <Bell size={14} color={C.amber} />
+            {message}
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   LOGIN
+--------------------------------------------------------- */
+function Login({ onLogin }) {
+    const [name, setName] = useState("");
+    const [role, setRole] = useState(null);
+
+    return (
+        <div
+            style={{
+                minHeight: "100vh",
+                background: C.bg,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: C.body,
+                padding: 20,
+            }}
+        >
+            <div style={{ width: 400, maxWidth: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                    <div
+                        style={{
+                            width: 34, height: 34, borderRadius: 6,
+                            background: C.amberDim, border: `1px solid ${C.amber}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                    >
+                        <ListChecks size={18} color={C.amber} />
+                    </div>
+                    <div style={{ fontFamily: C.display, fontWeight: 700, fontSize: 22, color: C.text }}>
+                        MeetIQ
+                    </div>
+                </div>
+                <div style={{ color: C.textDim, fontSize: 13, marginBottom: 32, letterSpacing: 0.2 }}>
+                    Meeting intelligence &amp; action tracking console
+                </div>
+
+                <div
+                    style={{
+                        background: C.panel,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 8,
+                        padding: 24,
+                    }}
+                >
+                    <div style={{ fontSize: 11, color: C.textFaint, fontFamily: C.mono, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>
+                        Access role
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+                        {[
+                            { key: "organizer", label: "Organizer", icon: ShieldCheck, desc: "Full edit access" },
+                            { key: "participant", label: "Participant", icon: User, desc: "View & track" },
+                        ].map((r) => (
+                            <button
+                                key={r.key}
+                                onClick={() => setRole(r.key)}
+                                style={{
+                                    flex: 1,
+                                    textAlign: "left",
+                                    background: role === r.key ? C.panelAlt : "transparent",
+                                    border: `1px solid ${role === r.key ? C.amber : C.border}`,
+                                    borderRadius: 6,
+                                    padding: "12px 12px",
+                                    cursor: "pointer",
+                                    color: C.text,
+                                }}
+                            >
+                                <r.icon size={16} color={role === r.key ? C.amber : C.textDim} />
+                                <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 8 }}>{r.label}</div>
+                                <div style={{ fontSize: 11, color: C.textFaint, marginTop: 2 }}>{r.desc}</div>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div style={{ fontSize: 11, color: C.textFaint, fontFamily: C.mono, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
+                        Your name
+                    </div>
+                    <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="e.g. Priya"
+                        style={{
+                            width: "100%",
+                            background: C.bgRaised,
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 5,
+                            padding: "9px 10px",
+                            color: C.text,
+                            fontSize: 13.5,
+                            fontFamily: C.body,
+                            outline: "none",
+                            boxSizing: "border-box",
+                            marginBottom: 18,
+                        }}
+                    />
+
+                    <button
+                        disabled={!role || !name.trim()}
+                        onClick={() => onLogin({ role, name: name.trim() })}
+                        style={{
+                            width: "100%",
+                            padding: "10px 0",
+                            borderRadius: 5,
+                            border: "none",
+                            background: role && name.trim() ? C.amber : C.borderSoft,
+                            color: role && name.trim() ? "#1A1305" : C.textFaint,
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            cursor: role && name.trim() ? "pointer" : "not-allowed",
+                            fontFamily: C.body,
+                        }}
+                    >
+                        Enter console
+                    </button>
+                </div>
+                <div style={{ color: C.textFaint, fontSize: 11, marginTop: 14, fontFamily: C.mono, textAlign: "center" }}>
+                    PU PS 6 — demo build, no real auth
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   SIDEBAR
+--------------------------------------------------------- */
+function Sidebar({ session, view, setView, onLogout, meetingCount, pendingCount }) {
+    const items = [
+        { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { key: "add", label: "New Meeting", icon: CalendarPlus },
+    ];
+    return (
+        <div
+            style={{
+                width: 220,
+                minWidth: 220,
+                background: C.bgRaised,
+                borderRight: `1px solid ${C.borderSoft}`,
+                display: "flex",
+                flexDirection: "column",
+                padding: "18px 14px",
+                boxSizing: "border-box",
+            }}
+        >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 6px", marginBottom: 26 }}>
+                <div
+                    style={{
+                        width: 26, height: 26, borderRadius: 5,
+                        background: C.amberDim, border: `1px solid ${C.amber}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                >
+                    <ListChecks size={14} color={C.amber} />
+                </div>
+                <div style={{ fontFamily: C.display, fontWeight: 700, fontSize: 16, color: C.text }}>MeetIQ</div>
+            </div>
+
+            {items.map((it) => {
+                const active = view === it.key;
+                return (
+                    <button
+                        key={it.key}
+                        onClick={() => setView(it.key)}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "9px 10px",
+                            borderRadius: 5,
+                            border: "none",
+                            background: active ? C.panelAlt : "transparent",
+                            color: active ? C.text : C.textDim,
+                            cursor: "pointer",
+                            fontSize: 13,
+                            fontFamily: C.body,
+                            marginBottom: 3,
+                            borderLeft: active ? `2px solid ${C.amber}` : "2px solid transparent",
+                        }}
+                    >
+                        <it.icon size={15} />
+                        {it.label}
+                    </button>
+                );
+            })}
+
+            <div style={{ marginTop: "auto" }}>
+                <div
+                    style={{
+                        background: C.panel,
+                        border: `1px solid ${C.borderSoft}`,
+                        borderRadius: 6,
+                        padding: 12,
+                        marginBottom: 12,
+                    }}
+                >
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.textFaint, fontFamily: C.mono, marginBottom: 6 }}>
+                        <span>MEETINGS</span><span style={{ color: C.text }}>{meetingCount}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.textFaint, fontFamily: C.mono }}>
+                        <span>PENDING TASKS</span><span style={{ color: pendingCount > 0 ? C.amber : C.text }}>{pendingCount}</span>
+                    </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 6px" }}>
+                    <div>
+                        <div style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>{session.name}</div>
+                        <div style={{ fontSize: 10.5, color: C.textFaint, fontFamily: C.mono, textTransform: "uppercase" }}>
+                            {session.role}
+                        </div>
+                    </div>
+                    <IconBtn icon={LogOut} onClick={onLogout} title="Log out" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   DASHBOARD
+--------------------------------------------------------- */
+function Dashboard({ session, meetings, setView, openMeeting, onToggleTask, onSendReminder, onRemindAll }) {
+    const allTasks = meetings.flatMap((m) =>
+        m.tasks.map((t) => ({ ...t, meetingTitle: m.title, meetingId: m.id }))
+    );
+    const pending = allTasks.filter((t) => t.status !== "done").sort((a, b) => {
+        const da = daysUntil(a.deadline) ?? 9999;
+        const db = daysUntil(b.deadline) ?? 9999;
+        return da - db;
+    });
+    const completed = allTasks.filter((t) => t.status === "done");
+    const upcoming = [...meetings].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const overdue = pending.filter((t) => daysUntil(t.deadline) !== null && daysUntil(t.deadline) < 0).length;
+    const decisionsCount = meetings.reduce((n, m) => n + (m.decisions?.length || 0), 0);
+
+    const stat = (label, value, tone) => (
+        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 7, padding: "14px 16px", flex: 1 }}>
+            <div style={{ fontFamily: C.mono, fontSize: 10.5, color: C.textFaint, letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 }}>
+                {label}
+            </div>
+            <div style={{ fontFamily: C.display, fontSize: 26, fontWeight: 700, color: tone || C.text }}>{value}</div>
+        </div>
+    );
+
+    return (
+        <div style={{ padding: "26px 32px", maxWidth: 1040 }}>
+            <div style={{ marginBottom: 22 }}>
+                <div style={{ fontFamily: C.display, fontSize: 21, fontWeight: 700, color: C.text }}>
+                    Welcome back, {session.name.split(" ")[0]}
+                </div>
+                <div style={{ color: C.textDim, fontSize: 13, marginTop: 3 }}>
+                    Here's where things stand across your meetings.
+                </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginBottom: 26 }}>
+                {stat("Upcoming meetings", upcoming.length)}
+                {stat("Pending tasks", pending.length, pending.length ? C.amber : C.text)}
+                {stat("Overdue", overdue, overdue ? C.red : C.text)}
+                {stat("Decisions logged", decisionsCount, C.teal)}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 18 }}>
+                {/* Upcoming meetings */}
+                <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "13px 16px", borderBottom: `1px solid ${C.borderSoft}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.text, fontWeight: 600, fontSize: 13.5 }}>
+                            <Calendar size={14} color={C.amber} /> Upcoming meetings
+                        </div>
+                        <button
+                            onClick={() => setView("add")}
+                            style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.textDim, borderRadius: 4, fontSize: 11, padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: C.mono }}
+                        >
+                            <Plus size={12} /> NEW
+                        </button>
+                    </div>
+                    <div>
+                        {upcoming.length === 0 && (
+                            <div style={{ padding: 20, color: C.textFaint, fontSize: 12.5 }}>No meetings scheduled yet.</div>
+                        )}
+                        {upcoming.map((m) => (
+                            <button
+                                key={m.id}
+                                onClick={() => openMeeting(m.id)}
+                                style={{
+                                    width: "100%", textAlign: "left", background: "transparent", border: "none",
+                                    borderBottom: `1px solid ${C.borderSoft}`, padding: "12px 16px", cursor: "pointer",
+                                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                                }}
+                            >
+                                <div>
+                                    <div style={{ color: C.text, fontSize: 13.5, fontWeight: 500 }}>{m.title}</div>
+                                    <div style={{ display: "flex", gap: 10, marginTop: 4, color: C.textFaint, fontSize: 11.5, fontFamily: C.mono }}>
+                                        <span><Clock size={10} style={{ marginRight: 3, position: "relative", top: 1 }} />{m.date} {m.time}</span>
+                                        <span><Users size={10} style={{ marginRight: 3, position: "relative", top: 1 }} />{m.participants.length}</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={15} color={C.textFaint} />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Pending tasks */}
+                <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "13px 16px", borderBottom: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.text, fontWeight: 600, fontSize: 13.5 }}>
+                            <ListChecks size={14} color={C.amber} /> Pending tasks
+                        </div>
+                        {pending.length > 0 && (
+                            <button
+                                onClick={onRemindAll}
+                                style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.textDim, borderRadius: 4, fontSize: 10.5, padding: "4px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: C.mono }}
+                            >
+                                <Bell size={11} /> REMIND ALL
+                            </button>
+                        )}
+                    </div>
+                    <div>
+                        {pending.length === 0 && (
+                            <div style={{ padding: 20, color: C.textFaint, fontSize: 12.5 }}>All clear — nothing pending.</div>
+                        )}
+                        {pending.map((t) => {
+                            const d = daysUntil(t.deadline);
+                            return (
+                                <div key={t.id} style={{ padding: "11px 16px", borderBottom: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                                    <button onClick={() => onToggleTask(t.meetingId, t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 1 }}>
+                                        <Circle size={16} color={C.textFaint} />
+                                    </button>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ color: C.text, fontSize: 12.8 }}>{t.title}</div>
+                                        <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
+                                            <span style={{ fontSize: 11, color: C.textFaint, fontFamily: C.mono }}>{t.assignee}</span>
+                                            <span style={{ fontSize: 10.5, fontFamily: C.mono, color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => onSendReminder(t.assignee)}
+                                        title="Send reminder"
+                                        style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 4, padding: 5, cursor: "pointer", color: C.textDim }}
+                                    >
+                                        <Bell size={12} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {completed.length > 0 && (
+                <div style={{ marginTop: 18, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ padding: "13px 16px", borderBottom: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", gap: 8, color: C.text, fontWeight: 600, fontSize: 13.5 }}>
+                        <CheckCircle2 size={14} color={C.teal} /> Completed
+                    </div>
+                    {completed.map((t) => (
+                        <div key={t.id} style={{ padding: "10px 16px", borderBottom: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", gap: 10 }}>
+                            <button onClick={() => onToggleTask(t.meetingId, t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                                <CheckCircle2 size={16} color={C.teal} />
+                            </button>
+                            <div style={{ color: C.textFaint, fontSize: 12.5, textDecoration: "line-through" }}>{t.title}</div>
+                            <span style={{ marginLeft: "auto", fontSize: 11, color: C.textFaint, fontFamily: C.mono }}>{t.meetingTitle}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   ADD MEETING
+--------------------------------------------------------- */
+function AddMeeting({ onCreate, onCancel }) {
+    const [title, setTitle] = useState("");
+    const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+    const [time, setTime] = useState("10:00");
+    const [department, setDepartment] = useState("");
+    const [participantsRaw, setParticipantsRaw] = useState("");
+
+    const field = (label, children) => (
+        <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: C.textFaint, fontFamily: C.mono, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                {label}
+            </div>
+            {children}
+        </div>
+    );
+    const inputStyle = {
+        width: "100%", background: C.bgRaised, border: `1px solid ${C.border}`, borderRadius: 5,
+        padding: "9px 10px", color: C.text, fontSize: 13.5, fontFamily: C.body, outline: "none", boxSizing: "border-box",
+    };
+
+    return (
+        <div style={{ padding: "26px 32px", maxWidth: 560 }}>
+            <div style={{ fontFamily: C.display, fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                Schedule a meeting
+            </div>
+            <div style={{ color: C.textDim, fontSize: 13, marginBottom: 22 }}>
+                Capture the basics now — transcript and AI extraction happen after the meeting.
+            </div>
+
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 22 }}>
+                {field("Meeting title", (
+                    <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Weekly Ops Sync" />
+                ))}
+                <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1 }}>{field("Date", <input type="date" style={inputStyle} value={date} onChange={(e) => setDate(e.target.value)} />)}</div>
+                    <div style={{ flex: 1 }}>{field("Time", <input type="time" style={inputStyle} value={time} onChange={(e) => setTime(e.target.value)} />)}</div>
+                </div>
+                {field("Department", (
+                    <input style={inputStyle} value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Operations" />
+                ))}
+                {field("Participants (comma-separated)", (
+                    <input style={inputStyle} value={participantsRaw} onChange={(e) => setParticipantsRaw(e.target.value)} placeholder="Priya, Rahul, Ananya" />
+                ))}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+                    <button
+                        onClick={onCancel}
+                        style={{ padding: "9px 16px", borderRadius: 5, border: `1px solid ${C.border}`, background: "transparent", color: C.textDim, fontSize: 13, cursor: "pointer", fontFamily: C.body }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        disabled={!title.trim()}
+                        onClick={() =>
+                            onCreate({
+                                id: uid(),
+                                title: title.trim(),
+                                date, time, department: department.trim() || "General",
+                                participants: participantsRaw.split(",").map((p) => p.trim()).filter(Boolean),
+                                transcript: "", summary: "", decisions: [], tasks: [],
+                                createdAt: Date.now(),
+                            })
+                        }
+                        style={{
+                            padding: "9px 18px", borderRadius: 5, border: "none",
+                            background: title.trim() ? C.amber : C.borderSoft, color: title.trim() ? "#1A1305" : C.textFaint,
+                            fontSize: 13, fontWeight: 600, cursor: title.trim() ? "pointer" : "not-allowed", fontFamily: C.body,
+                        }}
+                    >
+                        Create meeting
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   MEETING DETAIL
+--------------------------------------------------------- */
+function MeetingDetail({ meeting, session, onBack, onUpdate, onDeleteTask, onToggleTask, onEditTask, onSendReminder, onRemindAllPending }) {
+    const [transcript, setTranscript] = useState(meeting.transcript || "");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [editingTaskId, setEditingTaskId] = useState(null);
+    const [draft, setDraft] = useState(null);
+    const isOrganizer = session.role === "organizer";
+
+    const startEdit = (t) => {
+        setEditingTaskId(t.id);
+        setDraft({ title: t.title, assignee: t.assignee, deadline: t.deadline || "", priority: t.priority || "Medium" });
+    };
+    const cancelEdit = () => { setEditingTaskId(null); setDraft(null); };
+    const saveEdit = (taskId) => {
+        onEditTask(meeting.id, taskId, draft);
+        setEditingTaskId(null);
+        setDraft(null);
+    };
+
+    const pendingCount = meeting.tasks.filter((t) => t.status !== "done").length;
+
+    const runExtraction = async () => {
+        if (!transcript.trim()) return;
+        setLoading(true);
+        setError("");
+        try {
+            const result = await extractFromTranscript(transcript);
+            const tasks = (result.tasks || []).map((t) => ({
+                id: uid(), title: t.title, assignee: t.assignee || "Unassigned",
+                deadline: t.deadline || "", priority: t.priority || "Medium", status: "pending",
+            }));
+            const decisions = (result.decisions || []).map((d) => ({ id: uid(), title: d.title, context: d.context || "" }));
+            onUpdate({ ...meeting, transcript, summary: result.summary || "", decisions, tasks });
+        } catch (e) {
+            setError("Extraction failed — check your connection and try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const hasResults = meeting.summary || meeting.decisions.length > 0 || meeting.tasks.length > 0;
+
+    const sectionLabel = (icon, text, tone) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: C.text, marginBottom: 10 }}>
+            {React.createElement(icon, { size: 14, color: tone })} {text}
+        </div>
+    );
+
+    return (
+        <div style={{ padding: "26px 32px", maxWidth: 860 }}>
+            <button
+                onClick={onBack}
+                style={{ background: "none", border: "none", color: C.textDim, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: C.body }}
+            >
+                <ChevronLeft size={14} /> Back to dashboard
+            </button>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <div style={{ fontFamily: C.display, fontSize: 21, fontWeight: 700, color: C.text }}>{meeting.title}</div>
+                <Badge tone={C.textDim}>{meeting.department}</Badge>
+            </div>
+            <div style={{ display: "flex", gap: 14, color: C.textFaint, fontSize: 12, fontFamily: C.mono, marginBottom: 22 }}>
+                <span><Clock size={11} style={{ marginRight: 4, position: "relative", top: 1 }} />{meeting.date} {meeting.time}</span>
+                <span><Users size={11} style={{ marginRight: 4, position: "relative", top: 1 }} />{meeting.participants.join(", ") || "—"}</span>
+            </div>
+
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 20, marginBottom: 20 }}>
+                {sectionLabel(FileText, "Meeting transcript", C.amber)}
+                <textarea
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    placeholder="Paste the raw meeting transcript here..."
+                    rows={8}
+                    style={{
+                        width: "100%", background: C.bgRaised, border: `1px solid ${C.border}`, borderRadius: 6,
+                        padding: 12, color: C.text, fontSize: 12.5, fontFamily: C.mono, outline: "none",
+                        boxSizing: "border-box", resize: "vertical", lineHeight: 1.6,
+                    }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 12, alignItems: "center" }}>
+                    <button
+                        onClick={runExtraction}
+                        disabled={loading || !transcript.trim()}
+                        style={{
+                            display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", borderRadius: 5, border: "none",
+                            background: !loading && transcript.trim() ? C.amber : C.borderSoft,
+                            color: !loading && transcript.trim() ? "#1A1305" : C.textFaint,
+                            fontSize: 13, fontWeight: 600, cursor: !loading && transcript.trim() ? "pointer" : "not-allowed", fontFamily: C.body,
+                        }}
+                    >
+                        {loading ? <Loader2 size={14} className="spin" style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={14} />}
+                        {loading ? "Analyzing..." : "Generate insights"}
+                    </button>
+                    {!transcript.trim() && (
+                        <button
+                            onClick={() => setTranscript(SAMPLE_TRANSCRIPT)}
+                            style={{ background: "none", border: "none", color: C.textFaint, fontSize: 12, textDecoration: "underline", cursor: "pointer", fontFamily: C.body }}
+                        >
+                            use sample transcript
+                        </button>
+                    )}
+                    {error && <span style={{ color: C.red, fontSize: 12 }}>{error}</span>}
+                </div>
+            </div>
+
+            {hasResults && (
+                <>
+                    {meeting.summary && (
+                        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 20, marginBottom: 16 }}>
+                            {sectionLabel(Sparkles, "Summary", C.amber)}
+                            <div style={{ color: C.textDim, fontSize: 13, lineHeight: 1.6 }}>{meeting.summary}</div>
+                        </div>
+                    )}
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+                        {meeting.decisions.length > 0 && (
+                            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 20 }}>
+                                {sectionLabel(Gavel, `Decisions (${meeting.decisions.length})`, C.teal)}
+                                {meeting.decisions.map((d) => (
+                                    <div key={d.id} style={{ padding: "10px 0", borderBottom: `1px solid ${C.borderSoft}` }}>
+                                        <div style={{ color: C.text, fontSize: 13, fontWeight: 500 }}>{d.title}</div>
+                                        {d.context && <div style={{ color: C.textFaint, fontSize: 12, marginTop: 3 }}>{d.context}</div>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {meeting.tasks.length > 0 && (
+                            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 20 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                    {sectionLabel(ListChecks, `Action items (${meeting.tasks.length})`, C.amber)}
+                                    {pendingCount > 0 && (
+                                        <button
+                                            onClick={() => onRemindAllPending(meeting.id)}
+                                            style={{
+                                                display: "flex", alignItems: "center", gap: 5, background: "transparent",
+                                                border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 9px",
+                                                color: C.textDim, fontSize: 11, fontFamily: C.mono, cursor: "pointer", marginBottom: 10,
+                                            }}
+                                        >
+                                            <Bell size={11} /> REMIND ALL PENDING ({pendingCount})
+                                        </button>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 11, color: C.textFaint, marginBottom: 4 }}>
+                                    Visible to all participants{isOrganizer ? " — you can edit or remove items below." : " — only the organizer can edit this list."}
+                                </div>
+                                {meeting.tasks.map((t) => {
+                                    const d = daysUntil(t.deadline);
+                                    const isEditing = editingTaskId === t.id;
+
+                                    if (isEditing) {
+                                        const editInput = { width: "100%", background: C.bgRaised, border: `1px solid ${C.border}`, borderRadius: 4, padding: "6px 8px", color: C.text, fontSize: 12.5, fontFamily: C.body, outline: "none", boxSizing: "border-box" };
+                                        return (
+                                            <div key={t.id} style={{ padding: "12px 0", borderBottom: `1px solid ${C.borderSoft}`, background: C.panelAlt, borderRadius: 6, marginBottom: 4 }}>
+                                                <div style={{ padding: "0 10px" }}>
+                                                    <input style={{ ...editInput, marginBottom: 8 }} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Task title" />
+                                                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                                                        <select style={editInput} value={draft.assignee} onChange={(e) => setDraft({ ...draft, assignee: e.target.value })}>
+                                                            {meeting.participants.length === 0 && <option value={draft.assignee}>{draft.assignee}</option>}
+                                                            {meeting.participants.map((p) => <option key={p} value={p}>{p}</option>)}
+                                                        </select>
+                                                        <input type="date" style={editInput} value={draft.deadline} onChange={(e) => setDraft({ ...draft, deadline: e.target.value })} />
+                                                        <select style={editInput} value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })}>
+                                                            <option>Low</option><option>Medium</option><option>High</option>
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: 8 }}>
+                                                        <button onClick={() => saveEdit(t.id)} style={{ background: C.amber, color: "#1A1305", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: C.body }}>Save</button>
+                                                        <button onClick={cancelEdit} style={{ background: "transparent", color: C.textDim, border: `1px solid ${C.border}`, borderRadius: 4, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontFamily: C.body }}>Cancel</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: `1px solid ${C.borderSoft}` }}>
+                                            <button onClick={() => onToggleTask(meeting.id, t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 1 }}>
+                                                {t.status === "done" ? <CheckCircle2 size={16} color={C.teal} /> : <Circle size={16} color={C.textFaint} />}
+                                            </button>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ color: C.text, fontSize: 13, textDecoration: t.status === "done" ? "line-through" : "none", opacity: t.status === "done" ? 0.55 : 1 }}>
+                                                    {t.title}
+                                                </div>
+                                                <div style={{ display: "flex", gap: 8, marginTop: 5, flexWrap: "wrap", alignItems: "center" }}>
+                                                    <Badge>{t.assignee}</Badge>
+                                                    <Badge tone={t.priority === "High" ? C.red : t.priority === "Low" ? C.textFaint : C.amber}>{t.priority}</Badge>
+                                                    <span style={{ fontFamily: C.mono, fontSize: 11, color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                                {t.status !== "done" && <IconBtn icon={Bell} onClick={() => onSendReminder(t.assignee)} title="Send reminder" />}
+                                                {isOrganizer && <IconBtn icon={FileText} onClick={() => startEdit(t)} title="Edit task" />}
+                                                {isOrganizer && <IconBtn icon={Trash2} tone={C.red} onClick={() => onDeleteTask(meeting.id, t.id)} title="Delete task" />}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {!hasResults && !loading && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.textFaint, fontSize: 12.5, padding: "8px 4px" }}>
+                    <AlertTriangle size={13} /> No insights generated yet — paste a transcript above and run extraction.
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ---------------------------------------------------------
+   ROOT APP
+--------------------------------------------------------- */
+export default function MeetIQApp() {
+    const [session, setSession] = useState(null);
+    const [meetings, setMeetings] = useState([]);
+    const [view, setView] = useState("dashboard");
+    const [activeMeetingId, setActiveMeetingId] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        ensureFonts();
+        (async () => {
+            const stored = await loadMeetings();
+            setMeetings(stored && stored.length ? stored : SEED_MEETINGS);
+            setReady(true);
+        })();
+    }, []);
+
+    useEffect(() => {
+        if (ready) saveMeetings(meetings);
+    }, [meetings, ready]);
+
+    const updateMeeting = useCallback((updated) => {
+        setMeetings((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+    }, []);
+
+    const createMeeting = (m) => {
+        setMeetings((prev) => [m, ...prev]);
+        setView("dashboard");
+    };
+
+    const openMeeting = (id) => {
+        setActiveMeetingId(id);
+        setView("detail");
+    };
+
+    const toggleTask = (meetingId, taskId) => {
+        setMeetings((prev) =>
+            prev.map((m) =>
+                m.id !== meetingId ? m : {
+                    ...m,
+                    tasks: m.tasks.map((t) => (t.id === taskId ? { ...t, status: t.status === "done" ? "pending" : "done" } : t)),
+                }
+            )
+        );
+    };
+
+    const deleteTask = (meetingId, taskId) => {
+        setMeetings((prev) =>
+            prev.map((m) => (m.id !== meetingId ? m : { ...m, tasks: m.tasks.filter((t) => t.id !== taskId) }))
+        );
+    };
+
+    const editTask = (meetingId, taskId, patch) => {
+        setMeetings((prev) =>
+            prev.map((m) =>
+                m.id !== meetingId ? m : { ...m, tasks: m.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) }
+            )
+        );
+    };
+
+    const sendReminder = (assignee) => setToast(`Reminder sent to ${assignee}`);
+
+    const remindAllGlobal = () => {
+        const names = [...new Set(meetings.flatMap((m) => m.tasks).filter((t) => t.status !== "done").map((t) => t.assignee))];
+        if (names.length === 0) return;
+        setToast(`Reminder sent to ${names.join(", ")}`);
+    };
+
+    const remindAllPending = (meetingId) => {
+        const m = meetings.find((mm) => mm.id === meetingId);
+        if (!m) return;
+        const names = [...new Set(m.tasks.filter((t) => t.status !== "done").map((t) => t.assignee))];
+        if (names.length === 0) return;
+        setToast(`Reminder sent to ${names.join(", ")}`);
+    };
+
+    if (!session) return <Login onLogin={setSession} />;
+    if (!ready) {
+        return (
+            <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Loader2 size={20} color={C.amber} style={{ animation: "spin 1s linear infinite" }} />
+            </div>
+        );
+    }
+
+    const activeMeeting = meetings.find((m) => m.id === activeMeetingId);
+    const pendingCount = meetings.flatMap((m) => m.tasks).filter((t) => t.status !== "done").length;
+
+    return (
+        <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: C.body }}>
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            <Sidebar
+                session={session}
+                view={view}
+                setView={(v) => { setView(v); if (v !== "detail") setActiveMeetingId(null); }}
+                onLogout={() => { setSession(null); setView("dashboard"); }}
+                meetingCount={meetings.length}
+                pendingCount={pendingCount}
+            />
+            <div style={{ flex: 1, overflowY: "auto" }}>
+                {view === "dashboard" && (
+                    <Dashboard
+                        session={session}
+                        meetings={meetings}
+                        setView={setView}
+                        openMeeting={openMeeting}
+                        onToggleTask={toggleTask}
+                        onSendReminder={sendReminder}
+                        onRemindAll={remindAllGlobal}
+                    />
+                )}
+                {view === "add" && <AddMeeting onCreate={createMeeting} onCancel={() => setView("dashboard")} />}
+                {view === "detail" && activeMeeting && (
+                    <MeetingDetail
+                        meeting={activeMeeting}
+                        session={session}
+                        onBack={() => setView("dashboard")}
+                        onUpdate={updateMeeting}
+                        onDeleteTask={deleteTask}
+                        onEditTask={editTask}
+                        onToggleTask={toggleTask}
+                        onSendReminder={sendReminder}
+                        onRemindAllPending={remindAllPending}
+                    />
+                )}
+            </div>
+            {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        </div>
+    );
+}
