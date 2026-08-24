@@ -1,35 +1,40 @@
-# Changelog
+# Innovexa Ops Console — Changelog
 
-All notable changes to the Innovexa Ops Console project will be documented in this file.
+All notable changes to the Innovexa Ops Console platform are documented in this file.
 
 ---
 
 ## [2.0.0] - 2026-08-24
 
 ### Changed
-- Rebranded from the legacy meeting console to Innovexa across all source code, directories, API paths, databases, and local storage events.
-- Transformed the cyberpunk visual theme from amber-yellow to an Innovexa purple, neon-cyan, and magenta terminal palette.
-
-## [1.2.0] - 2026-08-24
+- Rebranded from MeetIQ to Innovexa across all code and documentation.
 
 ### Added
-- **Cascade Deletion of Meetings**: Permitted organizers to completely delete a meeting record, automatically cascade-purging all associated tasks and decisions. Added a Cyberpunk-styled warning dialog prior to execution.
-- **Dynamic Task Assignment**: Added database models and PATCH API endpoint (`/api/tasks/[id]/assign`) allowing organizers to select team members from a dropdown. Re-assigning dynamically updates the task assignee and updates legacy owner details automatically.
-- **Registered User Lookup**: Created GET endpoint (`/api/users`) to retrieve registered team members ordered alphabetically for dropdown population.
-- **Automated API Testing**: Added a comprehensive Jest unit testing suite covering authorization checks, cascading deletions, and reassignments with Next.js mocks.
+- **Meeting Audio Recording**: Browser-based recording using the MediaRecorder API, with pause/resume support, live duration timers, and a visual pulsing waveform container.
+- **Audio Upload Queue**: Support drag-and-drop file ingestion, local file selections, and a cyberpunk upload progress bar.
+- **AWS S3 / Supabase Integration**: Multi-provider storage client logic with local disk fallback options.
+- **Custom Playback Player**: Glowing border media controls and recording metadata displays.
+- **Client-side Downsampling**: Audio downsampler/compressor reducing file sizes by ≥30% prior to uploading.
+- **Prisma Schema Update**: Created `Recording` PostgreSQL model with cascade-on-delete indexing.
 
-### Optimized (Performance & Architecture)
-- **PostgreSQL Database Migration**: Migrated the schema from SQLite to PostgreSQL with native DB features:
-  - Native Postgres Enums for `Role`, `TaskStatus`, and `TaskPriority`.
-  - Native String Arrays (`String[]`) for decision tags instead of stringified JSON objects.
-  - Added B-Tree composite indexes: `Task(status, department)`, `Task(assigneeId, deadline)` and `Meeting(date, department)`.
-- **Edge API Caching**: Implemented Vercel Edge caching using Next.js `unstable_cache` with tag-based revalidation (`revalidateTag`) to save database query cycles.
-- **Code Splitting & Dynamic Imports**: Extracted heavy Recharts rendering elements into a separate Client Component, dynamically imported on `/analytics` with `ssr: false` to reduce the initial load bundle footprint.
-- **Search Input Debouncing**: Throttled search submissions on the Knowledge Engine interface using a 300ms timer debounce.
-- **Next.js Font Optimization**: Self-hosted and auto-preloaded Inter, Space Grotesk, and IBM Plex Mono fonts natively using `next/font/google`.
+## [v1.3.0] — 2026-08-24 (AI Agent Release)
 
-### Removed
-- SQLite Database file (`prisma/dev.db`).
-- Legacy JSX prototypes and instructions inside `Code/` folder.
-- Old build cache assets (`tsconfig.tsbuildinfo`).
+### 🤖 AI Meeting Agent
+- **`AIAgent` Prisma Model**: Added 1-to-1 database relation to `Meeting` tracking agent status (`idle`, `joining`, `recording`, `transcribing`, `summarizing`, `completed`), `recordingUrl`, `transcript` JSON, and `summary`.
+- **AI Agent API Routes**:
+  - `POST /api/ai-agent/join`: Triggers virtual participant to join meeting room (`organizer` role required).
+  - `GET /api/ai-agent/status/:meetingId`: Returns agent status and summary.
+  - `GET /api/ai-agent/:meetingId/transcript`: Returns diarized transcript array.
+  - `GET /api/ai-agent/:meetingId/updates`: Server-Sent Events (SSE) `text/event-stream` for real-time live captions.
+- **Cyberpunk Purple Console UI (`<AIAgentPanel>`)**: `#1A1A2E` dark theme with neon cyan (`#00FFFF`), neon purple (`#B026FF`), pulsing recording indicators (`#FF00AA`), live stream caption feed, and privacy disclaimer banner.
+- **Automated Test Suite**: Added `AI Agent Endpoints & Security` unit tests (`tests/api.test.ts`) covering joining, status transitions, role authorization gates, and transcript parsing.
 
+---
+
+## [v1.2.0] — 2026-08-23
+
+### 🚀 Added
+- **PostgreSQL Migration**: Production PostgreSQL schema with native enums (`Role`, `TaskStatus`, `TaskPriority`), `String[]` tags, and composite B-Tree indexes.
+- **Meeting Deletion API (`DELETE /api/meetings/:id`)**: Cascading deletion of meetings, segments, decisions, and tasks.
+- **Task Assignment Dropdown (`PATCH /api/tasks/:id/assign`)**: Assign tasks to registered team members.
+- **SHA-256 Web Crypto Authentication (`/login`)**: Client-side password hashing and 15-minute inactivity session guard.

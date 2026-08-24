@@ -1,239 +1,170 @@
-﻿# Innovexa Ops Console — API Specification
+# Innovexa Ops Console — API Specification
 
-Detailed REST API reference for the Innovexa Ops Console platform.
+Detailed REST & Real-Time API reference for the Innovexa Ops Console platform.
 
 ---
 
 ## 🔒 Authentication & RBAC Authorization
 
-Innovexa uses role-based header authorization. Protected endpoints (such as `DELETE /api/meetings/:id` and `PATCH /api/tasks/:id/assign`) inspect the `x-user-role` header.
+Innovexa uses role-based header authorization. Protected endpoints (such as `POST /api/ai-agent/join`, `DELETE /api/meetings/:id`, and `PATCH /api/tasks/:id/assign`) inspect the `x-user-role` header.
 
 ### Session & Password Security
 - **Algorithm**: Web Crypto API SHA-256 password hashing.
 - **Roles**:
-  - `organizer`: Password `admin123` (SHA-256: `240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9`) — Full Edit & SLA Admin access.
+  - `organizer`: Password `admin123` (SHA-256: `240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9`) — Full Edit, AI Agent Trigger, & SLA Admin access.
   - `participant`: Password `user123` (SHA-256: `e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446`) — Read-only access.
 - **Session Persistence**: Client-side `sessionStorage` (`userRole`, `username`, `lastActivity`).
 - **Session Timeout**: 15-minute inactivity session expiration enforced via `AuthGuard`.
 
 ---
 
-## ⚡ Rate Limiting & Common Headers
+## 🤖 AI Meeting Agent Endpoints
 
-- **Rate Limit**: 100 requests per minute per IP address.
-- **Content-Type**: `application/json`
-- **RBAC Header**: `x-user-role: organizer | participant`
-
----
-
-## 📡 API Endpoints
-
-### 1. Ingest Meeting & Extract Action Items
-- **URL**: `/api/meetings`
+### 12. Trigger AI Meeting Agent (Organizer Only)
+- **URL**: `/api/ai-agent/join`
 - **Method**: `POST`
+- **Headers**:
+  - `x-user-role`: `organizer` (Required. Requests with other values return `403 Forbidden`).
+  - `Content-Type`: `application/json`
 - **Request Body**:
   ```json
   {
-    "title": "Q3 Infrastructure & Security Alignment",
-    "department": "Engineering",
-    "agenda": "Review database migration to PostgreSQL and setup connection pooling.",
-    "objectives": "Migrate schema; Enable pgbouncer; Audit SLA escalation engine",
-    "transcript": "Vikram Seth: We need to finalize the PostgreSQL schema migration today. Alex Mercer: I will execute prisma migrate dev by Friday.",
-    "apiKey": "optional-gemini-or-openai-api-key"
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "apiKey": "optional-openai-key"
   }
   ```
-- **Response (200 OK)**:
+- **Response (201 Created)**:
   ```json
   {
-    "success": true,
-    "meetingId": "c4b3a210-9876-4321-8765-123456789abc"
+    "id": "agent-uuid-1234",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "status": "joining",
+    "joinedAt": "2026-08-24T19:20:00.000Z",
+    "recordingUrl": "https://storage.innovexa.com/recordings/c4b3a210-9876-4321-8765-123456789abc.mp3",
+    "transcript": null,
+    "summary": null
   }
   ```
 
 ---
 
-### 2. Get All Meetings
-- **URL**: `/api/meetings`
+### 13. Get AI Agent Status
+- **URL**: `/api/ai-agent/status/:meetingId`
+- **Method**: `GET`
+- **Response (200 OK)**:
+  ```json
+  {
+    "id": "agent-uuid-1234",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "status": "completed",
+    "recordingUrl": "https://storage.innovexa.com/recordings/c4b3a210-9876-4321-8765-123456789abc.mp3",
+    "transcript": [
+      {
+        "speaker": "Dr. Vikram Seth",
+        "text": "Welcome team. Let's initiate the AI Meeting Agent protocol.",
+        "timestamp": "00:00:02"
+      }
+    ],
+    "summary": "Executive AI Summary for 'Q3 Architecture Alignment': Adopted encrypted storage and SSE real-time streaming."
+  }
+  ```
+
+---
+
+### 14. Get AI Agent Transcript
+- **URL**: `/api/ai-agent/:meetingId/transcript`
 - **Method**: `GET`
 - **Response (200 OK)**:
   ```json
   [
     {
-      "id": "c4b3a210-9876-4321-8765-123456789abc",
-      "title": "Q3 Infrastructure & Security Alignment",
-      "date": "2026-08-23T14:00:00.000Z",
-      "durationMins": 45,
-      "department": "Engineering",
-      "agenda": "Review database migration to PostgreSQL",
-      "status": "Processed",
-      "segments": [
-        {
-          "id": "seg-1",
-          "speaker": "Vikram Seth",
-          "timestamp": "00:00",
-          "text": "We need to finalize the PostgreSQL schema migration today.",
-          "type": "decision",
-          "order": 1
-        }
-      ],
-      "decisions": [
-        {
-          "id": "dec-1",
-          "title": "Adopt PostgreSQL 15 as primary database provider",
-          "context": "SQLite migration to PostgreSQL",
-          "department": "Engineering",
-          "tags": ["PostgreSQL", "Database"]
-        }
-      ],
-      "tasks": [
-        {
-          "id": "task-1",
-          "title": "Execute prisma migrate dev on production pool",
-          "ownerName": "Alex Mercer",
-          "ownerEmail": "alex.mercer@company.org",
-          "department": "Engineering",
-          "priority": "High",
-          "status": "Pending",
-          "deadline": "2026-08-26T14:00:00.000Z"
-        }
-      ]
+      "speaker": "Dr. Vikram Seth",
+      "text": "Welcome team. Let's initiate the AI Meeting Agent protocol.",
+      "timestamp": "00:00:02"
+    },
+    {
+      "speaker": "Alex Mercer",
+      "text": "Audio streams are encrypted and processed via Whisper ASR.",
+      "timestamp": "00:00:15"
     }
   ]
   ```
 
 ---
 
-### 3. Get Meeting Details
-- **URL**: `/api/meetings/:id`
+### 15. Real-Time Stream (Server-Sent Events)
+- **URL**: `/api/ai-agent/:meetingId/updates`
 - **Method**: `GET`
-- **Response (200 OK)**: Detailed JSON record matching the meeting schema with ordered segments and associated decisions.
+- **Headers**: `Accept: text/event-stream`
+- **Stream Output**:
+  ```http
+  HTTP/1.1 200 OK
+  Content-Type: text/event-stream
+  Cache-Control: no-cache
+  Connection: keep-alive
 
----
+  data: {"meetingId":"c4b3a210","status":"recording"}
 
-### 4. Delete Meeting (Organizer Only)
-- **URL**: `/api/meetings/:id`
-- **Method**: `DELETE`
-- **Headers**: `x-user-role: organizer`
-- **Response (200 OK)**:
-  ```json
-  {
-    "message": "Meeting deleted successfully"
-  }
-  ```
-- **Response (403 Forbidden)**:
-  ```json
-  {
-    "error": "Forbidden: Requester must be an organizer"
-  }
+  data: {"meetingId":"c4b3a210","status":"transcribing","transcript":[{"speaker":"Alex Mercer","text":"Audio stream active."}]}
   ```
 
 ---
 
-### 5. Fetch Task SLA Board
-- **URL**: `/api/tasks`
-- **Method**: `GET`
-- **Query Parameters**:
-  - `department`: Filter by department name (e.g. `Engineering` or `All`)
-  - `status`: Filter by status (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`, `All`)
-- **Response (200 OK)**: Array of task records with meeting metadata and notification history.
+## 📡 Core Platform Endpoints
 
----
-
-### 6. Update Task Status & Deadline
-- **URL**: `/api/tasks`
-- **Method**: `PATCH`
-- **Request Body**:
+### 1. Ingest Meeting & Extract Action Items (`POST /api/meetings`)
+### 2. Get All Meetings (`GET /api/meetings`)
+### 3. Get Meeting Details (`GET /api/meetings/:id`)
+### 4. Delete Meeting (`DELETE /api/meetings/:id`) [Organizer Only]
+### 5. Fetch Task SLA Board (`GET /api/tasks`)
+### 6. Update Task Status (`PATCH /api/tasks`)
+### 7. Assign Task (`PATCH /api/tasks/:id/assign`) [Organizer Only]
+### 8. Get Registered Directory (`GET /api/users`)
+### 9. Get ROI Metrics (`GET /api/analytics`)
+### 10. Semantic Search (`GET /api/search`)
+### 11. Trigger SLA Escalation (`POST /api/cron/escalate`)
+### 12. Upload Meeting Audio Recording (`POST /recordings/upload`) [Organizer Only]
+- **Headers**:
+  - `x-user-role`: `organizer`
+- **Request (Multipart Form-Data)**:
+  - `audio`: File (binary blob)
+  - `meetingId`: String (UUID)
+  - `duration`: String (optional, in seconds)
+- **Request (JSON)**:
   ```json
   {
-    "taskId": "task-1",
-    "status": "Completed",
-    "priority": "High",
-    "deadline": "2026-08-27T18:00:00.000Z"
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "audioBlob": "dGVzdC1hdWRpby1kYXRh...",
+    "format": "audio/mp3",
+    "duration": 30
   }
   ```
-- **Response (200 OK)**:
+- **Response (201 Created)**:
   ```json
   {
-    "success": true,
-    "task": { "id": "task-1", "status": "Completed" }
+    "id": "rec-uuid-123",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "url": "/recordings/c4b3a210/1787492.mp3",
+    "duration": 30,
+    "size": 128400,
+    "format": "audio/mp3",
+    "uploadedAt": "2026-08-24T19:25:00.000Z"
   }
   ```
 
----
-
-### 7. Assign Task (Organizer Only)
-- **URL**: `/api/tasks/:id/assign`
-- **Method**: `PATCH`
-- **Headers**: `x-user-role: organizer`
-- **Request Body**:
-  ```json
-  {
-    "assigneeId": "user-uuid-1234"
-  }
-  ```
-- **Response (200 OK)**: Updated task object with new `ownerName` and `ownerEmail`.
-
----
-
-### 8. Get Registered User Directory
-- **URL**: `/api/users`
-- **Method**: `GET`
+### 13. Get Audio Recordings for Meeting (`GET /recordings/meeting/:meetingId`)
 - **Response (200 OK)**:
   ```json
   [
     {
-      "id": "user-uuid-1234",
-      "name": "Alex Mercer",
-      "email": "alex.mercer@company.org",
-      "role": "Admin",
-      "departmentId": "dept-eng"
+      "id": "rec-uuid-123",
+      "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+      "url": "/recordings/c4b3a210/1787492.mp3",
+      "duration": 30,
+      "size": 128400,
+      "format": "audio/mp3",
+      "uploadedAt": "2026-08-24T19:25:00.000Z"
     }
   ]
   ```
-
----
-
-### 9. Get Productivity Analytics & ROI Metrics
-- **URL**: `/api/analytics`
-- **Method**: `GET`
-- **Response (200 OK)**: Real-time decision lag metrics, closure rates, department breakdowns, and trend data.
-
----
-
-### 10. Semantic Vector Search
-- **URL**: `/api/search?q=database+migration&department=Engineering`
-- **Method**: `GET`
-- **Response (200 OK)**: Cosine-similarity ranked search results matching decisions, transcripts, and action items.
-
----
-
-### 11. Audit & Trigger SLA Escalation Engine
-- **URL**: `/api/cron/escalate`
-- **Method**: `POST` or `GET`
-- **Response (200 OK)**:
-  ```json
-  {
-    "success": true,
-    "summary": {
-      "checkedCount": 12,
-      "newOverdueCount": 1,
-      "newEscalatedCount": 1,
-      "notificationsCreated": 2
-    }
-  }
-  ```
-
----
-
-## 🛑 HTTP Status Codes
-
-| Code | Status | Description |
-|---|---|---|
-| `200` | `OK` | Request succeeded |
-| `400` | `Bad Request` | Missing required parameters or payload invalid |
-| `401` | `Unauthorized` | Unauthenticated session |
-| `403` | `Forbidden` | Requester lacks `organizer` privileges |
-| `404` | `Not Found` | Resource ID does not exist |
-| `429` | `Too Many Requests` | Exceeded rate limit (100 req/min/IP) |
-| `500` | `Internal Server Error` | Server database or runtime exception |
 

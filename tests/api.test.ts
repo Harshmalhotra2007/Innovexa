@@ -1,5 +1,8 @@
 import { DELETE } from "../src/app/api/meetings/[id]/route";
 import { PATCH } from "../src/app/api/tasks/[id]/assign/route";
+import { POST as JOIN_AI_AGENT } from "../src/app/api/ai-agent/join/route";
+import { GET as GET_AI_STATUS } from "../src/app/api/ai-agent/status/[meetingId]/route";
+import { GET as GET_AI_TRANSCRIPT } from "../src/app/api/ai-agent/[meetingId]/transcript/route";
 import { db } from "../src/lib/db";
 
 // Mock the Prisma DB client
@@ -15,9 +18,20 @@ jest.mock("../src/lib/db", () => ({
     },
     meeting: {
       delete: jest.fn(),
+      findUnique: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
+    },
+    aIAgent: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    aiAgent: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
     },
   },
 }));
@@ -101,5 +115,76 @@ describe("Tasks Assign PATCH API Endpoint", () => {
         ownerEmail: "alex@company.org",
       },
     });
+  });
+});
+
+describe("AI Agent Endpoints & Security", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should fail POST /api/ai-agent/join if user is participant", async () => {
+    const req = new Request("http://localhost/api/ai-agent/join", {
+      method: "POST",
+      headers: { "x-user-role": "participant" },
+      body: JSON.stringify({ meetingId: "meet-1" }),
+    });
+
+    const res = await JOIN_AI_AGENT(req);
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toContain("Forbidden");
+  });
+
+  it("should trigger AI Agent for organizer", async () => {
+    (db.meeting.findUnique as jest.Mock).mockResolvedValueOnce({ id: "meet-1", title: "Test Meeting" });
+    (db.aIAgent.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    (db.aIAgent.create as jest.Mock).mockResolvedValueOnce({
+      id: "agent-1",
+      meetingId: "meet-1",
+      status: "joining",
+    });
+
+    const req = new Request("http://localhost/api/ai-agent/join", {
+      method: "POST",
+      headers: { "x-user-role": "organizer", "Content-Type": "application/json" },
+      body: JSON.stringify({ meetingId: "meet-1" }),
+    });
+
+    const res = await JOIN_AI_AGENT(req);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.status).toBe("joining");
+  });
+
+  it("should return status via GET /api/ai-agent/status/[meetingId]", async () => {
+    (db.aIAgent.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "agent-1",
+      meetingId: "meet-1",
+      status: "completed",
+      summary: "Sample Summary",
+    });
+
+    const req = new Request("http://localhost/api/ai-agent/status/meet-1");
+    const res = await GET_AI_STATUS(req, { params: { meetingId: "meet-1" } });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.status).toBe("completed");
+    expect(data.summary).toBe("Sample Summary");
+  });
+
+  it("should return transcript via GET /api/ai-agent/[meetingId]/transcript", async () => {
+    (db.aIAgent.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "agent-1",
+      meetingId: "meet-1",
+      transcript: [{ speaker: "Alice", text: "Hello", timestamp: "00:00:01" }],
+    });
+
+    const req = new Request("http://localhost/api/ai-agent/meet-1/transcript");
+    const res = await GET_AI_TRANSCRIPT(req, { params: { meetingId: "meet-1" } });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data[0].speaker).toBe("Alice");
   });
 });

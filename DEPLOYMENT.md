@@ -1,195 +1,70 @@
-﻿# Innovexa Ops Console — Deployment Guide
+# Innovexa Ops Console — Deployment Guide
 
 Comprehensive instructions for deploying Innovexa Ops Console across production environments including Docker, Vercel, Heroku, and automated CI/CD pipelines.
 
 ---
 
+## 🤖 AI Agent Environment Configuration
+
+Ensure the following API credentials and storage settings are configured in production:
+
+```env
+# AI Engine Credentials
+OPENAI_API_KEY="sk-proj-your-openai-api-key"
+
+# Zoom API & Web SDK Integration
+ZOOM_API_KEY="your-zoom-app-key"
+ZOOM_API_SECRET="your-zoom-app-secret"
+
+# Redis Queue (Bull / SQS Queue Runner for transcription jobs)
+REDIS_URL="redis://localhost:6379"
+
+# S3 / Supabase Encrypted Storage Bucket
+STORAGE_BUCKET_URL="https://storage.innovexa.com/recordings"
+RETENTION_DAYS="30"
+```
+
+---
+
 ## 🐳 Docker Deployment
 
-### 1. Multi-Stage `Dockerfile`
+### Multi-Stage `Dockerfile` & `docker-compose.yml`
 
-Create `Dockerfile` in the project root:
-
-```dockerfile
-# Step 1: Base image
-FROM node:18-alpine AS builder
-WORKDIR /app
-
-# Step 2: Install dependencies
-COPY package*.json ./
-COPY prisma ./prisma/
-RUN npm ci
-
-# Step 3: Copy source and build
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-
-# Step 4: Production runner
-FROM node:18-alpine AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV PORT=3000
-
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-
-EXPOSE 3000
-CMD ["npm", "run", "start"]
-```
-
-### 2. `docker-compose.yml`
-
-Create `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: innovexa_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: innovexa_admin
-      POSTGRES_PASSWORD: SecretPassword123!
-      POSTGRES_DB: innovexa_production
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: innovexa_app
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: "postgres://innovexa_admin:SecretPassword123!@postgres:5432/innovexa_production?sslmode=disable"
-      DIRECT_URL: "postgres://innovexa_admin:SecretPassword123!@postgres:5432/innovexa_production?sslmode=disable"
-    depends_on:
-      - postgres
-
-volumes:
-  postgres_data:
-```
-
-### Build & Execution Commands
 ```bash
-# Build and launch services
+# Build and launch multi-container application with PostgreSQL 15 and Redis
 docker-compose up -d --build
 
-# Run database migrations inside container
+# Sync Prisma database schema inside container
 docker-compose exec app npx prisma db push
 ```
 
 ---
 
-## ☁️ Vercel Deployment (Serverless PostgreSQL)
+## ☁️ Vercel Deployment
 
-1. Connect repository to [Vercel](https://vercel.com).
-2. Provision serverless PostgreSQL (e.g., Neon.tech).
-3. Configure Environment Variables in Vercel Dashboard:
-   - `DATABASE_URL`: `postgres://neondb_owner:password@ep-pooler.c-4.aws.neon.tech/neondb?sslmode=require&pgbouncer=true`
-   - `DIRECT_URL`: `postgres://neondb_owner:password@ep-direct.c-4.aws.neon.tech/neondb?sslmode=require`
-4. Execute deployment:
-   ```bash
-   npx vercel --prod
-   ```
-
----
-
-## 🟣 Heroku Deployment
-
+Execute production deployment:
 ```bash
-# 1. Login & create app
-heroku login
-heroku create innovexa-ops-console
-
-# 2. Add PostgreSQL addon
-heroku addons:create heroku-postgresql:mini
-
-# 3. Configure environment variables
-heroku config:set DATABASE_URL=$(heroku config:get DATABASE_URL)
-heroku config:set DIRECT_URL=$(heroku config:get DATABASE_URL)
-
-# 4. Deploy codebase
-git push heroku main
-
-# 5. Run Prisma migrations on Heroku
-heroku run npx prisma db push
+npx vercel --prod
 ```
+Ensure `DATABASE_URL`, `DIRECT_URL`, `OPENAI_API_KEY`, and `ZOOM_API_KEY` environment variables are set in the Vercel Project Settings.
 
 ---
 
-## ⚙️ CI/CD Pipeline & Lighthouse CI
+## 📦 S3 & Supabase Storage Environment Variables
 
-Create `.github/workflows/ci.yml`:
+Configure either AWS S3 or Supabase Storage for remote hosting of audio recordings:
 
-```yaml
-name: Innovexa CI/CD Pipeline
+```env
+# AWS S3 Storage Provider
+AWS_REGION="us-east-1"
+S3_BUCKET="innovexa-recordings"
+AWS_ACCESS_KEY_ID="your-aws-access-key-id"
+AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_innovexa
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client & Migrate DB
-        env:
-          DATABASE_URL: "postgres://test_user:test_password@localhost:5432/test_innovexa?sslmode=disable"
-          DIRECT_URL: "postgres://test_user:test_password@localhost:5432/test_innovexa?sslmode=disable"
-        run: |
-          npx prisma generate
-          npx prisma db push
-
-      - name: Run Build
-        run: npm run build
-
-      - name: Run Automated Test Suite
-        run: npm test
-
-      - name: Run Lighthouse CI Audit
-        run: |
-          npm install -g @lhci/cli
-          lhci autorun --collect.staticDistDir=.next
+# Supabase Storage Provider
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_KEY="your-supabase-key"
 ```
+
+*Note: If neither provider is configured, the console automatically falls back to local disk storage (`public/recordings/`) for development and testing.*
 

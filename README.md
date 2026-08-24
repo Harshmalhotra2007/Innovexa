@@ -1,12 +1,17 @@
-﻿# Innovexa Ops Console — Intelligent Meeting, Decision & Action System
+# Innovexa Ops Console — Intelligent Meeting, Decision & Action System
 
-[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel&style=flat-square)](https://innovexa-murex.vercel.app)
-[![Jest Test Suite](https://img.shields.io/badge/Jest%20Tests-Passing-success?logo=jest&style=flat-square)](https://github.com/Harshmalhotra2007/Innovexa.git)
+Innovexa Ops Console is a cyberpunk-themed, high-performance meeting management and action-tracking platform designed to transform unstructured meeting audio and transcripts into structured organizational memory, formal decisions, and target SLA action items. Powered by an autonomous **AI Meeting Agent**, Next.js 14 App Router core, PostgreSQL with Prisma ORM, real-time task assignment, cosine-similarity semantic vector search, and automated SLA escalation workflows, Innovexa eliminates operational drift and guarantees accountability across engineering and leadership teams.
 
-Innovexa Ops Console is an intelligent organizational memory and action-tracking platform. It converts raw meeting speech transcripts into formal decisions, task assignees, and target completion deadlines, backed by semantic vector memory and automated manager escalation workflows.
+---
 
-> [!TIP]
-> **Live Demo**: Access the deployed website directly at **[https://innovexa-murex.vercel.app](https://innovexa-murex.vercel.app)**.
+## 🤖 AI Meeting Agent
+
+Innovexa features an autonomous **AI Meeting Agent** that connects to scheduled meetings (via Zoom/Google Meet APIs or browser automation), captures audio, streams real-time Whisper ASR captions, and generates executive GPT-4 summaries:
+
+- **State Transitions**: `idle` ➔ `joining` ➔ `recording` ➔ `transcribing` ➔ `summarizing` ➔ `completed`
+- **Real-Time Streaming**: Server-Sent Events (SSE) route emitting live diarized captions
+- **Cyberpunk Purple Visual Console**: `#1A1A2E` dark theme with neon cyan (`#00FFFF`), neon purple (`#B026FF`), and pulsing recording indicators (`#FF00AA`)
+- **Security & Privacy**: Restricted trigger rights (`organizer` only) and 30-day encrypted storage retention disclaimer
 
 ---
 
@@ -16,21 +21,18 @@ Access the console at `/login` or through default navigation. Authenticated sess
 
 | Role | Username | Password | Permissions & Access Scope |
 |---|---|---|---|
-| **Organizer** | `organizer` | `admin123` | Full creation, meeting deletion, task assignment, status updates, SLA audit trigger |
-| **Participant** | `participant` | `user123` | Read-only access across dashboard, meeting records, task board, knowledge search, and analytics |
+| **Organizer** | `organizer` | `admin123` | Full creation, AI Agent trigger, meeting deletion, task assignment, status updates, SLA audit trigger |
+| **Participant** | `participant` | `user123` | Read-only access across dashboard, AI Agent panel, meeting records, task board, knowledge search, and analytics |
 
 ---
 
 ## ⚡ Tech Stack & PostgreSQL Architecture
 
 - **Frontend & App Framework**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
-- **Design System & Aesthetic**: Innovexa Ops Console dark theme (`#131324` background, `#1e1e36` panels, `#9f55ff` amber, `#00ffff` teal, `#ff007f` red, `Space Grotesk` headers, `IBM Plex Mono` code, `Inter` body)
+- **Design System & Aesthetic**: Innovexa Ops Console Cyberpunk Dark Theme (`#0D1315` background, `#1A1A2E` AI panel, `#B026FF` neon purple, `#E8A33D` amber, `#49B9AE` teal, `#E2666A` red, `Space Grotesk`, `IBM Plex Mono`)
 - **Database & ORM**: PostgreSQL (v15+) managed via Prisma ORM (v5.22+)
-- **PostgreSQL Features**:
-  - **Native Enums**: `Role` (`Member`, `Admin`, `Organizer`), `TaskStatus` (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`), `TaskPriority` (`Low`, `Medium`, `High`, `Critical`)
-  - **Native Arrays**: `tags String[]` on `Decision` model for zero-overhead array queries
-  - **B-Tree Indexing**: `@@index([date])`, `@@index([status])`, `@@index([department])`, `@@index([deadline])`, `@@index([meetingId])` for sub-50ms query latency
-  - **Connection Pooling**: Supported via `pgbouncer=true` parameter in `DATABASE_URL`
+- **AI Engine & Speech Recognition**: OpenAI Whisper ASR & GPT-4 Executive Summarizer with fallback offline NLP diarization engine
+- **Real-Time Communication**: Server-Sent Events (SSE) `text/event-stream`
 - **Data Visualization**: Recharts (LineChart, BarChart, AreaChart, PieChart with responsive containers)
 - **Security & Hashing**: Web Crypto SHA-256 password hashing, `AuthGuard` inactivity tracker, `x-user-role` RBAC header validation
 
@@ -64,48 +66,27 @@ DATABASE_URL="postgres://user:password@host:port/dbname?pgbouncer=true&sslmode=r
 
 # Direct connection URL used by Prisma CLI during migrations
 DIRECT_URL="postgres://user:password@host:port/dbname?sslmode=require"
+
+# AI & Platform Integrations
+OPENAI_API_KEY="your-openai-key"
+ZOOM_API_KEY="your-zoom-key"
+ZOOM_API_SECRET="your-zoom-secret"
+REDIS_URL="redis://localhost:6379"
 ```
 
 ```bash
 # 4. Generate Prisma Client & Run Database Migrations
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma db push
 
-# 5. Start Development Server
+# 5. Execute Test Suite
+npm run test
+
+# 6. Start Development Server
 npm run dev
 ```
 
 Visit `http://localhost:3000` in your browser.
-
----
-
-## ⚡ Performance Optimizations & Benchmarks
-
-- **Code Splitting & Lazy Loading**: Dynamic imports for Recharts and heavy UI modules to optimize First Load JS (<98 kB shared JS bundle).
-- **Static & Dynamic Route Partitioning**: API routes configured with `export const dynamic = "force-dynamic"` to guarantee zero static build bailouts.
-- **Server Startup Instrumentation**: Seed data initialization (`ensureSeedData()`) executed exactly once at server boot via Next.js `instrumentation.ts` hook.
-- **Lighthouse Performance Targets**:
-  - **Performance Score**: 90+
-  - **Accessibility**: 100
-  - **Largest Contentful Paint (LCP)**: < 1.0s
-  - **Cumulative Layout Shift (CLS)**: 0.00
-
----
-
-## 🚀 Deployment Instructions
-
-### Vercel Deployment (Recommended)
-```bash
-# Deploy to Vercel production
-npx vercel --prod
-```
-Ensure `DATABASE_URL` and `DIRECT_URL` environment variables are set in the Vercel Project Settings.
-
-### Docker Deployment
-```bash
-# Build and launch multi-container application with PostgreSQL 15
-docker-compose up -d --build
-```
 
 ---
 
@@ -119,4 +100,3 @@ docker-compose up -d --build
 - [User Guide](file:///c:/Code/Hackathon/USER_GUIDE.md) — Step-by-step user guide and keyboard shortcuts
 - [Architecture Overview](file:///c:/Code/Hackathon/ARCHITECTURE.md) — System architecture diagram and data lifecycles
 - [Performance Benchmarks](file:///c:/Code/Hackathon/PERFORMANCE.md) — Lighthouse scores and database profiling
-
