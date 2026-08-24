@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --bg: #131324;
-  --bg-raised: #1a1a2f;
-  --panel: #1e1e36;
-  --panel-alt: #252542;
-  --border: #3e305e;
-  --border-soft: #2d2345;
+  --bg: #0D1315;
+  --bg-raised: #141C1F;
+  --panel: #182124;
+  --panel-alt: #1D272B;
+  --border: #2A363A;
+  --border-soft: #212B2E;
   --text: #E7EEEF;
   --text-dim: #8FA0A4;
   --text-faint: #5B6A6E;
-  --amber: #9f55ff;
-  --amber-dim: #2b0e4a;
-  --teal: #00ffff;
-  --teal-dim: #052e33;
-  --red: #ff007f;
-  --red-dim: #4a0e28;
+  --amber: #E8A33D;
+  --amber-dim: #4A3A1E;
+  --teal: #49B9AE;
+  --teal-dim: #1B3634;
+  --red: #E2666A;
+  --red-dim: #3A2224;
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-display: var(--font-display), 'Segoe UI', sans-serif;
   --font-body: var(--font-body), 'Segoe UI', sans-serif;
@@ -144,9 +144,9 @@ code, pre, .font-mono, .badge-mono {
 }
 
 .cyberpunk-select {
-  background: #1a1a2e;
-  border: 1px solid #00ffff;
-  color: #00ffff;
+  background: #141C1F;
+  border: 1px solid #49B9AE;
+  color: #49B9AE;
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 4px 8px;
@@ -157,7 +157,7 @@ code, pre, .font-mono, .badge-mono {
 }
 
 .cyberpunk-select:hover, .cyberpunk-select:focus {
-  box-shadow: 0 0 8px #00ffff;
+  box-shadow: 0 0 8px #49B9AE;
 }
 
 .cyberpunk-select option {
@@ -167,29 +167,29 @@ code, pre, .font-mono, .badge-mono {
 
 /* Audio Recording & Playback Cyberpunk Styles */
 .record-btn {
-  background: #ff00aa !important;
+  background: #E2666A !important;
   color: #fff !important;
-  box-shadow: 0 0 10px #ff00aa;
+  box-shadow: 0 0 10px #E2666A;
   animation: pulse 2s infinite;
   font-family: var(--font-mono);
   font-weight: bold;
 }
 
 .record-btn:hover {
-  background: #ff33bb !important;
-  box-shadow: 0 0 20px #ff00aa;
+  background: #E2666A !important;
+  box-shadow: 0 0 20px #E2666A;
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 10px #ff00aa; }
-  50% { box-shadow: 0 0 20px #ff00aa; }
-  100% { box-shadow: 0 0 10px #ff00aa; }
+  0% { box-shadow: 0 0 10px #E2666A; }
+  50% { box-shadow: 0 0 20px #E2666A; }
+  100% { box-shadow: 0 0 10px #E2666A; }
 }
 
 .recording-player {
-  background: #1a1a2e;
-  border: 1px solid #00ffff;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+  background: #141C1F;
+  border: 1px solid #49B9AE;
+  box-shadow: 0 0 10px rgba(73, 185, 174, 0.1);
   padding: 1rem;
   margin: 1rem 0;
   border-radius: 4px;
@@ -198,25 +198,25 @@ code, pre, .font-mono, .badge-mono {
 .recording-meta {
   display: flex;
   justify-content: space-between;
-  color: #bcaba0;
+  color: #8FA0A4;
   font-family: var(--font-mono);
   font-size: 11px;
   margin-top: 0.5rem;
 }
 
 .upload-zone {
-  border: 2px dashed #00ffff;
+  border: 2px dashed #49B9AE;
   padding: 2rem;
   text-align: center;
-  background: rgba(0, 255, 255, 0.05);
+  background: rgba(73, 185, 174, 0.05);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .upload-zone:hover {
-  background: rgba(0, 255, 255, 0.1);
-  box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+  background: rgba(73, 185, 174, 0.1);
+  box-shadow: 0 0 12px rgba(73, 185, 174, 0.2);
 }
 
 /* Waveform Pulse CSS Animation */
@@ -231,7 +231,7 @@ code, pre, .font-mono, .badge-mono {
 
 .waveform-bar {
   width: 4px;
-  background-color: #ff00aa;
+  background-color: #E2666A;
   border-radius: 2px;
   height: 8px;
 }
@@ -254,12 +254,12 @@ code, pre, .font-mono, .badge-mono {
 
 /* Custom Cyberpunk Audio Player Style */
 audio::-webkit-media-controls-enclosure {
-  background-color: #1a1a2e;
-  border: 1px solid #00ffff;
+  background-color: #141C1F;
+  border: 1px solid #49B9AE;
   border-radius: 4px;
 }
 
 audio::-webkit-media-controls-play-button {
-  background-color: #00ffff;
+  background-color: #49B9AE;
   border-radius: 50%;
 }

@@ -594,8 +594,8 @@ export default function MeetingDetailPage() {
     <div className="mx-auto max-w-[860px] space-y-6 py-2">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#252542] border border-[#9f55ff] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
-          <Bell size={14} className="text-[#9f55ff]" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md bg-[#1D272B] border border-[#E8A33D] px-4.5 py-2.5 text-xs text-[#E7EEEF] shadow-2xl">
+          <Bell size={14} className="text-[#E8A33D]" />
           <span>{toast}</span>
         </div>
       )}
@@ -635,17 +635,17 @@ export default function MeetingDetailPage() {
           )}
           <button
             onClick={exportSummary}
-            className="flex items-center gap-1.5 rounded-md border border-[#3e305e] bg-[#1e1e36] px-3 py-1.5 text-xs font-mono text-[#00ffff] hover:bg-[#252542] transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-[#2A363A] bg-[#141C1F] px-3 py-1.5 text-xs font-mono text-[#49B9AE] hover:bg-[#1D272B] transition-colors"
           >
             <FileText size={13} />
             <span>EXPORT MD</span>
           </button>
           {isReadOnly && (
-            <span className="ops-badge border-[#00ffff] text-[#00ffff] flex items-center gap-1">
+            <span className="ops-badge border-[#49B9AE] text-[#49B9AE] flex items-center gap-1">
               <Lock size={10} /> Read-Only Mode
             </span>
           )}
-          <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{meeting.department}</span>
+          <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">{meeting.department}</span>
         </div>
       </div>
 
@@ -655,7 +655,7 @@ export default function MeetingDetailPage() {
       {/* Meeting Audio & Recording Panel */}
       <div className="ops-panel p-5 space-y-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-          <FileAudio size={14} className="text-[#00ffff]" />
+          <FileAudio size={14} className="text-[#49B9AE]" />
           <span>Meeting audio recordings</span>
         </div>
 
@@ -686,17 +686,17 @@ export default function MeetingDetailPage() {
 
         {/* 2. Recording & Upload Controls (Organizer Only) */}
         {!isReadOnly && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#2d2345]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#212B2E]">
             {/* Live Recorder Block */}
-            <div className="space-y-3 bg-[#1a1a2f] p-4 rounded border border-[#3e305e]">
+            <div className="space-y-3 bg-[#141C1F] p-4 rounded border border-[#2A363A]">
               <div className="text-xs font-mono font-semibold text-[#E7EEEF] flex items-center gap-1.5">
-                <Mic size={12} className="text-[#ff00aa]" />
+                <Mic size={12} className="text-[#E2666A]" />
                 <span>Live Audio Recorder</span>
               </div>
 
               {isRecording ? (
                 <div className="space-y-3 text-center py-2">
-                  <div className="text-lg font-mono font-bold text-[#ff00aa]">
+                  <div className="text-lg font-mono font-bold text-[#E2666A]">
                     {formatTime(recordingSeconds)}
                   </div>
                   
@@ -715,21 +715,21 @@ export default function MeetingDetailPage() {
                     {isPaused ? (
                       <button
                         onClick={resumeRecording}
-                        className="flex items-center gap-1 bg-[#00ffff] text-[#1A1305] text-xs font-semibold px-3 py-1.5 rounded"
+                        className="flex items-center gap-1 bg-[#49B9AE] text-[#1A1305] text-xs font-semibold px-3 py-1.5 rounded"
                       >
                         <Play size={11} /> Resume
                       </button>
                     ) : (
                       <button
                         onClick={pauseRecording}
-                        className="flex items-center gap-1 bg-[#3e305e] text-[#E7EEEF] text-xs font-semibold px-3 py-1.5 rounded"
+                        className="flex items-center gap-1 bg-[#212B2E] text-[#E7EEEF] text-xs font-semibold px-3 py-1.5 rounded"
                       >
                         <Pause size={11} /> Pause
                       </button>
                     )}
                     <button
                       onClick={stopRecording}
-                      className="flex items-center gap-1 bg-[#ff00aa] text-white text-xs font-semibold px-3 py-1.5 rounded animate-pulse"
+                      className="flex items-center gap-1 bg-[#E2666A] text-white text-xs font-semibold px-3 py-1.5 rounded animate-pulse"
                     >
                       <Square size={11} /> Stop & Upload
                     </button>
@@ -748,14 +748,14 @@ export default function MeetingDetailPage() {
             </div>
 
             {/* Drag & Drop Upload Block */}
-            <div className="space-y-3 bg-[#1a1a2f] p-4 rounded border border-[#3e305e]">
+            <div className="space-y-3 bg-[#141C1F] p-4 rounded border border-[#2A363A]">
               <div className="text-xs font-mono font-semibold text-[#E7EEEF] flex items-center gap-1.5">
-                <UploadCloud size={12} className="text-[#00ffff]" />
+                <UploadCloud size={12} className="text-[#49B9AE]" />
                 <span>Upload Audio File</span>
               </div>
 
               <div
-                className={`upload-zone ${isDragOver ? "border-[#ff00aa] bg-[#ff00aa]/5" : ""}`}
+                className={`upload-zone ${isDragOver ? "border-[#E2666A] bg-[#E2666A]/5" : ""}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setIsDragOver(true);
@@ -764,9 +764,9 @@ export default function MeetingDetailPage() {
                 onDrop={handleDrop}
                 onClick={() => document.getElementById("audio-upload-input")?.click()}
               >
-                <UploadCloud className="mx-auto mb-2 text-[#00ffff] animate-pulse" size={24} />
+                <UploadCloud className="mx-auto mb-2 text-[#49B9AE] animate-pulse" size={24} />
                 <p className="text-[11px] font-mono text-[#8FA0A4]">
-                  Drag & drop MP3/WAV here or <span className="text-[#00ffff] underline cursor-pointer">browse</span>
+                  Drag & drop MP3/WAV here or <span className="text-[#49B9AE] underline cursor-pointer">browse</span>
                 </p>
                 <input
                   id="audio-upload-input"
@@ -780,13 +780,13 @@ export default function MeetingDetailPage() {
               {/* Upload progress indicator */}
               {uploadProgress !== null && (
                 <div className="space-y-1 mt-2">
-                  <div className="flex justify-between text-[10px] font-mono text-[#00ffff]">
+                  <div className="flex justify-between text-[10px] font-mono text-[#49B9AE]">
                     <span>Uploading audio...</span>
                     <span>{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-[#1e1e36] h-1 rounded-full overflow-hidden border border-[#3e305e]">
+                  <div className="w-full bg-[#141C1F] h-1 rounded-full overflow-hidden border border-[#2A363A]">
                     <div
-                      className="bg-[#00ffff] h-full shadow-[0_0_8px_#00ffff] transition-all duration-150"
+                      className="bg-[#49B9AE] h-full shadow-[0_0_8px_#49B9AE] transition-all duration-150"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
@@ -800,7 +800,7 @@ export default function MeetingDetailPage() {
       {/* Transcript Box */}
       <div className="ops-panel p-5 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-          <FileText size={14} className="text-[#9f55ff]" />
+          <FileText size={14} className="text-[#E8A33D]" />
           <span>Meeting transcript</span>
         </div>
 
@@ -818,7 +818,7 @@ export default function MeetingDetailPage() {
             <button
               onClick={runExtraction}
               disabled={isExtracting || !transcript.trim()}
-              className="flex items-center gap-2 rounded bg-[#9f55ff] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
+              className="flex items-center gap-2 rounded bg-[#E8A33D] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
             >
               {isExtracting ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -838,10 +838,10 @@ export default function MeetingDetailPage() {
           {meeting.decisions && meeting.decisions.length > 0 && (
             <div className="ops-panel p-5 space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-                <Gavel size={14} className="text-[#00ffff]" />
+                <Gavel size={14} className="text-[#49B9AE]" />
                 <span>Decisions ({meeting.decisions.length})</span>
               </div>
-              <div className="divide-y divide-[#2d2345]">
+              <div className="divide-y divide-[#212B2E]">
                 {meeting.decisions.map((d: any) => (
                   <div key={d.id} className="py-2.5 space-y-0.5">
                     <div className="text-xs font-medium text-[#E7EEEF]">{d.title}</div>
@@ -857,20 +857,20 @@ export default function MeetingDetailPage() {
             <div className="ops-panel p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-semibold text-[#E7EEEF]">
-                  <ListChecks size={14} className="text-[#9f55ff]" />
+                  <ListChecks size={14} className="text-[#E8A33D]" />
                   <span>Action items ({meeting.tasks.length})</span>
                 </div>
                 {pendingCount > 0 && (
                   <button
                     onClick={remindAllPending}
-                    className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#3e305e] rounded px-2 py-0.5"
+                    className="flex items-center gap-1 font-mono text-[11px] text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] rounded px-2 py-0.5"
                   >
                     <Bell size={11} /> REMIND ALL PENDING ({pendingCount})
                   </button>
                 )}
               </div>
 
-              <div className="divide-y divide-[#2d2345]">
+              <div className="divide-y divide-[#212B2E]">
                 {meeting.tasks.map((t: any) => {
                   const d = daysUntil(t.deadline);
                   const isDone = t.status === "Completed";
@@ -879,10 +879,10 @@ export default function MeetingDetailPage() {
                       <button
                         onClick={() => toggleTaskStatus(t.id, t.status)}
                         disabled={isReadOnly}
-                        className={`mt-0.5 ${isReadOnly ? "cursor-not-allowed opacity-60" : "text-[#5B6A6E] hover:text-[#00ffff]"}`}
+                        className={`mt-0.5 ${isReadOnly ? "cursor-not-allowed opacity-60" : "text-[#5B6A6E] hover:text-[#49B9AE]"}`}
                       >
                         {isDone ? (
-                          <CircleCheck size={16} className="text-[#00ffff]" />
+                          <CircleCheck size={16} className="text-[#49B9AE]" />
                         ) : (
                           <Circle size={16} />
                         )}
@@ -911,11 +911,11 @@ export default function MeetingDetailPage() {
                               ))}
                             </select>
                           ) : (
-                            <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">
+                            <span className="ops-badge border-[#2A363A] text-[#8FA0A4]">
                               {t.ownerName}
                             </span>
                           )}
-                          <span className="ops-badge border-[#3e305e] text-[#9f55ff]">
+                          <span className="ops-badge border-[#2A363A] text-[#E8A33D]">
                             {t.priority || "Medium"}
                           </span>
                           <span style={{ color: deadlineTone(d) }}>{deadlineLabel(d)}</span>
@@ -925,7 +925,7 @@ export default function MeetingDetailPage() {
                         <button
                           onClick={() => sendReminder(t.ownerName)}
                           title="Send reminder"
-                          className="rounded border border-[#3e305e] p-1 text-[#8FA0A4] hover:border-[#9f55ff] hover:text-[#9f55ff]"
+                          className="rounded border border-[#2A363A] p-1 text-[#8FA0A4] hover:border-[#E8A33D] hover:text-[#E8A33D]"
                         >
                           <Bell size={12} />
                         </button>
