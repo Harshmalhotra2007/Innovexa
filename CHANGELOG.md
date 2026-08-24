@@ -7,7 +7,7 @@ All notable changes to the Innovexa Ops Console platform are documented in this 
 ## [2.0.0] - 2026-08-24
 
 ### Changed
-- Rebranded from MeetIQ to Innovexa across all code and documentation.
+- Rebranded from Innovexa to Innovexa across all code and documentation.
 
 ### Added
 - **Meeting Audio Recording**: Browser-based recording using the MediaRecorder API, with pause/resume support, live duration timers, and a visual pulsing waveform container.
