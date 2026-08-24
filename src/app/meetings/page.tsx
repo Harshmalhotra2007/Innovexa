@@ -211,7 +211,7 @@ export default function MeetingsPage() {
             <button
               type="submit"
               disabled={isSubmitting || !title.trim()}
-              className="flex items-center gap-2 rounded bg-[#9f55ff] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
+              className="flex items-center gap-2 rounded bg-[#E8A33D] px-4 py-2 text-xs font-semibold text-[#1A1305] hover:bg-[#d8932d] disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -248,7 +248,7 @@ export default function MeetingsPage() {
                     {new Date(m.date).toLocaleDateString()}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Sparkles size={11} className="text-[#9f55ff]" />
+                    <Sparkles size={11} className="text-[#E8A33D]" />
                     {m.decisions?.length || 0} decisions
                   </span>
                   <span>{m.tasks?.length || 0} tasks</span>

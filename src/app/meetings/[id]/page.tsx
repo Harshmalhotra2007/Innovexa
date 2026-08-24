@@ -520,9 +520,9 @@ export default function MeetingDetailPage() {
 
   const deadlineTone = (days: number | null) => {
     if (days === null) return "#5B6A6E";
-    if (days < 0) return "#ff007f";
-    if (days <= 2) return "#9f55ff";
-    return "#00ffff";
+    if (days < 0) return "#E2666A";
+    if (days <= 2) return "#E8A33D";
+    return "#49B9AE";
   };
 
   const deadlineLabel = (days: number | null) => {
@@ -569,7 +569,7 @@ export default function MeetingDetailPage() {
   if (loading) {
     return (
       <div className="py-20 text-center text-xs text-[#8FA0A4]">
-        <Loader2 size={20} className="animate-spin text-[#9f55ff] mx-auto mb-2" />
+        <Loader2 size={20} className="animate-spin text-[#E8A33D] mx-auto mb-2" />
         Loading meeting details...
       </div>
     );
@@ -578,9 +578,9 @@ export default function MeetingDetailPage() {
   if (!meeting || meeting.error) {
     return (
       <div className="py-20 text-center space-y-3 text-xs text-[#8FA0A4]">
-        <AlertTriangle size={20} className="text-[#ff007f] mx-auto" />
+        <AlertTriangle size={20} className="text-[#E2666A] mx-auto" />
         <p>Meeting record not found.</p>
-        <Link href="/meetings" className="text-[#9f55ff] underline">
+        <Link href="/meetings" className="text-[#E8A33D] underline">
           Return to meetings
         </Link>
       </div>

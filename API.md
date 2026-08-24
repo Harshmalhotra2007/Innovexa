@@ -168,3 +168,72 @@ Innovexa uses role-based header authorization. Protected endpoints (such as `POS
   ]
   ```
 
+---
+
+### 14. Trigger AI Agent Join (`POST /api/ai-agent/join`) [Organizer Only]
+- **Headers**:
+  - `x-user-role`: `organizer`
+- **Request Body**:
+  ```json
+  {
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "apiKey": "optional-gemini-or-openai-api-key"
+  }
+  ```
+- **Response (210 Created / 201 Created)**:
+  ```json
+  {
+    "id": "agent-uuid-123",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "status": "joining",
+    "joinedAt": "2026-08-24T20:15:00.000Z",
+    "recordingUrl": "https://storage.innovexa.com/recordings/c4b3a210-9876-4321-8765-123456789abc.mp3",
+    "transcript": null,
+    "summary": null,
+    "createdAt": "2026-08-24T20:15:00.000Z",
+    "updatedAt": "2026-08-24T20:15:00.000Z"
+  }
+  ```
+
+### 15. Get AI Agent Status (`GET /api/ai-agent/status/:meetingId`)
+- **Response (200 OK)**:
+  ```json
+  {
+    "id": "agent-uuid-123",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "status": "completed",
+    "joinedAt": "2026-08-24T20:15:00.000Z",
+    "recordingUrl": "https://storage.innovexa.com/recordings/c4b3a210-9876-4321-8765-123456789abc.mp3",
+    "transcript": [
+      {
+        "speaker": "Alice",
+        "text": "Hello",
+        "timestamp": "00:00:01"
+      }
+    ],
+    "summary": "Sample executive summary...",
+    "createdAt": "2026-08-24T20:15:00.000Z",
+    "updatedAt": "2026-08-24T20:17:00.000Z"
+  }
+  ```
+
+### 16. Get AI Agent Transcript (`GET /api/ai-agent/:meetingId/transcript`)
+- **Response (200 OK)**:
+  ```json
+  [
+    {
+      "speaker": "Alice",
+      "text": "Hello",
+      "timestamp": "00:00:01"
+    }
+  ]
+  ```
+
+### 17. Real-Time Stream updates (`GET /api/ai-agent/:meetingId/updates`)
+- **Type**: Server-Sent Events (`text/event-stream`)
+- **Response (200 OK)**:
+  ```text
+  data: {"id":"agent-uuid-123","meetingId":"c4b3a210-9876-4321-8765-123456789abc","status":"recording",...}
+  ```
+
+

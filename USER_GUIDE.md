@@ -77,3 +77,22 @@ The Innovexa Ops Console enables real-time browser-based recording and audio fil
 ### Playing Back Recordings
 - All users (organizers and participants) can listen to uploaded meeting recordings directly in the **Meeting Audio Recordings** panel using the custom media playback player.
 
+---
+
+## 🤖 6. AI Meeting Agent
+
+The **Innovexa AI Meeting Agent** acts as an autonomous virtual participant in scheduled and ad-hoc meetings.
+
+### Access & Controls (Organizer Only)
+1. Navigate to `/meetings/[id]`.
+2. Locate the **INNOVEXA AI MEETING AGENT** panel.
+3. Click the **JOIN MEETING** button to spawn the virtual participant.
+   - The agent transitions states in real-time: `Idle` ➜ `Joining` ➜ `Recording` ➜ `Transcribing` ➜ `Summarizing` ➜ `Completed`.
+   - Organizers can track these stages via the terminal-style pulsing status badges.
+
+### Live Captions & AI Summaries (All Users)
+- **Live Diarized Caption Stream**: As the agent records and processes speech, the diarized speaker segments (e.g. `Alex Mercer: ...`) are streamed directly to the panel with timestamp logs.
+- **AI Generated Executive Summary**: Once transcription is complete, the agent generates an executive bullet-point summary (powered by Whisper and GPT-4 integration) mapping core focus areas, key decisions, and next action items.
+- **Data Retention & Privacy**: To comply with data privacy policies, all recordings are encrypted at rest and automatically purged after 30 days.
+
+
