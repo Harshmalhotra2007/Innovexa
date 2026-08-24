@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 import { AuthGuard } from "@/components/AuthGuard";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -42,6 +43,7 @@ export default function RootLayout({
             {children}
           </main>
         </AuthGuard>
+        <SpeedInsights />
       </body>
     </html>
   );
