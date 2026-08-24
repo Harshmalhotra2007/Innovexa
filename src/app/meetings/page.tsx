@@ -238,7 +238,7 @@ export default function MeetingsPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-body text-sm font-semibold text-[#E7EEEF]">{m.title}</span>
                   <span className="ops-badge border-[#3e305e] text-[#8FA0A4]">{m.department}</span>
-                  <span className="ops-badge border-[#E8A33D]/50 bg-[#2D2316] text-[#E8A33D] text-[10px]">
+                  <span className="ops-badge border-[#00ffff]/50 bg-[#00ffff]/10 text-[#00ffff] text-[10px]">
                     AI AGENT READY
                   </span>
                 </div>

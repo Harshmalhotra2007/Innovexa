@@ -132,37 +132,37 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     switch (agent.status) {
       case "joining":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#2D2316] text-[#E8A33D] border border-[#E8A33D]/50 animate-pulse">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#9f55ff]/20 text-[#D946EF] border border-[#9f55ff]/50 animate-pulse">
             <Loader2 className="w-3.5 h-3.5 animate-spin" /> JOINING MEETING
           </span>
         );
       case "recording":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#2E1C1D] text-[#E2666A] border border-[#E2666A]/50">
-            <span className="w-2 h-2 rounded-full bg-[#E2666A] animate-ping" /> RECORDING AUDIO
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#ff007f]/20 text-[#ff007f] border border-[#ff007f]/50">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff007f] animate-ping" /> RECORDING AUDIO
           </span>
         );
       case "transcribing":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#152928] text-[#49B9AE] border border-[#49B9AE]/50 animate-pulse">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/50 animate-pulse">
             <Mic className="w-3.5 h-3.5" /> WHISPER ASR TRANSCRIBING
           </span>
         );
       case "summarizing":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#2D2316] text-[#E8A33D] border border-[#E8A33D]/50 animate-pulse">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#9f55ff]/20 text-[#9f55ff] border border-[#9f55ff]/50 animate-pulse">
             <Sparkles className="w-3.5 h-3.5" /> GPT-4 SUMMARIZING
           </span>
         );
       case "completed":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#152928] text-[#49B9AE] border border-[#49B9AE]/50">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#00ffff]/20 text-[#00ffff] border border-[#00ffff]/50">
             <CheckCircle2 className="w-3.5 h-3.5" /> AGENT COMPLETED
           </span>
         );
       default:
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#141C1F] text-[#8FA0A4] border border-[#212B2E]">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1a1a2f] text-[#8FA0A4] border border-[#3e305e]">
             <Bot className="w-3.5 h-3.5 text-[#8FA0A4]" /> AGENT IDLE
           </span>
         );
@@ -170,18 +170,18 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   };
 
   return (
-    <div className="ops-panel p-5 space-y-4 font-sans text-xs">
+    <div className="rounded-xl border border-[#00ffff]/40 bg-[#1a1a2e] p-5 shadow-xl shadow-[#00ffff]/5 space-y-4 font-sans text-xs">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#212B2E] pb-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#3e305e] pb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-[#2D2316] text-[#E8A33D] border border-[#E8A33D]/40">
+          <div className="p-2 rounded-lg bg-[#9f55ff]/20 text-[#00ffff] border border-[#00ffff]/40">
             <Bot className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-display font-bold text-sm tracking-wide text-[#E7EEEF] uppercase flex items-center gap-2">
               INNOVEXA AI MEETING AGENT
             </h3>
-            <p className="font-mono text-[11px] text-[#5B6A6E] mt-0.5">
+            <p className="font-mono text-[11px] text-[#8FA0A4] mt-0.5">
               Automated Virtual Participant • Whisper ASR • GPT-4 Summarizer
             </p>
           </div>
@@ -192,7 +192,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           <button
             onClick={handleJoinMeeting}
             disabled={agent.status !== "idle" || loading || userRole !== "organizer"}
-            className="px-4 py-2 rounded font-display text-xs font-bold uppercase tracking-wider bg-[#E8A33D] text-[#1A1305] hover:bg-[#d8932d] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-md shadow-[#E8A33D]/20"
+            className="px-4 py-2 rounded font-display text-xs font-bold uppercase tracking-wider bg-[#9f55ff] text-[#1A1305] hover:bg-[#d8932d] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-md shadow-[#9f55ff]/20"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
             JOIN MEETING
@@ -202,7 +202,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       {/* Error Message Alert */}
       {errorMsg && (
-        <div className="rounded-lg bg-[#2E1C1D] border border-[#E2666A]/40 p-3 text-[#E2666A] text-xs flex items-center gap-2 font-mono">
+        <div className="rounded-lg bg-[#ff007f]/10 border border-[#ff007f]/40 p-3 text-[#ff007f] text-xs flex items-center gap-2 font-mono">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMsg}</span>
         </div>
@@ -211,14 +211,14 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       {/* Live Transcribe Caption Feed */}
       {agent.transcript && agent.transcript.length > 0 && (
         <div className="space-y-2">
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#49B9AE] flex items-center gap-1.5 font-semibold">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-[#00ffff] flex items-center gap-1.5 font-semibold">
             <Mic className="w-3.5 h-3.5" /> LIVE DIARIZED CAPTION STREAM
           </div>
-          <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-3 max-h-48 overflow-y-auto space-y-2 font-mono text-xs">
+          <div className="rounded-lg bg-[#131324] border border-[#3e305e] p-3 max-h-48 overflow-y-auto space-y-2 font-mono text-xs">
             {agent.transcript.map((seg, i) => (
-              <div key={i} className="flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0">
+              <div key={i} className="flex items-start gap-2 border-b border-[#252542] pb-1.5 last:border-0 last:pb-0">
                 <span className="text-[10px] text-[#5B6A6E] pt-0.5">{seg.timestamp}</span>
-                <span className="font-bold text-[#49B9AE] min-w-[130px]">{seg.speaker}:</span>
+                <span className="font-bold text-[#00ffff] min-w-[130px]">{seg.speaker}:</span>
                 <span className="text-[#E7EEEF] flex-1">{seg.text}</span>
               </div>
             ))}
@@ -229,18 +229,18 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       {/* AI Summary Box */}
       {agent.summary && (
         <div className="space-y-1.5">
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#E8A33D] flex items-center gap-1.5 font-semibold">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-[#9f55ff] flex items-center gap-1.5 font-semibold">
             <Sparkles className="w-3.5 h-3.5" /> AI GENERATED EXECUTIVE SUMMARY
           </div>
-          <div className="rounded-lg bg-[#1F292D] border border-[#E8A33D]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
+          <div className="rounded-lg bg-[#252542] border border-[#9f55ff]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
             {agent.summary}
           </div>
         </div>
       )}
 
       {/* Privacy & Retention Disclaimer */}
-      <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-2.5 text-[11px] text-[#5B6A6E] flex items-center gap-2 font-mono">
-        <ShieldAlert className="w-4 h-4 text-[#49B9AE] flex-shrink-0" />
+      <div className="rounded-lg bg-[#131324] border border-[#3e305e] p-2.5 text-[11px] text-[#8FA0A4] flex items-center gap-2 font-mono">
+        <ShieldAlert className="w-4 h-4 text-[#00ffff] flex-shrink-0" />
         <span>
           ⚠️ Privacy Disclaimer: Meetings are recorded and transcribed for summary purposes. Audio files are encrypted at rest in S3/Supabase and subject to a 30-day retention policy.
         </span>
