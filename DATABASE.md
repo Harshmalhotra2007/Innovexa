@@ -1,4 +1,4 @@
-﻿# Innovexa Ops Console — Database & Prisma Architecture
+# Innovexa Ops Console — Database & Prisma Architecture
 
 Comprehensive documentation of the PostgreSQL database schema, Prisma ORM configuration, performance indexes, and migration procedures.
 
@@ -12,6 +12,7 @@ erDiagram
     Meeting ||--o{ MeetingSegment : "has"
     Meeting ||--o{ Decision : "yields"
     Meeting ||--o{ Task : "generates"
+    User ||--o{ Task : "owns"
     Task ||--o{ Notification : "triggers"
 
     Department {
@@ -70,6 +71,7 @@ erDiagram
     Task {
         string id PK
         string meetingId FK
+        string assigneeId FK
         string title
         string description
         string ownerName

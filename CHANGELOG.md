@@ -31,6 +31,5 @@ All notable changes to the Innovexa Ops Console project will be documented in th
 ### Removed
 - SQLite Database file (`prisma/dev.db`).
 - Legacy JSX prototypes and instructions inside `Code/` folder.
-- Unused devDependencies: `@testing-library/react`, `@testing-library/jest-dom`, and `jest-environment-jsdom` (removing 127 node packages in total).
 - Old build cache assets (`tsconfig.tsbuildinfo`).
 

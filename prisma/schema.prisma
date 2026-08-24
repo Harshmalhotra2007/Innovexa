@@ -29,6 +29,7 @@ enum TaskPriority {
   Critical
 }
 
+/// Represents an organizational division or department within Innovexa.
 model Department {
   id           String   @id @default(uuid())
   name         String   @unique
@@ -39,6 +40,7 @@ model Department {
   createdAt    DateTime @default(now())
 }
 
+/// Represents an employee/user registered in the Innovexa console.
 model User {
   id           String      @id @default(uuid())
   name         String
@@ -50,6 +52,7 @@ model User {
   createdAt    DateTime    @default(now())
 }
 
+/// Represents a scheduled or processed meeting in the Innovexa console.
 model Meeting {
   id           String           @id @default(uuid())
   title        String
@@ -63,6 +66,7 @@ model Meeting {
   segments     MeetingSegment[]
   decisions    Decision[]
   tasks        Task[]
+  recordings   Recording[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -70,6 +74,7 @@ model Meeting {
   @@index([department])
 }
 
+/// Represents an individual chat/diarized speech segment from a meeting transcript.
 model MeetingSegment {
   id        String   @id @default(uuid())
   meetingId String
@@ -81,6 +86,7 @@ model MeetingSegment {
   order     Int
 }
 
+/// Represents a formal decision derived from a meeting transcript.
 model Decision {
   id          String   @id @default(uuid())
   meetingId   String
@@ -93,6 +99,7 @@ model Decision {
   createdAt   DateTime @default(now())
 }
 
+/// Represents an action item or task generated from a meeting transcript.
 model Task {
   id              String         @id @default(uuid())
   meetingId       String?
@@ -122,6 +129,7 @@ model Task {
   @@index([assigneeId, deadline])
 }
 
+/// Represents an alert/notification triggered by task SLA breaches or assignments.
 model Notification {
   id        String   @id @default(uuid())
   taskId    String?
@@ -133,3 +141,19 @@ model Notification {
   sentAt    DateTime @default(now())
   read      Boolean  @default(false)
 }
+
+/// Represents a voice recording file linked to a meeting.
+model Recording {
+  id          String   @id @default(uuid())
+  meetingId   String
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  url         String   // S3/Supabase Storage URL
+  duration    Int      // Duration in seconds
+  size        Int      // File size in bytes
+  format      String   // e.g., "audio/mp3"
+  uploadedAt  DateTime @default(now())
+  transcript  Json?    // Optional: Store transcript as JSON
+
+  @@index([meetingId])
+}
+

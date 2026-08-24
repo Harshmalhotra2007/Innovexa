@@ -11,7 +11,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1116.0",
+    "@aws-sdk/lib-storage": "^3.1116.0",
     "@prisma/client": "^5.19.0",
+    "@supabase/supabase-js": "^2.112.4",
     "lucide-react": "^0.439.0",
     "next": "14.2.7",
     "react": "^18.3.1",
