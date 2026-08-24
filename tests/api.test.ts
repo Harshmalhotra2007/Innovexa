@@ -16,6 +16,9 @@ jest.mock("../src/lib/db", () => ({
     decision: {
       deleteMany: jest.fn(),
     },
+    actionItem: {
+      deleteMany: jest.fn(),
+    },
     meeting: {
       delete: jest.fn(),
       findUnique: jest.fn(),
@@ -72,6 +75,7 @@ describe("Meetings DELETE API Endpoint", () => {
 
     expect(db.task.deleteMany).toHaveBeenCalledWith({ where: { meetingId: "1" } });
     expect(db.decision.deleteMany).toHaveBeenCalledWith({ where: { meetingId: "1" } });
+    expect(db.actionItem.deleteMany).toHaveBeenCalledWith({ where: { meetingId: "1" } });
     expect(db.meeting.delete).toHaveBeenCalledWith({ where: { id: "1" } });
   });
 });

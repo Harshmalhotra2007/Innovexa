@@ -12,6 +12,7 @@ export async function GET(
       segments: { orderBy: { order: "asc" } },
       decisions: true,
       tasks: { orderBy: { deadline: "asc" } },
+      actionItems: true,
     },
   });
 
@@ -34,9 +35,10 @@ export async function DELETE(
 
     const { id } = params;
 
-    // Delete associated tasks and decisions first
+    // Delete associated tasks, decisions, and action items first
     await db.task.deleteMany({ where: { meetingId: id } });
     await db.decision.deleteMany({ where: { meetingId: id } });
+    await db.actionItem.deleteMany({ where: { meetingId: id } });
 
     // Delete the meeting
     await db.meeting.delete({ where: { id } });

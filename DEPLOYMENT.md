@@ -12,6 +12,13 @@ Ensure the following API credentials and storage settings are configured in prod
 # AI Engine Credentials
 OPENAI_API_KEY="sk-proj-your-openai-api-key"
 
+# Google Meet & Calendar OAuth 2.0 Integration
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_REDIRECT_URI="https://innovexa.com/auth/google/callback"
+GOOGLE_EMAIL="ai-agent@innovexa.com"
+GOOGLE_PASSWORD="your-google-account-password"
+
 # Zoom API & Web SDK Integration
 ZOOM_API_KEY="your-zoom-app-key"
 ZOOM_API_SECRET="your-zoom-app-secret"

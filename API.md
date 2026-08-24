@@ -236,4 +236,23 @@ Innovexa uses role-based header authorization. Protected endpoints (such as `POS
   data: {"id":"agent-uuid-123","meetingId":"c4b3a210-9876-4321-8765-123456789abc","status":"recording",...}
   ```
 
+### 18. Stateful Agent WebSockets (`ws://localhost:8081/ai-agent/:meetingId`)
+- **Protocol**: `ws` or `wss`
+- **Handshake Connection**: Client opens connection targeting specific `meetingId`.
+- **Client Messages**:
+  - `{"action": "start"}`: Trigger the browser automation, recording, transcription, and diarization loop.
+- **Server Messages**: Streams JSON updates on state change:
+  ```json
+  {
+    "id": "agent-uuid-123",
+    "meetingId": "c4b3a210-9876-4321-8765-123456789abc",
+    "status": "recording",
+    "joinedAt": "2026-08-24T22:00:00.000Z",
+    "recordingUrl": null,
+    "transcript": null,
+    "summary": null
+  }
+  ```
+
+
 

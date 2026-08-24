@@ -90,9 +90,15 @@ The **Innovexa AI Meeting Agent** acts as an autonomous virtual participant in s
    - The agent transitions states in real-time: `Idle` ➜ `Joining` ➜ `Recording` ➜ `Transcribing` ➜ `Summarizing` ➜ `Completed`.
    - Organizers can track these stages via the terminal-style pulsing status badges.
 
+### Google Meet Joining Flow (Automated)
+- Ensure the AI Agent's workspace account (`ai-agent@innovexa.com`) is invited to the calendar event.
+- The stateful runner launches a headless Chrome instance via Playwright, authenticates, and connects to the Meet lobby.
+- To prevent loop feedback, the bot joins muted and begins recording the active browser audio.
+
 ### Live Captions & AI Summaries (All Users)
 - **Live Diarized Caption Stream**: As the agent records and processes speech, the diarized speaker segments (e.g. `Alex Mercer: ...`) are streamed directly to the panel with timestamp logs.
 - **AI Generated Executive Summary**: Once transcription is complete, the agent generates an executive bullet-point summary (powered by Whisper and GPT-4 integration) mapping core focus areas, key decisions, and next action items.
+- **AI Extracted Action Items**: Extracted tasks, assignees, and dates are saved directly to the database and rendered on the dashboard.
 - **Data Retention & Privacy**: To comply with data privacy policies, all recordings are encrypted at rest and automatically purged after 30 days.
 
 

@@ -68,6 +68,7 @@ model Meeting {
   tasks        Task[]
   recordings   Recording[]
   aiAgent      AIAgent?
+  actionItems  ActionItem[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -173,3 +174,17 @@ model AIAgent {
 
   @@index([meetingId])
 }
+
+/// Represents a production-grade action item extracted from an AI Agent transcript.
+model ActionItem {
+  id        String    @id @default(uuid())
+  meetingId String
+  meeting   Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  assignee  String
+  task      String
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([meetingId])
+}
+

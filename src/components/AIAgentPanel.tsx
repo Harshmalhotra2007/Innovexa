@@ -29,43 +29,91 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     meetingId,
     status: "idle",
   });
+  const [actionItems, setActionItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("participant");
   const eventSourceRef = useRef<EventSource | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     // Read session role from sessionStorage
     const role = sessionStorage.getItem("userRole") || "participant";
     setUserRole(role);
 
-    // Initial fetch of agent status
+    // Initial fetch of agent status & action items
     fetchStatus();
+    fetchActionItems();
 
-    // Connect to SSE Endpoint for real-time updates
+    // Connect to WebSocket Server for stateful updates
+    let wsConnected = false;
     try {
-      const es = new EventSource(`/api/ai-agent/${meetingId}/updates`);
-      eventSourceRef.current = es;
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost = window.location.hostname;
+      const wsPort = 8081;
+      const socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ai-agent/${meetingId}`);
+      socketRef.current = socket;
 
-      es.onmessage = (event) => {
+      socket.onopen = () => {
+        wsConnected = true;
+        console.log("[AIAgentPanel] Connected to WebSocket Agent service");
+      };
+
+      socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data && data.status) {
             setAgent((prev) => ({ ...prev, ...data }));
+            if (data.status === "completed") {
+              fetchActionItems();
+            }
           }
-        } catch {
-          // Fallback parsing
+        } catch (e) {
+          // Ignore
         }
       };
 
-      es.onerror = () => {
-        es.close();
+      socket.onerror = () => {
+        // Fallback to EventSource if WebSocket fails
+        if (!wsConnected) {
+          connectSSE();
+        }
       };
     } catch {
-      // EventSource fallback
+      connectSSE();
+    }
+
+    function connectSSE() {
+      try {
+        const es = new EventSource(`/api/ai-agent/${meetingId}/updates`);
+        eventSourceRef.current = es;
+
+        es.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data && data.status) {
+              setAgent((prev) => ({ ...prev, ...data }));
+              if (data.status === "completed") {
+                fetchActionItems();
+              }
+            }
+          } catch {
+            // Ignore
+          }
+        };
+
+        es.onerror = () => {
+          es.close();
+        };
+      } catch {
+        // Fallback
+      }
     }
 
     return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -77,7 +125,21 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       const res = await fetch(`/api/ai-agent/status/${meetingId}`);
       if (res.ok) {
         const data = await res.json();
-        setAgent(data);
+        if (data) {
+          setAgent(data);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  const fetchActionItems = async () => {
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActionItems(data.actionItems || []);
       }
     } catch {
       // Ignore
@@ -93,6 +155,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     setLoading(true);
     setErrorMsg(null);
     try {
+      // 1. Post to API to update state to joining
       const res = await fetch("/api/ai-agent/join", {
         method: "POST",
         headers: {
@@ -109,17 +172,24 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       const data = await res.json();
       setAgent(data);
-      // Poll to update UI transitions
-      const interval = setInterval(async () => {
-        const statusRes = await fetch(`/api/ai-agent/status/${meetingId}`);
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          setAgent(statusData);
-          if (statusData.status === "completed") {
-            clearInterval(interval);
+
+      // 2. Trigger active run via WebSocket if connected
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ action: "start" }));
+      } else {
+        // Fallback: poll status directly
+        const interval = setInterval(async () => {
+          const statusRes = await fetch(`/api/ai-agent/status/${meetingId}`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            setAgent(statusData);
+            if (statusData.status === "completed") {
+              clearInterval(interval);
+              fetchActionItems();
+            }
           }
-        }
-      }, 1000);
+        }, 1000);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error joining meeting";
       setErrorMsg(msg);
@@ -234,6 +304,28 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </div>
           <div className="rounded-lg bg-[#1D272B] border border-[#E8A33D]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
             {agent.summary}
+          </div>
+        </div>
+      )}
+
+      {/* Extracted Action Items Box */}
+      {actionItems && actionItems.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-[#49B9AE] flex items-center gap-1.5 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5" /> AI EXTRACTED ACTION ITEMS
+          </div>
+          <div className="rounded-lg bg-[#141C1F] border border-[#2A363A] p-3.5 space-y-2 text-[#E7EEEF] font-mono text-xs">
+            {actionItems.map((item) => (
+              <div key={item.id} className="flex items-start gap-3 border-b border-[#212B2E] pb-2 last:border-0 last:pb-0">
+                <span className="font-bold text-[#E8A33D] min-w-[130px]">{item.assignee}:</span>
+                <span className="flex-1">{item.task}</span>
+                {item.dueDate && (
+                  <span className="text-[10px] text-[#8FA0A4]">
+                    Due: {new Date(item.dueDate).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

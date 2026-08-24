@@ -1,0 +1,16 @@
+{
+  "name": "innovexa-ai-agent-service",
+  "version": "1.0.0",
+  "description": "Production-grade stateful AI Agent Service for Google Meet automation, audio capture, transcription, and diarization.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1116.0",
+    "dotenv": "^16.3.1",
+    "openai": "^4.0.0",
+    "playwright-chromium": "^1.37.0",
+    "ws": "^8.13.0"
+  }
+}
