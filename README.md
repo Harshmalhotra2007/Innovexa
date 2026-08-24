@@ -1,4 +1,4 @@
-# Innovexa Ops Console — Intelligent Meeting, Decision & Action System
+﻿# Innovexa Ops Console — Intelligent Meeting, Decision & Action System
 
 [![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel&style=flat-square)](https://innovexa-murex.vercel.app)
 [![Jest Test Suite](https://img.shields.io/badge/Jest%20Tests-Passing-success?logo=jest&style=flat-square)](https://github.com/Harshmalhotra2007/Innovexa.git)
@@ -24,7 +24,7 @@ Access the console at `/login` or through default navigation. Authenticated sess
 ## ⚡ Tech Stack & PostgreSQL Architecture
 
 - **Frontend & App Framework**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
-- **Design System & Aesthetic**: Innovexa Ops Console dark theme (`#0D1315` background, `#182124` panels, `#E8A33D` amber, `#49B9AE` teal, `#E2666A` red, `Space Grotesk` headers, `IBM Plex Mono` code, `Inter` body)
+- **Design System & Aesthetic**: Innovexa Ops Console dark theme (`#131324` background, `#1e1e36` panels, `#9f55ff` amber, `#00ffff` teal, `#ff007f` red, `Space Grotesk` headers, `IBM Plex Mono` code, `Inter` body)
 - **Database & ORM**: PostgreSQL (v15+) managed via Prisma ORM (v5.22+)
 - **PostgreSQL Features**:
   - **Native Enums**: `Role` (`Member`, `Admin`, `Organizer`), `TaskStatus` (`Pending`, `In_Progress`, `Completed`, `Overdue`, `Escalated`), `TaskPriority` (`Low`, `Medium`, `High`, `Critical`)
