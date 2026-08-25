@@ -172,6 +172,11 @@ class MeetBot {
       await this.waitForAdmission(page);
       logger.info("Bot admitted to meeting call");
 
+      const meetingId = meetingUrl.split("/").pop() || "session";
+
+      // Start Watchdog Health Monitoring
+      this.startHealthWatchdog(page, meetingId);
+
       // Send consent message
       await this.sendConsentMessage(page);
       logger.info("Sent in-chat consent message");
@@ -220,6 +225,7 @@ class MeetBot {
       logger.error("MeetBot execution error", { error: err.message, meetingUrl });
       throw err;
     } finally {
+      this.stopHealthWatchdog();
       logger.info("Stopping PulseAudio recording and closing browser...");
       try {
         audioFile = await pulseAudio.stopRecording();
@@ -356,6 +362,7 @@ class MeetBot {
         await this.page.close().catch(() => {});
       }
 
+      this.stopHealthWatchdog();
       if (this.browser) {
         await this.browser.close().catch(() => {});
       }
@@ -366,6 +373,46 @@ class MeetBot {
         await new Promise((resolve) => setTimeout(resolve, 500));
         return this.leave(retries - 1);
       }
+    }
+  }
+
+  startHealthWatchdog(page, meetingId, intervalMs = 15000) {
+    logger.info(`[Watchdog] Starting periodic health watchdog for meeting: ${meetingId} (interval: ${intervalMs}ms)`);
+    this.watchdogTimer = setInterval(async () => {
+      try {
+        if (!page || page.isClosed()) {
+          logger.warn(`[Watchdog] Page closed for meeting ${meetingId}. Stopping watchdog.`);
+          this.stopHealthWatchdog();
+          return;
+        }
+
+        const disconnectedOrEjected = await page.evaluate(() => {
+          const bodyText = document.body ? document.body.innerText : "";
+          return (
+            bodyText.includes("You left the meeting") ||
+            bodyText.includes("You've been removed from the meeting") ||
+            bodyText.includes("Meeting ended for everyone") ||
+            bodyText.includes("You can't join this call")
+          );
+        }).catch(() => false);
+
+        if (disconnectedOrEjected) {
+          logger.warn(`[Watchdog] Disconnect/Ejection event detected for meeting ${meetingId}! Triggering session cleanup.`);
+          this.stopHealthWatchdog();
+        } else {
+          logger.info(`[Watchdog Check] Bot healthy and active in call for meeting ${meetingId}`);
+        }
+      } catch (err) {
+        logger.warn(`[Watchdog Check Error] ${err.message}`);
+      }
+    }, intervalMs);
+  }
+
+  stopHealthWatchdog() {
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+      logger.info("[Watchdog] Health watchdog monitor stopped cleanly.");
     }
   }
 }
