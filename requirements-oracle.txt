@@ -1,0 +1,9 @@
+sentence-transformers
+chromadb
+hdbscan
+keybert
+transformers
+kafka-python
+psycopg2-binary
+pydantic
+torch --index-url https://download.pytorch.org/whl/cpu
