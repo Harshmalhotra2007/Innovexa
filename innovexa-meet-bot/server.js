@@ -2,7 +2,7 @@ const http = require("http");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
-const { joinMeeting } = require("./joinMeeting");
+const { MeetBot } = require("./meetBot");
 const { handoffToPipeline } = require("./handoff");
 const logger = require("./logger");
 
@@ -39,17 +39,18 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { status: "error", error: "Invalid JSON payload" });
       }
 
-      const { meetingUrl, botName, metadata } = body;
+      const { meetingUrl, botName = process.env.BOT_NAME || "Innovexa Notetaker", metadata } = body;
 
       if (!meetingUrl) {
         logger.warn("Received /bot/join request missing meetingUrl");
         return sendJson(res, 400, { status: "error", error: "Missing required parameter: meetingUrl" });
       }
 
-      logger.info(`Received /bot/join request for URL: ${meetingUrl}`);
+      logger.info(`Received /bot/join request for URL: ${meetingUrl}`, { meetingUrl, botName });
 
       try {
-        const audioFile = await joinMeeting(meetingUrl, botName);
+        const bot = new MeetBot();
+        const audioFile = await bot.join(meetingUrl, botName);
         logger.info(`Meeting session finished. Audio recorded to: ${audioFile}`);
 
         const handoffResult = await handoffToPipeline(audioFile, meetingUrl, metadata || {});
@@ -58,11 +59,11 @@ const server = http.createServer(async (req, res) => {
           status: "success",
           audioFile,
           meetingUrl,
-          botName: botName || process.env.BOT_NAME || "Innovexa Notetaker",
+          botName,
           handoff: handoffResult,
         });
       } catch (error) {
-        logger.error(`Error processing /bot/join task: ${error.message}`);
+        logger.error(`Error processing /bot/join task: ${error.message}`, { error: error.message, meetingUrl });
         return sendJson(res, 500, {
           status: "error",
           error: error.message,

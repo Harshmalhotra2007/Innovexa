@@ -19,6 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.agent
+    shm_size: '2gb'
     ports:
       - "8081:8081"
     environment:
@@ -29,6 +30,9 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ENCRYPTION_SECRET_KEY=${ENCRYPTION_SECRET_KEY}
       - COMPLIANCE_JURISDICTION=${COMPLIANCE_JURISDICTION:-default}
+      - PULSE_SERVER=unix:/tmp/pulse-socket/pulse-socket
+      - PULSE_SINK=MeetSink
+      - DISPLAY=:99
     depends_on:
       redis:
         condition: service_healthy

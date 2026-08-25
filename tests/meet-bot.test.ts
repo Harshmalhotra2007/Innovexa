@@ -2,17 +2,24 @@ const path = require("path");
 const fs = require("fs");
 
 // Mock dependencies before importing modules
-jest.mock("../innovexa-meet-bot/joinMeeting", () => ({
-  joinMeeting: jest.fn().mockImplementation(async (meetingUrl, botName) => {
-    if (!meetingUrl || meetingUrl.includes("fail")) {
-      throw new Error("Failed to join meeting");
-    }
-    const mockFile = path.join(__dirname, "../scratch/test_recording.wav");
-    fs.mkdirSync(path.dirname(mockFile), { recursive: true });
-    fs.writeFileSync(mockFile, Buffer.from("RIFF....WAVEfmt...data...mock"));
-    return mockFile;
-  }),
-}));
+jest.mock("../innovexa-meet-bot/meetBot", () => {
+  return {
+    MeetBot: jest.fn().mockImplementation(() => ({
+      join: jest.fn().mockImplementation(async (meetingUrl, botName) => {
+        if (!meetingUrl || meetingUrl.includes("fail")) {
+          throw new Error("Failed to join meeting");
+        }
+        const mockFile = path.join(__dirname, "../scratch/test_recording.wav");
+        fs.mkdirSync(path.dirname(mockFile), { recursive: true });
+        fs.writeFileSync(mockFile, Buffer.from("RIFF....WAVEfmt...data...mock"));
+        return mockFile;
+      }),
+      waitForAdmission: jest.fn().mockResolvedValue(true),
+      sendConsentMessage: jest.fn().mockResolvedValue(true),
+      waitForMeetingEnd: jest.fn().mockResolvedValue(true),
+    })),
+  };
+});
 
 jest.mock("../innovexa-meet-bot/handoff", () => ({
   handoffToPipeline: jest.fn().mockImplementation(async (audioFile, meetingUrl, metadata) => {
@@ -26,8 +33,9 @@ jest.mock("../innovexa-meet-bot/handoff", () => ({
 
 const server = require("../innovexa-meet-bot/server");
 const { PulseAudio } = require("../innovexa-meet-bot/pulseaudio");
+const { MeetBot } = require("../innovexa-meet-bot/meetBot");
 
-describe("Operation Ghost Caller - Meet Bot Service Tests", () => {
+describe("Operation Ghost Caller Full Stack - Meet Bot Service Tests", () => {
   let baseUrl;
   let testServer;
 
@@ -49,6 +57,17 @@ describe("Operation Ghost Caller - Meet Bot Service Tests", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("MeetBot Class Structure", () => {
+    it("should instantiate MeetBot class and expose expected methods", () => {
+      const bot = new MeetBot();
+      expect(bot).toBeDefined();
+      expect(typeof bot.join).toBe("function");
+      expect(typeof bot.waitForAdmission).toBe("function");
+      expect(typeof bot.sendConsentMessage).toBe("function");
+      expect(typeof bot.waitForMeetingEnd).toBe("function");
+    });
   });
 
   describe("GET /health", () => {
@@ -91,7 +110,7 @@ describe("Operation Ghost Caller - Meet Bot Service Tests", () => {
       expect(body.handoff.status).toBe("success");
     });
 
-    it("should handle error gracefully when joinMeeting throws an exception", async () => {
+    it("should handle error gracefully when MeetBot join throws an exception", async () => {
       const res = await fetch(`${baseUrl}/bot/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

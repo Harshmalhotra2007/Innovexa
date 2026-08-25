@@ -34,7 +34,7 @@ class PulseAudio {
       await this.execAsync(`pactl set-default-sink ${this.sinkName}`);
       logger.info(`PulseAudio null-sink configured successfully. Module ID: ${this.moduleIndex}`);
     } catch (err) {
-      logger.warn(`PulseAudio pactl setup warning (using default system audio stream if null-sink fails): ${err.message}`);
+      logger.warn(`PulseAudio pactl setup warning: ${err.message}`);
     }
   }
 
@@ -91,7 +91,6 @@ class PulseAudio {
       logger.info(`parec fallback recording initiated.`);
     } catch (err) {
       logger.error(`parec fallback failed: ${err.message}`);
-      // Write placeholder valid WAV header file as absolute failsafe
       this.writeFailsafeWavHeader();
     }
   }
@@ -119,6 +118,27 @@ class PulseAudio {
     }
   }
 
+  /**
+   * Runs ffprobe to check if WAV duration is valid and contains active audio
+   */
+  validateAudioFile(filePath) {
+    return new Promise((resolve) => {
+      exec(`ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`, (err, stdout) => {
+        if (err) {
+          logger.warn(`ffprobe query warning: ${err.message}`);
+          return resolve(true); // Don't block pipeline if ffprobe isn't fully configured in local dev
+        }
+        const duration = parseFloat(stdout.trim());
+        if (isNaN(duration) || duration <= 0) {
+          logger.error(`Audio validation failure: WAV file has zero duration (${stdout.trim()})`);
+          return resolve(false);
+        }
+        logger.info(`Audio file validated successfully. Duration: ${duration} seconds`);
+        resolve(true);
+      });
+    });
+  }
+
   async stopRecording() {
     logger.info(`Stopping PulseAudio recording process...`);
 
@@ -128,6 +148,8 @@ class PulseAudio {
       } catch (err) {
         logger.warn(`Error terminating recording process: ${err.message}`);
       }
+      // Wait for process to clean up buffers
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // Clean up PulseAudio module
@@ -140,10 +162,16 @@ class PulseAudio {
       }
     }
 
-    // Ensure audio file exists
+    // Ensure audio file exists and has duration
     if (!this.audioFile || !fs.existsSync(this.audioFile)) {
       logger.warn(`Audio file missing upon stop. Creating failsafe WAV.`);
       this.writeFailsafeWavHeader();
+    } else {
+      const isValid = await this.validateAudioFile(this.audioFile);
+      if (!isValid) {
+        logger.warn(`WAV file has zero duration. Overwriting with failsafe template.`);
+        this.writeFailsafeWavHeader();
+      }
     }
 
     return this.audioFile;

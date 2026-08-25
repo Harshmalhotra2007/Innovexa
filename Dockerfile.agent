@@ -20,6 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgbm1 \
     libasound2 \
     ca-certificates \
+    xvfb \
+    pulseaudio \
+    pulseaudio-utils \
+    dbus-x11 \
+    alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -54,6 +59,10 @@ WORKDIR /app/ai-agent-service
 # Create recordings directory
 RUN mkdir -p /app/public/recordings
 
+# Copy and setup entrypoint script
+COPY ai-agent-service/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 # Expose WebSocket port
 EXPOSE 8081
 
@@ -61,5 +70,5 @@ EXPOSE 8081
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('net').connect(8081, 'localhost').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"
 
-# Start the agent service
-CMD ["node", "server.js"]
+# Start the agent service via entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]

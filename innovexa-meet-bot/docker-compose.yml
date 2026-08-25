@@ -4,13 +4,17 @@ services:
   innovexa-meet-bot:
     build: .
     container_name: innovexa-meet-bot
+    shm_size: '2gb' # Fix Chrome default shared memory limit crash
     environment:
       - BOT_NAME=${BOT_NAME:-Innovexa Notetaker}
       - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/innovexa-meeting}
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - PULSE_SERVER=unix:/tmp/pulse-socket/pulse-socket
+      - PULSE_SINK=MeetSink
+      - DISPLAY=:99
+      - HEADLESS=false # Run headful inside Xvfb virtual display
     volumes:
-      - /run/user/1000/pulse:/run/user/1000/pulse
       - ./recordings:/recordings
-    network_mode: host
+    ports:
+      - "3000:3000"
     restart: unless-stopped
