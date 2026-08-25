@@ -1,5 +1,5 @@
 {
-  "name": "intelligent-meeting-tracker",
+  "name": "innovexa",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,7 +15,9 @@
     "@aws-sdk/lib-storage": "^3.1116.0",
     "@prisma/client": "^5.19.0",
     "@supabase/supabase-js": "^2.112.4",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "kafkajs": "^2.2.4",
     "lucide-react": "^0.439.0",
     "next": "14.2.7",
     "react": "^18.3.1",
@@ -34,5 +36,7 @@
     "tailwindcss": "^3.4.10",
     "ts-jest": "^29.1.5",
     "typescript": "^5.5.4"
-  }
+  },
+  "description": "Innovexa: AI-powered meeting intelligence platform",
+  "author": "Innovexa Engineering"
 }
