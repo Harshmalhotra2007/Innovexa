@@ -364,11 +364,31 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         </div>
       </div>
 
-      {/* Error Message Alert */}
-      {errorMsg && (
-        <div className="rounded-lg bg-[#3A2224] border border-[#E2666A]/40 p-3 text-[#E2666A] text-xs flex items-center gap-2 font-mono">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{errorMsg}</span>
+      {/* Recording Audio/Video Playback Player */}
+      {agent.recordingUrl && agent.recordingUrl.length > 0 && (
+        <div className="space-y-2 p-3.5 rounded-lg bg-[#141C1F] border border-[#49B9AE]/40">
+          <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-[#49B9AE] font-semibold">
+            <span className="flex items-center gap-1.5">
+              <Mic className="w-4 h-4" /> MEETING AUDIO RECORDING PLAYBACK
+            </span>
+            <a
+              href={agent.recordingUrl}
+              target="_blank"
+              rel="noreferrer"
+              download
+              className="text-[10px] text-[#E8A33D] hover:underline flex items-center gap-1 font-mono border border-[#E8A33D]/40 rounded px-2 py-0.5"
+            >
+              DOWNLOAD RECORDING
+            </a>
+          </div>
+
+          <audio
+            controls
+            src={agent.recordingUrl}
+            className="w-full mt-2 rounded border border-[#212B2E] bg-[#182124]"
+          >
+            Your browser does not support audio playback.
+          </audio>
         </div>
       )}
 
