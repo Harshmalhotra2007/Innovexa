@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minute — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F7F9;
+    --surface:#FFFFFF;
+    --ink:#151922;
+    --ink-soft:#5B6472;
+    --ink-faint:#9AA1AC;
+    --line:#E3E6EB;
+    --line-strong:#CBD0D8;
+
+    --tag-decision:#2E5EAA;
+    --tag-decision-bg:#EAF0FB;
+    --tag-action:#C97A2B;
+    --tag-action-bg:#FBF0E3;
+    --tag-discussion:#7C828C;
+    --tag-discussion-bg:#F0F1F3;
+    --tag-info:#3E8B6E;
+    --tag-info-bg:#E9F5F0;
+    --tag-overdue:#C64B4B;
+    --tag-overdue-bg:#FBEAEA;
+
+    --radius:10px;
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .app{
+    display:grid;
+    grid-template-columns:230px 1fr;
+    min-height:100vh;
+  }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:var(--surface);
+    border-right:1px solid var(--line);
+    padding:24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 8px;
+  }
+  .brand-mark{
+    width:28px;height:28px;
+    border-radius:6px;
+    background:var(--ink);
+    position:relative;
+    flex-shrink:0;
+  }
+  .brand-mark::after{
+    content:"";
+    position:absolute;
+    left:6px;top:8px;
+    width:16px;height:2px;
+    background:var(--paper);
+    box-shadow:0 5px 0 var(--paper),0 10px 0 var(--paper);
+  }
+  .brand-name{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:17px;
+    letter-spacing:-0.01em;
+  }
+  .nav-group{display:flex;flex-direction:column;gap:2px;}
+  .nav-label{
+    font-size:11px;
+    font-weight:600;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    padding:0 12px;
+    margin-bottom:6px;
+  }
+  .nav-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    color:var(--ink-soft);
+    cursor:pointer;
+    user-select:none;
+  }
+  .nav-item:hover{background:var(--paper);color:var(--ink);}
+  .nav-item.active{background:var(--ink);color:#fff;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.6;flex-shrink:0;}
+
+  /* MAIN */
+  .main{display:flex;flex-direction:column;min-height:100vh;}
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 28px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+    gap:20px;
+  }
+  .search{
+    flex:1;
+    max-width:420px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 12px;
+    color:var(--ink-faint);
+    font-size:13px;
+  }
+  .topbar-right{display:flex;align-items:center;gap:16px;}
+  .icon-btn{
+    width:34px;height:34px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    position:relative;
+    color:var(--ink-soft);
+  }
+  .icon-btn .dot{
+    position:absolute;top:6px;right:6px;
+    width:6px;height:6px;border-radius:50%;
+    background:var(--tag-overdue);
+  }
+  .avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;font-family:var(--font-display);
+  }
+
+  .view-switch{
+    display:flex;
+    gap:4px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    padding:4px;
+    border-radius:9px;
+    margin:20px 28px 0;
+    width:fit-content;
+  }
+  .view-switch button{
+    border:none;background:transparent;
+    font-family:var(--font-body);
+    font-size:13px;font-weight:600;
+    padding:7px 16px;
+    border-radius:6px;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .view-switch button.active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,33,0.08);}
+
+  .content{padding:24px 28px 60px;flex:1;}
+  .page-head{margin-bottom:22px;}
+  .page-head h1{font-family:var(--font-display);font-size:24px;margin:0 0 4px;letter-spacing:-0.01em;}
+  .page-head p{margin:0;color:var(--ink-soft);font-size:13.5px;}
+
+  /* ===== DASHBOARD ===== */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .stat-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-left:4px solid var(--line-strong);
+    border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .stat-card.decision{border-left-color:var(--tag-decision);}
+  .stat-card.action{border-left-color:var(--tag-action);}
+  .stat-card.overdue{border-left-color:var(--tag-overdue);}
+  .stat-card.discussion{border-left-color:var(--tag-discussion);}
+  .stat-num{font-family:var(--font-display);font-size:28px;font-weight:700;}
+  .stat-label{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+
+  .board-row{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;}
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .panel-head{
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-head h3{margin:0;font-size:14.5px;font-weight:600;}
+  .panel-head a{font-size:12.5px;color:var(--ink-soft);text-decoration:none;font-weight:500;}
+  .panel-body{padding:6px 0;}
+
+  .task-row{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 18px;
+    border-bottom:1px solid var(--line);
+    font-size:13.5px;
+  }
+  .task-row:last-child{border-bottom:none;}
+  .checkbox{
+    width:16px;height:16px;border-radius:4px;
+    border:1.5px solid var(--line-strong);
+    flex-shrink:0;
+  }
+  .task-title{flex:1;font-weight:500;}
+  .task-meta{display:flex;align-items:center;gap:10px;}
+  .pill{
+    font-size:11px;font-weight:600;
+    padding:3px 8px;border-radius:20px;
+    font-family:var(--font-mono);
+    white-space:nowrap;
+  }
+  .pill.overdue{background:var(--tag-overdue-bg);color:var(--tag-overdue);}
+  .pill.upcoming{background:var(--tag-discussion-bg);color:var(--tag-discussion);}
+  .pill.today{background:var(--tag-action-bg);color:var(--tag-action);}
+  .mini-avatar{
+    width:22px;height:22px;border-radius:50%;
+    background:var(--paper);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:9.5px;font-weight:700;color:var(--ink-soft);
+    font-family:var(--font-display);
+  }
+
+  .meeting-row{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  .meeting-row:last-child{border-bottom:none;}
+  .meeting-dept{
+    width:36px;height:36px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-weight:700;font-size:11px;
+    flex-shrink:0;
+    background:var(--tag-decision-bg);color:var(--tag-decision);
+  }
+  .meeting-info{flex:1;min-width:0;}
+  .meeting-info .t{font-size:13.5px;font-weight:600;margin-bottom:2px;}
+  .meeting-info .d{font-size:12px;color:var(--ink-soft);font-family:var(--font-mono);}
+  .stack{display:flex;}
+  .stack .mini-avatar{margin-left:-7px;border:2px solid var(--surface);}
+  .stack .mini-avatar:first-child{margin-left:0;}
+
+  /* ===== MEETING REVIEW ===== */
+  .review-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:18px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--line);
+  }
+  .review-title h1{font-family:var(--font-display);font-size:21px;margin:0 0 6px;}
+  .review-meta{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-soft);font-family:var(--font-mono);}
+  .dept-chip{
+    background:var(--tag-decision-bg);color:var(--tag-decision);
+    font-family:var(--font-body);
+    font-weight:600;font-size:11.5px;
+    padding:3px 9px;border-radius:20px;
+  }
+  .publish-btn{
+    background:var(--ink);color:#fff;border:none;
+    font-family:var(--font-body);font-weight:600;font-size:13.5px;
+    padding:11px 20px;border-radius:8px;cursor:pointer;
+  }
+
+  .review-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;align-items:start;}
+
+  .transcript{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:6px 0;}
+  .legend{display:flex;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);}
+  .legend-swatch{width:9px;height:9px;border-radius:2px;}
+
+  .block{
+    display:flex;
+    border-bottom:1px solid var(--line);
+  }
+  .block:last-child{border-bottom:none;}
+  .tab{
+    width:6px;flex-shrink:0;
+  }
+  .block.discussion .tab{background:var(--tag-discussion);}
+  .block.decision .tab{background:var(--tag-decision);}
+  .block.action .tab{background:var(--tag-action);}
+  .block.info .tab{background:var(--tag-info);}
+
+  .block-body{padding:14px 20px;flex:1;}
+  .block-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .speaker{font-weight:600;font-size:13px;}
+  .timestamp{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);}
+  .class-tag{
+    margin-left:auto;
+    font-size:10.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:0.04em;
+    padding:2px 8px;border-radius:20px;
+    cursor:pointer;
+  }
+  .block.discussion .class-tag{background:var(--tag-discussion-bg);color:var(--tag-discussion);}
+  .block.decision .class-tag{background:var(--tag-decision-bg);color:var(--tag-decision);}
+  .block.action .class-tag{background:var(--tag-action-bg);color:var(--tag-action);}
+  .block.info .class-tag{background:var(--tag-info-bg);color:var(--tag-info);}
+  .block-text{font-size:13.5px;line-height:1.55;color:var(--ink);}
+
+  .side-col{display:flex;flex-direction:column;gap:16px;}
+  .extract-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .extract-head{padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;}
+  .extract-head .sw{width:9px;height:9px;border-radius:2px;}
+  .extract-head h3{margin:0;font-size:13.5px;font-weight:600;}
+  .extract-head .count{margin-left:auto;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);}
+
+  .xcard{padding:13px 18px;border-bottom:1px solid var(--line);}
+  .xcard:last-child{border-bottom:none;}
+  .xcard-text{font-size:13px;line-height:1.5;margin-bottom:8px;}
+  .xcard-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .field-chip{
+    display:flex;align-items:center;gap:5px;
+    background:var(--paper);border:1px solid var(--line);
+    font-size:11.5px;font-weight:500;color:var(--ink-soft);
+    padding:4px 9px;border-radius:6px;
+  }
+  .field-chip.date{font-family:var(--font-mono);}
+  .field-chip .mini-avatar{width:16px;height:16px;font-size:8px;}
+
+  .priority{font-size:10.5px;font-weight:700;text-transform:uppercase;padding:3px 7px;border-radius:5px;}
+  .priority.high{background:var(--tag-overdue-bg);color:var(--tag-overdue);}
+  .priority.med{background:var(--tag-action-bg);color:var(--tag-action);}
+
+  /* ===== TASK TRACKER (KANBAN) ===== */
+  .kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+  .kcol{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .kcol-head{
+    padding:13px 16px;
+    display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .kcol-head .sw{width:8px;height:8px;border-radius:2px;}
+  .kcol-head h3{margin:0;font-size:13px;font-weight:600;flex:1;}
+  .kcol-head .count{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);}
+  .kcol-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px;}
+
+  .kcard{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 13px;
+    cursor:grab;
+  }
+  .kcard-title{font-size:12.5px;font-weight:600;line-height:1.4;margin-bottom:10px;}
+  .kcard-foot{display:flex;align-items:center;justify-content:space-between;}
+  .kcard-dept{font-size:10px;font-weight:700;color:var(--ink-faint);font-family:var(--font-mono);text-transform:uppercase;}
+  .kcard-date{font-size:11px;font-family:var(--font-mono);color:var(--ink-soft);}
+  .kcard-date.overdue{color:var(--tag-overdue);font-weight:600;}
+  .kcard.escalated{border-color:var(--tag-overdue);border-width:1.5px;}
+  .esc-flag{
+    display:flex;align-items:center;gap:4px;
+    font-size:10px;font-weight:700;color:var(--tag-overdue);
+    text-transform:uppercase;margin-bottom:8px;
+  }
+
+  /* ===== SEARCH ===== */
+  .search-hero{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 22px 16px;margin-bottom:18px;
+  }
+  .search-hero-input{
+    display:flex;align-items:center;gap:10px;
+    border:1.5px solid var(--ink);border-radius:9px;
+    padding:12px 16px;font-size:14.5px;margin-bottom:14px;
+  }
+  .search-hero-input span.q{color:var(--ink);}
+  .search-hero-input span.cursor{width:1.5px;height:16px;background:var(--ink);display:inline-block;}
+  .search-filters{display:flex;gap:8px;flex-wrap:wrap;}
+  .filter-chip{
+    font-size:12px;font-weight:600;
+    padding:6px 12px;border-radius:20px;
+    border:1px solid var(--line);color:var(--ink-soft);
+    background:var(--paper);
+  }
+  .filter-chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .ai-answer{
+    background:var(--tag-info-bg);
+    border:1px solid #CDE6DB;
+    border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:18px;
+    display:flex;gap:12px;
+  }
+  .ai-answer .sw{width:9px;height:9px;border-radius:2px;background:var(--tag-info);margin-top:5px;flex-shrink:0;}
+  .ai-answer-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--tag-info);margin-bottom:5px;}
+  .ai-answer-text{font-size:13.5px;line-height:1.55;color:var(--ink);}
+  .ai-answer-sources{margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;}
+  .src-chip{font-size:11px;font-family:var(--font-mono);color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);padding:3px 8px;border-radius:6px;}
+
+  .result-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px 18px;margin-bottom:10px;
+  }
+  .result-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .result-type{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;
+    padding:2px 8px;border-radius:20px;
+  }
+  .result-type.decision{background:var(--tag-decision-bg);color:var(--tag-decision);}
+  .result-type.action{background:var(--tag-action-bg);color:var(--tag-action);}
+  .result-type.meeting{background:var(--tag-discussion-bg);color:var(--tag-discussion);}
+  .result-date{font-size:11.5px;color:var(--ink-faint);font-family:var(--font-mono);}
+  .result-title{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .result-snippet{font-size:13px;color:var(--ink-soft);line-height:1.5;}
+  .result-snippet mark{background:#FDE9C8;color:var(--ink);border-radius:3px;padding:0 2px;}
+
+  /* ===== ANALYTICS ===== */
+  .analytics-filters{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .dept-select{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:9px 14px;font-size:13px;font-weight:500;
+  }
+  .analytics-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px;}
+  .chart-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+  .chart-panel h3{margin:0 0 4px;font-size:14px;font-weight:600;}
+  .chart-sub{font-size:12px;color:var(--ink-soft);margin-bottom:16px;}
+
+  .bar-chart{display:flex;align-items:flex-end;gap:10px;height:150px;}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;}
+  .bar{width:100%;border-radius:5px 5px 0 0;background:var(--tag-decision);position:relative;}
+  .bar-label{font-size:10.5px;color:var(--ink-faint);font-family:var(--font-mono);}
+
+  .donut-wrap{display:flex;align-items:center;gap:20px;}
+  .donut-legend{display:flex;flex-direction:column;gap:10px;flex:1;}
+  .donut-legend-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .donut-legend-row .sw{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+  .donut-legend-row .val{margin-left:auto;font-family:var(--font-mono);font-weight:600;color:var(--ink-soft);}
+
+  .leaderboard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .lb-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);}
+  .lb-row:last-child{border-bottom:none;}
+  .lb-row.head{background:var(--paper);font-size:11px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.03em;padding:10px 20px;}
+  .lb-name{flex:2;display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:500;}
+  .lb-metric{flex:1;font-size:13px;font-family:var(--font-mono);color:var(--ink-soft);}
+  .lb-bar-track{flex:1;height:6px;background:var(--paper);border-radius:4px;overflow:hidden;}
+  .lb-bar-fill{height:100%;background:var(--tag-info);border-radius:4px;}
+
+  @media (max-width:960px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{display:none;}
+    .stat-row{grid-template-columns:repeat(2,1fr);}
+    .board-row,.review-grid,.analytics-grid{grid-template-columns:1fr;}
+    .kanban{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">Minute</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-item active" onclick="showView('dash')"><span class="nav-dot"></span>Dashboard</div>
+      <div class="nav-item"><span class="nav-dot"></span>Meetings</div>
+      <div class="nav-item" onclick="showView('tasks')"><span class="nav-dot"></span>Tasks</div>
+      <div class="nav-item" onclick="showView('search')"><span class="nav-dot"></span>Search</div>
+      <div class="nav-item" onclick="showView('analytics')"><span class="nav-dot"></span>Analytics</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Account</div>
+      <div class="nav-item"><span class="nav-dot"></span>Settings</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="search">🔍&nbsp; Search decisions, tasks, meetings…</div>
+      <div class="topbar-right">
+        <div class="icon-btn">🔔<span class="dot"></span></div>
+        <div class="avatar">RK</div>
+      </div>
+    </div>
+
+    <div class="view-switch">
+      <button id="btn-dash" class="active" onclick="showView('dash')">Dashboard</button>
+      <button id="btn-review" onclick="showView('review')">Post-Meeting Review</button>
+      <button id="btn-tasks" onclick="showView('tasks')">Task Tracker</button>
+      <button id="btn-search" onclick="showView('search')">Search</button>
+      <button id="btn-analytics" onclick="showView('analytics')">Analytics</button>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ DASHBOARD VIEW ============ -->
+      <div id="view-dash">
+        <div class="page-head">
+          <h1>Dashboard</h1>
+          <p>Thursday, 20 August · Product & Operations workspace</p>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card decision">
+            <div class="stat-num">6</div>
+            <div class="stat-label">Decisions this week</div>
+          </div>
+          <div class="stat-card action">
+            <div class="stat-num">14</div>
+            <div class="stat-label">Pending actions</div>
+          </div>
+          <div class="stat-card overdue">
+            <div class="stat-num">3</div>
+            <div class="stat-label">Overdue tasks</div>
+          </div>
+          <div class="stat-card discussion">
+            <div class="stat-num">9</div>
+            <div class="stat-label">Meetings this week</div>
+          </div>
+        </div>
+
+        <div class="board-row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>My tasks</h3>
+              <a href="#">View all</a>
+            </div>
+            <div class="panel-body">
+              <div class="task-row">
+                <div class="checkbox"></div>
+                <div class="task-title">Send updated vendor pricing to finance</div>
+                <div class="task-meta"><span class="pill overdue">2d overdue</span></div>
+              </div>
+              <div class="task-row">
+                <div class="checkbox"></div>
+                <div class="task-title">Draft rollout plan for warehouse team</div>
+                <div class="task-meta"><span class="pill today">due today</span></div>
+              </div>
+              <div class="task-row">
+                <div class="checkbox"></div>
+                <div class="task-title">Share Q3 retro notes with leadership</div>
+                <div class="task-meta"><span class="pill upcoming">Fri, 22 Aug</span></div>
+              </div>
+              <div class="task-row">
+                <div class="checkbox"></div>
+                <div class="task-title">Confirm new onboarding checklist with HR</div>
+                <div class="task-meta"><span class="pill upcoming">Mon, 25 Aug</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Recent meetings</h3>
+              <a href="#">View all</a>
+            </div>
+            <div class="panel-body">
+              <div class="meeting-row">
+                <div class="meeting-dept">OPS</div>
+                <div class="meeting-info">
+                  <div class="t">Weekly operations sync</div>
+                  <div class="d">20 Aug · 4 decisions · 6 actions</div>
+                </div>
+                <div class="stack">
+                  <div class="mini-avatar">RK</div>
+                  <div class="mini-avatar">AS</div>
+                  <div class="mini-avatar">+3</div>
+                </div>
+              </div>
+              <div class="meeting-row">
+                <div class="meeting-dept" style="background:var(--tag-action-bg);color:var(--tag-action);">FIN</div>
+                <div class="meeting-info">
+                  <div class="t">Vendor budget review</div>
+                  <div class="d">19 Aug · 2 decisions · 3 actions</div>
+                </div>
+                <div class="stack">
+                  <div class="mini-avatar">PN</div>
+                  <div class="mini-avatar">+2</div>
+                </div>
+              </div>
+              <div class="meeting-row">
+                <div class="meeting-dept" style="background:var(--tag-info-bg);color:var(--tag-info);">HR</div>
+                <div class="meeting-info">
+                  <div class="t">Onboarding process revamp</div>
+                  <div class="d">18 Aug · 1 decision · 4 actions</div>
+                </div>
+                <div class="stack">
+                  <div class="mini-avatar">DL</div>
+                  <div class="mini-avatar">+4</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ POST-MEETING REVIEW VIEW ============ -->
+      <div id="view-review" style="display:none;">
+        <div class="review-head">
+          <div class="review-title">
+            <h1>Weekly Operations Sync</h1>
+            <div class="review-meta">
+              <span>20 AUG 2026 · 10:00–10:45</span>
+              <span class="dept-chip">Operations</span>
+              <div class="stack">
+                <div class="mini-avatar">RK</div>
+                <div class="mini-avatar">AS</div>
+                <div class="mini-avatar">+3</div>
+              </div>
+            </div>
+          </div>
+          <button class="publish-btn">Confirm & publish</button>
+        </div>
+
+        <div class="review-grid">
+          <!-- Transcript -->
+          <div class="transcript">
+            <div class="legend">
+              <div class="legend-item"><span class="legend-swatch" style="background:var(--tag-discussion)"></span>Discussion</div>
+              <div class="legend-item"><span class="legend-swatch" style="background:var(--tag-decision)"></span>Decision</div>
+              <div class="legend-item"><span class="legend-swatch" style="background:var(--tag-action)"></span>Action item</div>
+              <div class="legend-item"><span class="legend-swatch" style="background:var(--tag-info)"></span>Info</div>
+            </div>
+
+            <div class="block discussion">
+              <div class="tab"></div>
+              <div class="block-body">
+                <div class="block-top">
+                  <span class="speaker">Anita Sharma</span>
+                  <span class="timestamp">00:02:14</span>
+                  <span class="class-tag">Discussion</span>
+                </div>
+                <div class="block-text">We're still seeing delays from the new packaging vendor — deliveries have slipped twice this month. Wanted to flag it before we commit to the next order.</div>
+              </div>
+            </div>
+
+            <div class="block decision">
+              <div class="tab"></div>
+              <div class="block-body">
+                <div class="block-top">
+                  <span class="speaker">Rahul Kapoor</span>
+                  <span class="timestamp">00:05:41</span>
+                  <span class="class-tag">Decision</span>
+                </div>
+                <div class="block-text">Let's switch the primary packaging vendor to Vantage Supplies starting next cycle. Keep the old vendor as backup only.</div>
+              </div>
+            </div>
+
+            <div class="block action">
+              <div class="tab"></div>
+              <div class="block-body">
+                <div class="block-top">
+                  <span class="speaker">Anita Sharma</span>
+                  <span class="timestamp">00:06:20</span>
+                  <span class="class-tag">Action item</span>
+                </div>
+                <div class="block-text">Anita will send the updated vendor pricing sheet to finance by Friday for sign-off.</div>
+              </div>
+            </div>
+
+            <div class="block info">
+              <div class="tab"></div>
+              <div class="block-body">
+                <div class="block-top">
+                  <span class="speaker">Priya Nair</span>
+                  <span class="timestamp">00:09:03</span>
+                  <span class="class-tag">Info</span>
+                </div>
+                <div class="block-text">For context, the warehouse lease renewal is already locked in through next March, so no action needed there.</div>
+              </div>
+            </div>
+
+            <div class="block action">
+              <div class="tab"></div>
+              <div class="block-body">
+                <div class="block-top">
+                  <span class="speaker">Devika Lal</span>
+                  <span class="timestamp">00:12:47</span>
+                  <span class="class-tag">Action item</span>
+                </div>
+                <div class="block-text">Devika will draft the warehouse rollout plan and circulate it to the ops team before next Monday's sync.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Extracted panels -->
+          <div class="side-col">
+            <div class="extract-panel">
+              <div class="extract-head">
+                <span class="sw" style="background:var(--tag-decision)"></span>
+                <h3>Decisions</h3>
+                <span class="count">2</span>
+              </div>
+              <div class="xcard">
+                <div class="xcard-text">Switch primary packaging vendor to Vantage Supplies next cycle.</div>
+                <div class="xcard-meta">
+                  <div class="field-chip"><div class="mini-avatar">RK</div>Rahul Kapoor</div>
+                  <div class="field-chip date">20 Aug 2026</div>
+                </div>
+              </div>
+              <div class="xcard">
+                <div class="xcard-text">Keep the previous vendor on as backup only, not primary.</div>
+                <div class="xcard-meta">
+                  <div class="field-chip"><div class="mini-avatar">RK</div>Rahul Kapoor</div>
+                  <div class="field-chip date">20 Aug 2026</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="extract-panel">
+              <div class="extract-head">
+                <span class="sw" style="background:var(--tag-action)"></span>
+                <h3>Action items</h3>
+                <span class="count">2</span>
+              </div>
+              <div class="xcard">
+                <div class="xcard-text">Send updated vendor pricing sheet to finance for sign-off.</div>
+                <div class="xcard-meta">
+                  <div class="field-chip"><div class="mini-avatar">AS</div>Anita Sharma</div>
+                  <div class="field-chip date">Due 22 Aug</div>
+                  <span class="priority high">High</span>
+                </div>
+              </div>
+              <div class="xcard">
+                <div class="xcard-text">Draft warehouse rollout plan and circulate to ops team.</div>
+                <div class="xcard-meta">
+                  <div class="field-chip"><div class="mini-avatar">DL</div>Devika Lal</div>
+                  <div class="field-chip date">Due 25 Aug</div>
+                  <span class="priority med">Medium</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TASK TRACKER VIEW ============ -->
+      <div id="view-tasks" style="display:none;">
+        <div class="page-head">
+          <h1>Task tracker</h1>
+          <p>All action items across meetings · Operations workspace</p>
+        </div>
+
+        <div class="kanban">
+          <div class="kcol">
+            <div class="kcol-head"><span class="sw" style="background:var(--tag-discussion)"></span><h3>To do</h3><span class="count">4</span></div>
+            <div class="kcol-body">
+              <div class="kcard">
+                <div class="kcard-title">Confirm new onboarding checklist with HR</div>
+                <div class="kcard-foot"><span class="kcard-dept">HR</span><span class="kcard-date">25 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Set up quarterly vendor review cadence</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date">28 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Circulate updated travel policy draft</div>
+                <div class="kcard-foot"><span class="kcard-dept">HR</span><span class="kcard-date">29 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Book venue for Q4 town hall</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date">2 Sep</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kcol">
+            <div class="kcol-head"><span class="sw" style="background:var(--tag-action)"></span><h3>In progress</h3><span class="count">3</span></div>
+            <div class="kcol-body">
+              <div class="kcard">
+                <div class="kcard-title">Draft warehouse rollout plan</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date">25 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Negotiate revised terms with Vantage Supplies</div>
+                <div class="kcard-foot"><span class="kcard-dept">FIN</span><span class="kcard-date">27 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Compile Q3 retro notes for leadership</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date">22 Aug</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kcol">
+            <div class="kcol-head"><span class="sw" style="background:var(--tag-overdue)"></span><h3>Overdue</h3><span class="count">3</span></div>
+            <div class="kcol-body">
+              <div class="kcard escalated">
+                <div class="esc-flag">⚠ Escalated to manager</div>
+                <div class="kcard-title">Send updated vendor pricing to finance</div>
+                <div class="kcard-foot"><span class="kcard-dept">FIN</span><span class="kcard-date overdue">2d overdue</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Update supplier contact list</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date overdue">1d overdue</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Finalize warehouse safety audit checklist</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date overdue">4d overdue</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kcol">
+            <div class="kcol-head"><span class="sw" style="background:var(--tag-info)"></span><h3>Done</h3><span class="count">5</span></div>
+            <div class="kcol-body">
+              <div class="kcard">
+                <div class="kcard-title">Share meeting minutes with attendees</div>
+                <div class="kcard-foot"><span class="kcard-dept">OPS</span><span class="kcard-date">19 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Approve new packaging vendor shortlist</div>
+                <div class="kcard-foot"><span class="kcard-dept">FIN</span><span class="kcard-date">18 Aug</span></div>
+              </div>
+              <div class="kcard">
+                <div class="kcard-title">Schedule onboarding kickoff session</div>
+                <div class="kcard-foot"><span class="kcard-dept">HR</span><span class="kcard-date">17 Aug</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SEARCH VIEW ============ -->
+      <div id="view-search" style="display:none;">
+        <div class="page-head">
+          <h1>Search</h1>
+          <p>Semantic search across every meeting, decision, and task</p>
+        </div>
+
+        <div class="search-hero">
+          <div class="search-hero-input">🔍&nbsp; <span class="q">what did we decide about the packaging vendor</span><span class="cursor"></span></div>
+          <div class="search-filters">
+            <span class="filter-chip active">All</span>
+            <span class="filter-chip">Decisions</span>
+            <span class="filter-chip">Action items</span>
+            <span class="filter-chip">Meetings</span>
+            <span class="filter-chip">Operations</span>
+            <span class="filter-chip">Last 30 days</span>
+          </div>
+        </div>
+
+        <div class="ai-answer">
+          <span class="sw"></span>
+          <div>
+            <div class="ai-answer-label">Answer</div>
+            <div class="ai-answer-text">The team decided to switch the primary packaging vendor to Vantage Supplies starting next cycle, keeping the previous vendor on as backup only. This was decided during the Weekly Operations Sync after Anita Sharma flagged repeated delivery delays.</div>
+            <div class="ai-answer-sources">
+              <span class="src-chip">Weekly Operations Sync · 20 Aug</span>
+              <span class="src-chip">Vendor Budget Review · 19 Aug</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-top"><span class="result-type decision">Decision</span><span class="result-date">20 Aug 2026</span></div>
+          <div class="result-title">Switch primary packaging vendor to Vantage Supplies</div>
+          <div class="result-snippet">…delivery delays led the team to <mark>switch the primary packaging vendor</mark> to Vantage Supplies starting next cycle, with the old vendor kept as backup…</div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-top"><span class="result-type action">Action item</span><span class="result-date">20 Aug 2026</span></div>
+          <div class="result-title">Send updated vendor pricing sheet to finance</div>
+          <div class="result-snippet">Anita will send the updated <mark>vendor pricing</mark> sheet to finance by Friday for sign-off, ahead of the new packaging vendor transition.</div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-top"><span class="result-type meeting">Meeting</span><span class="result-date">19 Aug 2026</span></div>
+          <div class="result-title">Vendor budget review</div>
+          <div class="result-snippet">Finance and operations reviewed pricing from three <mark>packaging vendors</mark> and shortlisted Vantage Supplies as the preferred option going forward.</div>
+        </div>
+      </div>
+
+      <!-- ============ ANALYTICS VIEW ============ -->
+      <div id="view-analytics" style="display:none;">
+        <div class="page-head">
+          <h1>Analytics</h1>
+          <p>Meeting effectiveness and accountability across departments</p>
+        </div>
+
+        <div class="analytics-filters">
+          <div class="dept-select">All departments ▾</div>
+          <div class="dept-select">Last 8 weeks ▾</div>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="chart-panel">
+            <h3>Meetings vs. decisions made</h3>
+            <div class="chart-sub">Weekly count, last 8 weeks</div>
+            <div class="bar-chart">
+              <div class="bar-col"><div class="bar" style="height:70%;background:var(--tag-discussion);"></div><div class="bar-label">W1</div></div>
+              <div class="bar-col"><div class="bar" style="height:55%;background:var(--tag-discussion);"></div><div class="bar-label">W2</div></div>
+              <div class="bar-col"><div class="bar" style="height:85%;background:var(--tag-discussion);"></div><div class="bar-label">W3</div></div>
+              <div class="bar-col"><div class="bar" style="height:60%;background:var(--tag-discussion);"></div><div class="bar-label">W4</div></div>
+              <div class="bar-col"><div class="bar" style="height:95%;background:var(--tag-discussion);"></div><div class="bar-label">W5</div></div>
+              <div class="bar-col"><div class="bar" style="height:75%;background:var(--tag-discussion);"></div><div class="bar-label">W6</div></div>
+              <div class="bar-col"><div class="bar" style="height:65%;background:var(--tag-discussion);"></div><div class="bar-label">W7</div></div>
+              <div class="bar-col"><div class="bar" style="height:100%;background:var(--tag-decision);"></div><div class="bar-label">W8</div></div>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <h3>Task completion mix</h3>
+            <div class="chart-sub">Last 30 days · 84 total tasks</div>
+            <div class="donut-wrap">
+              <svg width="120" height="120" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F0F1F3" stroke-width="4.5"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--tag-info)" stroke-width="4.5" stroke-dasharray="62 100" stroke-dashoffset="25" stroke-linecap="round"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--tag-action)" stroke-width="4.5" stroke-dasharray="24 100" stroke-dashoffset="-37" stroke-linecap="round"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--tag-overdue)" stroke-width="4.5" stroke-dasharray="14 100" stroke-dashoffset="-61" stroke-linecap="round"/>
+              </svg>
+              <div class="donut-legend">
+                <div class="donut-legend-row"><span class="sw" style="background:var(--tag-info)"></span>On time<span class="val">62%</span></div>
+                <div class="donut-legend-row"><span class="sw" style="background:var(--tag-action)"></span>Late<span class="val">24%</span></div>
+                <div class="donut-legend-row"><span class="sw" style="background:var(--tag-overdue)"></span>Overdue<span class="val">14%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="leaderboard">
+          <div class="lb-row head">
+            <div class="lb-name">Department</div>
+            <div class="lb-metric">On-time completion</div>
+            <div class="lb-metric">Overdue tasks</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-name"><span class="mini-avatar">OPS</span>Operations</div>
+            <div class="lb-metric" style="display:flex;align-items:center;gap:10px;"><div class="lb-bar-track"><div class="lb-bar-fill" style="width:88%;"></div></div>88%</div>
+            <div class="lb-metric">2</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-name"><span class="mini-avatar">FIN</span>Finance</div>
+            <div class="lb-metric" style="display:flex;align-items:center;gap:10px;"><div class="lb-bar-track"><div class="lb-bar-fill" style="width:71%;"></div></div>71%</div>
+            <div class="lb-metric">4</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-name"><span class="mini-avatar">HR</span>Human Resources</div>
+            <div class="lb-metric" style="display:flex;align-items:center;gap:10px;"><div class="lb-bar-track"><div class="lb-bar-fill" style="width:95%;"></div></div>95%</div>
+            <div class="lb-metric">0</div>
+          </div>
+          <div class="lb-row">
+            <div class="lb-name"><span class="mini-avatar">ENG</span>Engineering</div>
+            <div class="lb-metric" style="display:flex;align-items:center;gap:10px;"><div class="lb-bar-track"><div class="lb-bar-fill" style="width:64%;"></div></div>64%</div>
+            <div class="lb-metric">5</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function showView(v){
+    const views = ['dash','review','tasks','search','analytics'];
+    views.forEach(id => {
+      document.getElementById('view-' + id).style.display = (id === v) ? '' : 'none';
+      const btn = document.getElementById('btn-' + id);
+      if (btn) btn.classList.toggle('active', id === v);
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { processMeetingTranscript } from "@/lib/ai-engine";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { triggerOracleCoreIndexing } from "@/lib/oracle-core-client";
+import { TaskStatus, TaskPriority } from "@prisma/client";
 
 const getCachedMeetings = unstable_cache(
   async () => {
@@ -77,8 +78,8 @@ export async function POST(req: Request) {
         ownerName: item.ownerName,
         ownerEmail: item.ownerEmail,
         department: item.department || department || "Engineering",
-        priority: item.priority || "Medium",
-        status: "Pending",
+        priority: (item.priority as TaskPriority) || TaskPriority.Medium,
+        status: TaskStatus.Pending,
         deadline: new Date(Date.now() + (item.deadlineDaysFromNow || 3) * 86400000),
         escalationLevel: 0,
       }));
