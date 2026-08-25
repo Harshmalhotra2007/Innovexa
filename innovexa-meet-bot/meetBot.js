@@ -6,15 +6,28 @@ class MeetBot {
   async join(meetingUrl, botName = process.env.BOT_NAME || "Innovexa Notetaker") {
     logger.info("Initiating MeetBot join task", { meetingUrl, botName });
 
+    const pulseAudio = new PulseAudio();
+    try {
+      await pulseAudio.setupSink();
+    } catch (e) {
+      logger.warn("PulseAudio sink pre-setup skipped or unavailable:", { error: e.message });
+    }
+
     const launchOptions = {
       headless: process.env.HEADLESS !== "false",
       args: [
         "--use-fake-ui-for-media-stream",
-        "--use-fake-device-for-media-stream",
         "--disable-blink-features=AutomationControlled",
         "--no-sandbox",
         "--disable-setuid-sandbox",
+        "--mute-audio=false",
       ],
+      env: {
+        ...process.env,
+        PULSE_SERVER: process.env.PULSE_SERVER || "unix:/tmp/pulse-socket/pulse-socket",
+        PULSE_SINK: process.env.PULSE_SINK || "MeetSink",
+        DISPLAY: process.env.DISPLAY || ":99",
+      },
     };
 
     if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
@@ -31,7 +44,6 @@ class MeetBot {
 
     const page = await context.newPage();
     this.page = page;
-    const pulseAudio = new PulseAudio();
     let audioFile = null;
 
     try {
