@@ -1,8 +1,8 @@
-FROM ubuntu:22.04
+FROM mcr.microsoft.com/playwright/node:v1.44.0-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including xvfb, pulseaudio, dbus, and ffmpeg
+# Install audio utilities, xvfb, and ffmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pulseaudio \
     pulseaudio-utils \
@@ -10,32 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
     alsa-utils \
     ffmpeg \
-    nodejs \
-    npm \
-    curl \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
-
-# Install Playwright browser and its dependencies
-RUN npx playwright install chromium
 
 COPY . .
 
