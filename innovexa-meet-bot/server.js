@@ -5,6 +5,7 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const { MeetBot } = require("./meetBot");
 const { handoffToPipeline } = require("./handoff");
 const logger = require("./logger");
+const metrics = require("./metrics");
 
 const PORT = process.env.PORT || process.env.BOT_PORT || 3000;
 
@@ -25,8 +26,13 @@ const server = http.createServer(async (req, res) => {
       status: "healthy",
       service: "innovexa-meet-bot",
       activeSessions: activeSessions.size,
+      metrics: metrics.getSummary(),
       timestamp: new Date().toISOString(),
     });
+  }
+
+  if (method === "GET" && url === "/metrics") {
+    return sendJson(res, 200, metrics.getSummary());
   }
 
   if (method === "POST" && url === "/bot/join") {

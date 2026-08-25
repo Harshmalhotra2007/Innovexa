@@ -1,19 +1,23 @@
 const { chromium } = require("playwright");
 const { PulseAudio } = require("./pulseaudio");
 const logger = require("./logger");
+const config = require("./config");
+const metrics = require("./metrics");
 
 /**
  * Progressive Exponential Backoff Delay with Jitter
  */
-function getExponentialBackoffDelay(attempt, initialMs = 300, factor = 1.5, maxMs = 3000) {
+function getExponentialBackoffDelay(attempt, initialMs = config.retry.initialBackoffMs, factor = config.retry.backoffFactor, maxMs = config.retry.maxBackoffMs) {
   const delay = Math.min(initialMs * Math.pow(factor, attempt), maxMs);
   const jitter = delay * 0.1 * Math.random();
   return Math.round(delay + jitter);
 }
 
 class MeetBot {
-  async join(meetingUrl, botName = process.env.BOT_NAME || "Innovexa Notetaker") {
-    logger.info("Initiating MeetBot join task", { meetingUrl, botName });
+  async join(meetingUrl, botName = config.bot.name) {
+    const startTime = Date.now();
+    metrics.recordSessionStart();
+    logger.info("Initiating MeetBot join task", { stage: "JOIN_INITIATED", meetingUrl, botName });
 
     const pulseAudio = new PulseAudio();
     try {
@@ -170,7 +174,9 @@ class MeetBot {
 
       // Wait for admission
       await this.waitForAdmission(page);
-      logger.info("Bot admitted to meeting call");
+      const joinDurationMs = Date.now() - startTime;
+      metrics.recordJoinSuccess(joinDurationMs);
+      logger.info("Bot admitted to meeting call", { stage: "ADMITTED", joinDurationMs });
 
       const meetingId = meetingUrl.split("/").pop() || "session";
 
@@ -234,7 +240,8 @@ class MeetBot {
       await this.waitForMeetingEnd(page);
 
     } catch (err) {
-      logger.error("MeetBot execution error", { error: err.message, meetingUrl });
+      metrics.recordSessionFailure(err.message);
+      logger.error("MeetBot execution error", { stage: "SESSION_ERROR", error: err.message, meetingUrl });
       throw err;
     } finally {
       this.stopHealthWatchdog();
