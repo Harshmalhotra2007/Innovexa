@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  innovexa-meet-bot:
+    build: .
+    container_name: innovexa-meet-bot
+    environment:
+      - BOT_NAME=${BOT_NAME:-Innovexa Notetaker}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/innovexa-meeting}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    volumes:
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - ./recordings:/recordings
+    network_mode: host
+    restart: unless-stopped

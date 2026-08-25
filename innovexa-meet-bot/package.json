@@ -1,0 +1,18 @@
+{
+  "name": "innovexa-meet-bot",
+  "version": "1.0.0",
+  "description": "Headless Google Meet bot service for automated meeting join, PulseAudio audio capture, and n8n pipeline handoff.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "form-data": "^4.0.0",
+    "playwright": "^1.44.0",
+    "winston": "^3.13.0"
+  }
+}
