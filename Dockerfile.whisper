@@ -1,0 +1,41 @@
+# Dockerfile for Whisper.cpp with CUDA GPU support
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Clone and build whisper.cpp with CUDA support
+RUN git clone https://github.com/ggerganov/whisper.cpp.git && \
+    cd whisper.cpp && \
+    cmake -B build -DGGML_CUDA=ON && \
+    cmake --build build --config Release -j$(nproc) && \
+    cp build/bin/whisper-cli /usr/local/bin/ && \
+    cp build/bin/whisper-server /usr/local/bin/ 2>/dev/null || true
+
+# Download default model (base.en)
+RUN mkdir -p /models && \
+    cd /models && \
+    wget -q https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+
+# Expose port for whisper server mode
+EXPOSE 8082
+
+# Environment variables
+ENV WHISPER_MODEL_PATH=/models/ggml-base.en.bin
+ENV WHISPER_BINARY_PATH=/usr/local/bin/whisper-cli
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD whisper-cli -m $WHISPER_MODEL_PATH -h 2>&1 | head -1 || exit 1
+
+# Default: run as server for worker pool
+CMD ["whisper-server", "-m", "/models/ggml-base.en.bin", "-p", "8082"]
