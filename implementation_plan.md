@@ -1,62 +1,94 @@
-# Implementation Plan - Operation "Ghost in the Meet"
+# Implementation Plan - Innovexa Ops Console UX & UI Enhancement (Preview Branch: `ui-enhancement`)
 
-Architect, implement, and verify the self-contained, autonomous **AI Meeting Agent** (Operation "Ghost in the Meet") incorporating Playwright stealth automation, WebSockets, Redis queues, Whisper.cpp/Llama.cpp self-hosted engines, AES-256 data encryption, and Kubernetes deployments.
+Transform the **Innovexa Ops Console** into an intuitive, high-performance meeting intelligence platform on the dedicated preview branch `ui-enhancement`. This plan enforces cognitive ease, progressive disclosure, role-based views, real-time audio waveform synchronization, and structured meeting dashboard analytics.
 
----
+## User Review Required
 
-## 🏗️ System Topology & Microservices
+> [!IMPORTANT]
+> **Preview Isolation Guarantee**: All modifications are strictly executed on git branch `ui-enhancement` and deployed to Vercel preview environments. The production deployment at `https://innovexa-murex.vercel.app` remains completely untouched.
 
-The architecture is composed of containerized microservices managed via Docker Compose or Kubernetes:
-
-```mermaid
-graph TD
-    A[Client UI - React] <-->|WebSockets| B[AI Agent Service - Node.js]
-    B -->|Trigger Job| C[Redis - Bull Queue]
-    B -->|Spawn Session| D[Playwright Chromium Stealth]
-    D -->|Google Meet Event| E[Captured Audio WAV]
-    E -->|Audio Processing| F[FFmpeg Downsampler]
-    F -->|Transcribe API| G[Whisper.cpp GPU Service]
-    F -->|Diarize API| H[PyAnnote Diarizer python]
-    G & H -->|Generate Summary| I[Llama.cpp LLM Service]
-    I -->|AES-256 Encrypt| J[S3 / Supabase Storage]
-    I -->|pgcrypto Insert| K[(PostgreSQL Database)]
-```
+> [!TIP]
+> **Tactical Theme Enforcement**: Dark theme palette `#0D1315` (bg), `#182124` (panels), `#E8A33D` (amber accent), `#49B9AE` (teal success), and `#E2666A` (red warning) will be systematically maintained across all newly created sidebar layouts, timeline trackers, and metrics cards.
 
 ---
 
-## 📋 Proposed Changes
+## Open Questions
 
-### 1. Database Schema & Security (`schema.prisma`)
-- **Add** `pgcrypto` support: Enable column-level encryption for transcripts using sym-encryption.
-- **Update** models in [schema.prisma](file:///c:/Code/Hackathon/prisma/schema.prisma) to add tracking columns for agent performance, calendar keys, and S3 encryption tags.
-
-### 2. Standalone Agent Service (`ai-agent-service/`)
-We will expand the stateful service directory to contain:
-- **`meet-bot-stealth.js`** [NEW]: Playwright Chromium automation with stealth parameters, Google Account authentication flow, and lobby mute controls.
-- **`transcriber-whisper.js`** [NEW]: Local execution handler for Whisper.cpp binaries.
-- **`summarizer-llama.js`** [NEW]: Local execution handler for Llama.cpp GGML/GGUF models.
-- **`crypt-helper.js`** [NEW]: AES-256-CBC file encryption/decryption utilities.
-- **`calendar-monitor.js`** [NEW]: Google Calendar OAuth polling and event queuing.
-- **`cron-retention.js`** [NEW]: Cron job to clean up files and DB records older than 30 days.
-
-### 3. Containerization & Orchestration Configs
-- **`Dockerfile.agent`** [NEW]: Multi-stage Dockerfile containing Playwright, Node, and FFmpeg.
-- **`Dockerfile.whisper`** [NEW]: CUDA GPU-enabled container for Whisper.cpp.
-- **`Dockerfile.llama`** [NEW]: GGML container for Llama.cpp.
-- **`docker-compose.staging.yml`** [NEW]: Docker-Compose setup linking Agent, Redis, Whisper.cpp, and Llama.cpp.
-- **`kubernetes/`** [NEW]: Kubernetes manifests (deployments, services, and ingress rules).
-
-### 4. Documentation
-- Create **`RUNBOOK.md`** [NEW]: Troubleshooting instructions, manual join override, and emergency shutdown procedures.
-- Create **`THEME.md`** [NEW]: Style guidelines mapping components to Tactical Steel Slate & Ochre/Sage theme variables.
+- *None*. All specifications, color palettes, component contracts, and structural layout directives are fully defined.
 
 ---
 
-## 🧪 Verification Plan
+## Proposed Changes
+
+### 1. Global Navigation & Persistent Sidebar Component
+
+#### [NEW] [Sidebar.tsx](file:///c:/Code/Hackathon/src/components/Sidebar.tsx)
+- Persistent left sidebar with branded header, active navigation indicators, and direct links to:
+  - **Dashboard** (`/`)
+  - **My Meetings** (`/meetings`)
+  - **AI Tasks** (`/tasks`)
+  - **Analytics & Insights** (`/analytics`)
+  - **Settings** (`/settings`)
+- User role toggle badge (Organizer vs Participant mode).
+
+#### [NEW] [AppLayout.tsx](file:///c:/Code/Hackathon/src/components/AppLayout.tsx)
+- Wrapper layout component introducing the fixed left sidebar and responsive top navigation header.
+
+#### [MODIFY] [layout.tsx](file:///c:/Code/Hackathon/src/app/layout.tsx)
+- Wrap root layout in `AppLayout` so every route inherits the persistent sidebar navigation and role-based context.
+
+---
+
+### 2. Core Meeting View Overhaul (`AIAgentPanel.tsx`)
+
+#### [MODIFY] [AIAgentPanel.tsx](file:///c:/Code/Hackathon/src/components/AIAgentPanel.tsx)
+- **Unified Action Flow**: Primary "Launch AI Meeting Engine" button with an "Advanced Options" expandable drawer housing Tab Audio Capture and Quality Profile selectors.
+- **Vertical Status Timeline**: Chronological progress tracker showing `DISPATCHED` → `ADMITTED` → `RECORDING` → `TRANSCRIBING` → `INSIGHTS READY` with icons and timestamps.
+- **Synced Transcript & Audio Waveform Player**:
+  - Interactive waveform canvas visualizer giving real-time audio movement feedback during recording.
+  - Interactive transcript clicking seeks audio player to the exact timestamp segment.
+- **Card-Based Architecture**: Titled executive containers for Controls & Status, Live Diarized Captions, Executive AI Rationale, and Automated Action Items.
+
+---
+
+### 3. Dashboard Summary & Meeting Management Pages
+
+#### [MODIFY] [page.tsx](file:///c:/Code/Hackathon/src/app/page.tsx)
+- Transform home dashboard into a metric summary dashboard:
+  - Metrics Cards: "Meetings This Week", "Open Action Items", "Upcoming Meetings", "AI Accuracy Rate".
+  - Recent Activity Feed & Quick Dispatch Widget.
+
+#### [MODIFY] [meetings/page.tsx](file:///c:/Code/Hackathon/src/app/meetings/page.tsx)
+- Revamped Meeting List table with status badges, date & time, AI summary preview snippet, and direct "View Insights" button.
+- Friendly smart empty state with "Schedule Your First AI-Powered Meeting" CTA.
+
+#### [NEW] [settings/page.tsx](file:///c:/Code/Hackathon/src/app/settings/page.tsx)
+- Settings page for configuring default audio quality profiles, webhook endpoints, and role preferences.
+
+---
+
+### 4. Selector Health Check Endpoint
+
+#### [NEW] [selectors/route.ts](file:///c:/Code/Hackathon/src/app/api/health/selectors/route.ts)
+- Automated API route to test Playwright Google Meet DOM selectors (`QYrYVd`, `CQYiBc`, `button[aria-label*="Leave"]`) and return diagnostic health reports.
+
+---
+
+## Verification Plan
 
 ### Automated Tests
-- Run updated Jest test suites verifying AES encryption, local transcription parsing, and calendar polling logic.
+- Run Jest test suite to ensure 100% test passage across all API routes, bot methods, and audio validators:
+  ```bash
+  npm test
+  ```
+- Run Next.js production build to verify zero TypeScript or syntax errors:
+  ```bash
+  npx next build
+  ```
 
-### Load & Security Verification
-- Verify Docker build compiles with zero critical vulnerabilities.
-- Run type checks and compiler tests on Vercel deployment targets.
+### Manual Verification
+- Test persistent sidebar navigation across all pages (`/`, `/meetings`, `/tasks`, `/analytics`, `/settings`).
+- Test "Launch AI Meeting Engine" unified action flow and "Advanced Options" toggle.
+- Verify vertical status timeline progression.
+- Test transcript segment timestamp seeking in `<AudioPlayer>`.
+- Test Google Meet selector health check endpoint `/api/health/selectors`.
