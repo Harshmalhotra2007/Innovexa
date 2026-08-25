@@ -305,7 +305,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </div>
           <div>
             <h3 className="font-display font-bold text-sm tracking-wide text-[#e8e1d5] uppercase flex items-center gap-2">
-              MEETIQ AI MEETING AGENT
+              INNOVEXA AI MEETING AGENT
             </h3>
             <p className="font-mono text-[11px] text-[#9a99a0] mt-0.5">
               Automated Virtual Participant • Whisper ASR • GPT-4 Summarizer
