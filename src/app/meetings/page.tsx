@@ -37,6 +37,7 @@ export default function MeetingsPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState("10:30");
   const [department, setDepartment] = useState("Operations");
+  const [meetingLink, setMeetingLink] = useState("");
   const [transcript, setTranscript] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userRole, setUserRole] = useState("organizer");
@@ -102,7 +103,7 @@ export default function MeetingsPage() {
         body: JSON.stringify({
           title,
           department,
-          agenda: `Meeting scheduled for ${date} at ${time}`,
+          agenda: meetingLink.trim() || `Meeting scheduled for ${date} at ${time}`,
           transcript: transcript || SAMPLE_TRANSCRIPT,
         }),
       });
@@ -181,6 +182,18 @@ export default function MeetingsPage() {
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 className="ops-input w-full p-2.5 text-xs"
+              />
+            </div>
+
+            <div>
+              <div className="font-mono text-[11px] uppercase tracking-wider text-[#E8A33D] mb-1.5 font-bold flex items-center gap-1.5">
+                <Sparkles size={12} /> GOOGLE MEET LINK (FOR AI BOT)
+              </div>
+              <input
+                placeholder="https://meet.google.com/abc-defg-hij"
+                value={meetingLink}
+                onChange={(e) => setMeetingLink(e.target.value)}
+                className="ops-input w-full p-2.5 text-xs font-mono text-[#E8A33D] border-[#E8A33D]/40"
               />
             </div>
           </div>
