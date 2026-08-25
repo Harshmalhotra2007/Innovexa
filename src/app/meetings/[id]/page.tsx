@@ -46,6 +46,19 @@ export default function MeetingDetailPage() {
     if (userRole !== "organizer") return;
     if (!window.confirm("Delete meeting and all associated AI insights?")) return;
 
+    // Signal bot to leave Google Meet call immediately
+    if (meeting && meeting.agenda && meeting.agenda.includes("meet.google.com")) {
+      try {
+        await fetch("/api/ai-agent/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingId: id }),
+        });
+      } catch (e) {
+        console.warn("Bot leave signal failed:", e);
+      }
+    }
+
     try {
       const res = await fetch(`/api/meetings/${id}`, {
         method: "DELETE",

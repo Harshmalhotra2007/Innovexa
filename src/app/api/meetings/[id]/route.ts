@@ -35,6 +35,23 @@ export async function DELETE(
 
     const { id } = params;
 
+    // Fetch meeting details to get the Google Meet URL before deletion
+    const meeting = await db.meeting.findUnique({ where: { id } });
+
+    if (meeting && meeting.agenda && meeting.agenda.includes("meet.google.com")) {
+      const botServiceUrl = process.env.MEET_BOT_URL || process.env.BOT_SERVICE_URL || "https://innovexa-meet-bot.onrender.com";
+      console.log(`[Meeting DELETE] Triggering bot leave at ${botServiceUrl}/bot/leave for URL: ${meeting.agenda}`);
+      try {
+        fetch(`${botServiceUrl}/bot/leave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingUrl: meeting.agenda }),
+        }).catch((e) => console.warn("Bot leave signal failed:", e));
+      } catch (e) {
+        console.warn("Bot leave signal failed:", e);
+      }
+    }
+
     // Delete associated tasks, decisions, and action items first
     await db.task.deleteMany({ where: { meetingId: id } });
     await db.decision.deleteMany({ where: { meetingId: id } });
@@ -51,4 +68,3 @@ export async function DELETE(
     return NextResponse.json({ error: error.message || "Failed to delete meeting" }, { status: 500 });
   }
 }
-
