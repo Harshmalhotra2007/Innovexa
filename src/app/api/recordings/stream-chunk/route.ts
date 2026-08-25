@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateAudioBuffer } from "@/lib/audio-validator";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  let meetingId = "";
+  let chunkIndex = 0;
+  let chunkBuffer: Buffer | null = null;
+
   try {
     const formData = await req.formData();
-    const meetingId = (formData.get("meetingId") as string) || "";
-    const chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
+    meetingId = (formData.get("meetingId") as string) || "";
+    chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
     const chunkFile = formData.get("chunk") as File | null;
 
     if (!meetingId) {
@@ -19,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No chunk file provided" }, { status: 400 });
     }
 
-    const chunkBuffer = Buffer.from(await chunkFile.arrayBuffer());
+    chunkBuffer = Buffer.from(await chunkFile.arrayBuffer());
 
     // Validate Chunk Integrity if chunk contains audio data > 100 bytes
     if (chunkBuffer.length > 100) {
@@ -67,7 +73,33 @@ export async function POST(req: Request) {
       segment: newSegment,
     });
   } catch (err: any) {
-    console.error("[Stream Chunk API] Real-time streaming error:", err);
-    return NextResponse.json({ error: err.message || "Failed to process audio chunk" }, { status: 500 });
+    console.error("[Stream Chunk API] Real-time streaming error, routing chunk to Dead Letter Queue (DLQ):", err.message);
+
+    try {
+      const dlqDir = path.join(process.cwd(), "scratch/dlq_chunks");
+      if (!fs.existsSync(dlqDir)) fs.mkdirSync(dlqDir, { recursive: true });
+
+      const dlqFilename = `dlq_chunk_${meetingId || "session"}_${chunkIndex}_${Date.now()}.json`;
+      const dlqPath = path.join(dlqDir, dlqFilename);
+
+      fs.writeFileSync(
+        dlqPath,
+        JSON.stringify({
+          meetingId,
+          chunkIndex,
+          timestamp: new Date().toISOString(),
+          error: err.message,
+          chunkBase64: chunkBuffer ? chunkBuffer.toString("base64") : null,
+        })
+      );
+      console.warn(`[DLQ Persisted] Failed audio chunk saved to Dead Letter Queue for reprocessing at: ${dlqPath}`);
+    } catch (dlqErr: any) {
+      console.error("[DLQ Persistence Exception]", dlqErr.message);
+    }
+
+    return NextResponse.json(
+      { error: err.message || "Failed to process audio chunk", dlqSaved: true },
+      { status: 500 }
+    );
   }
 }

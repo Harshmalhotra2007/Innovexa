@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { botServiceCircuitBreaker } from "./circuit-breaker";
 
 export interface TranscriptSegment {
   speaker: string;
@@ -20,6 +21,7 @@ export interface AIAgentState {
 
 /**
  * Triggers the AI Meeting Agent to join, record, transcribe, and summarize a meeting.
+ * Implements Idempotency Check and Circuit Breaker Pattern.
  */
 export async function triggerAIAgent(
   meetingId: string,
@@ -30,8 +32,14 @@ export async function triggerAIAgent(
     throw new Error(`Meeting with ID '${meetingId}' not found.`);
   }
 
-  // 1. Check or initialize AIAgent record
+  // 1. Idempotency Check: Return active session if agent is currently joining/recording/processing
   let agent = await db.aIAgent.findUnique({ where: { meetingId } });
+  const activeStatuses = ["joining", "recording", "transcribing", "summarizing"];
+
+  if (agent && activeStatuses.includes(agent.status)) {
+    console.log(`[Idempotent Check] Active session (${agent.status}) already running for meeting ${meetingId}. Returning existing agent session without duplicate trigger.`);
+    return agent as unknown as AIAgentState;
+  }
 
   if (!agent) {
     agent = await db.aIAgent.create({
@@ -61,23 +69,29 @@ export async function triggerAIAgent(
     ? meeting.agenda
     : `https://meet.google.com/test-${meetingId.substring(0, 8)}`;
 
-  // Send trigger payload directly to live cloud bot service
-  console.log(`[AIAgentEngine] Triggering real bot at ${botServiceUrl}/bot/join for URL: ${googleMeetUrl}`);
+  // 2. Circuit Breaker Protected Bot Service Dispatch
+  console.log(`[AIAgentEngine] Triggering bot via Circuit Breaker at ${botServiceUrl}/bot/join for URL: ${googleMeetUrl}`);
   
-  fetch(`${botServiceUrl}/bot/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      meetingUrl: googleMeetUrl,
-      botName: process.env.BOT_NAME || "Innovexa Notetaker",
-      metadata: {
-        meetingId: meeting.id,
-        meetingTitle: meeting.title,
-      },
-    }),
+  botServiceCircuitBreaker.execute(async () => {
+    const res = await fetch(`${botServiceUrl}/bot/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        meetingUrl: googleMeetUrl,
+        botName: process.env.BOT_NAME || "Innovexa Notetaker",
+        metadata: {
+          meetingId: meeting.id,
+          meetingTitle: meeting.title,
+        },
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Bot service returned HTTP ${res.status}`);
+    }
+    return res;
   }).catch((e) => {
     if (process.env.NODE_ENV !== "test") {
-      console.error("[AIAgentEngine] Live bot trigger failed:", e.message);
+      console.error("[AIAgentEngine] Circuit breaker protected bot trigger note:", e.message);
     }
   });
 
