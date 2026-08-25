@@ -159,8 +159,8 @@ def process_meeting(meeting_id):
             except Exception as ex:
                 print(f"[OracleCore] ChromaDB indexing failed: {ex}")
 
-        # 3. Fetch all decisions for clustering
-        cur.execute('SELECT id, context, title, department FROM "Decision"')
+        # 3. Fetch recent decisions for clustering (max 500)
+        cur.execute('SELECT id, context, title, department FROM "Decision" ORDER BY "createdAt" DESC LIMIT 500')
         all_decisions = cur.fetchall()
         
         # 4. HDBSCAN Topic Clustering

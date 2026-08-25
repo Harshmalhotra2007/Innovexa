@@ -1,6 +1,10 @@
 import { db } from "./db";
-import { execSync } from "child_process";
+import { exec } from "child_process";
 import path from "path";
+import util from "util";
+
+const execPromise = util.promisify(exec);
+const vectorCache = new Map<string, number[]>();
 
 export interface SearchResultItem {
   id: string;
@@ -18,20 +22,30 @@ export interface SearchResultItem {
 }
 
 /**
- * Generate embedding vector using local Python SentenceTransformers
+ * Generate embedding vector using local Python SentenceTransformers with in-memory caching & non-blocking exec
  */
 async function getChromaQueryVector(query: string): Promise<number[] | null> {
+  const cacheKey = query.trim().toLowerCase();
+  if (vectorCache.has(cacheKey)) {
+    return vectorCache.get(cacheKey)!;
+  }
+
   try {
     const scriptPath = path.join(process.cwd(), "ai-agent-service/oracle_core_worker.py");
-    // Clean query text to avoid shell argument breakage
     const cleanQuery = query.replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
-    const result = execSync(`python "${scriptPath}" --embed "${cleanQuery}"`, { encoding: "utf8" });
-    const parsed = JSON.parse(result.trim());
+    
+    const { stdout } = await execPromise(`python "${scriptPath}" --embed "${cleanQuery}"`, { timeout: 3000 });
+    const parsed = JSON.parse(stdout.trim());
     if (Array.isArray(parsed)) {
+      vectorCache.set(cacheKey, parsed);
+      if (vectorCache.size > 200) {
+        const firstKey = vectorCache.keys().next().value;
+        if (firstKey) vectorCache.delete(firstKey);
+      }
       return parsed;
     }
   } catch (err) {
-    console.warn("[VectorSearch] Embedding generation via Python skipped or failed:", err);
+    console.warn("[VectorSearch] Async embedding generation skipped or timed out:", err);
   }
   return null;
 }
@@ -123,7 +137,7 @@ export async function performSemanticSearch(
   if (!query || query.trim().length === 0) return [];
   const results: SearchResultItem[] = [];
   
-  // 1. Attempt to search in ChromaDB using local SentenceTransformers vector representation
+  // 1. Attempt to search in ChromaDB using vector representation
   const queryVector = await getChromaQueryVector(query);
   if (queryVector) {
     const chromaMatches = await queryChromaCollection(queryVector, 10);
@@ -153,8 +167,12 @@ export async function performSemanticSearch(
     }
   }
 
-  // 2. Fetch Decisions, Tasks, and Segments from PostgreSQL for hybrid TF-IDF search
-  const decisions = await db.decision.findMany({ include: { meeting: true } });
+  // 2. Fetch Decisions, Tasks from PostgreSQL for hybrid search
+  const decisions = await db.decision.findMany({ 
+    take: 200,
+    orderBy: { createdAt: "desc" },
+    include: { meeting: true } 
+  });
   for (const dec of decisions) {
     if (departmentFilter && departmentFilter !== "All" && dec.department !== departmentFilter) continue;
     if (startDate && new Date(dec.createdAt) < new Date(startDate)) continue;
@@ -183,7 +201,11 @@ export async function performSemanticSearch(
     }
   }
 
-  const tasks = await db.task.findMany({ include: { meeting: true } });
+  const tasks = await db.task.findMany({ 
+    take: 200,
+    orderBy: { createdAt: "desc" },
+    include: { meeting: true } 
+  });
   for (const t of tasks) {
     if (departmentFilter && departmentFilter !== "All" && t.department !== departmentFilter) continue;
     if (startDate && t.meeting && new Date(t.meeting.date) < new Date(startDate)) continue;

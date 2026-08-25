@@ -1,17 +1,15 @@
 import { exec } from "child_process";
 import path from "path";
 
-/**
- * Triggers the Oracle Core pipeline for real-time indexing of meeting transcripts.
- * Publishes transcripts to a Kafka topic, or falls back to executing the Python ML script directly.
- */
-export async function triggerOracleCoreIndexing(meetingId: string, transcript: string) {
+let cachedProducer: any = null;
+
+async function getKafkaProducer() {
+  if (cachedProducer) return cachedProducer;
   try {
-    // Attempt to publish to Kafka message queue
     const { Kafka } = require("kafkajs");
     const kafkaBootstrap = process.env.KAFKA_BOOTSTRAP_SERVERS || "localhost:9092";
     
-    console.log(`[OracleCore] Connecting to Kafka brokers at: ${kafkaBootstrap}`);
+    console.log(`[OracleCore] Connecting singleton Kafka producer to: ${kafkaBootstrap}`);
     const kafka = new Kafka({ 
       brokers: [kafkaBootstrap],
       connectionTimeout: 2000 
@@ -19,11 +17,25 @@ export async function triggerOracleCoreIndexing(meetingId: string, transcript: s
     
     const producer = kafka.producer();
     await producer.connect();
+    cachedProducer = producer;
+    return producer;
+  } catch (err) {
+    cachedProducer = null;
+    throw err;
+  }
+}
+
+/**
+ * Triggers the Oracle Core pipeline for real-time indexing of meeting transcripts.
+ * Publishes transcripts to a Kafka topic, or falls back to executing the Python ML script directly.
+ */
+export async function triggerOracleCoreIndexing(meetingId: string, transcript: string) {
+  try {
+    const producer = await getKafkaProducer();
     await producer.send({
       topic: "meeting-transcripts",
       messages: [{ value: JSON.stringify({ meetingId, transcript }) }],
     });
-    await producer.disconnect();
     console.log(`[OracleCore] Successfully published meeting ${meetingId} transcript to Kafka topic`);
   } catch (err: any) {
     console.warn(`[OracleCore] Kafka queue unavailable (${err.message}). Invoking Python pipeline directly...`);

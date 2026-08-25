@@ -9,9 +9,9 @@ const getCachedMeetings = unstable_cache(
     return db.meeting.findMany({
       orderBy: { date: "desc" },
       include: {
-        segments: { orderBy: { order: "asc" } },
         decisions: true,
         tasks: true,
+        segments: { select: { id: true, speaker: true, timestamp: true, text: true, type: true, order: true } },
       },
     });
   },
@@ -68,26 +68,26 @@ export async function POST(req: Request) {
       },
     });
 
-    // 3. Create Action Items / Tasks
-    for (const item of aiResult.actionItems) {
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + (item.deadlineDaysFromNow || 3));
+    // 3. Batch Create Action Items / Tasks in a single DB query
+    if (aiResult.actionItems && aiResult.actionItems.length > 0) {
+      const taskData = aiResult.actionItems.map((item) => ({
+        meetingId: newMeeting.id,
+        title: item.title,
+        description: item.description,
+        ownerName: item.ownerName,
+        ownerEmail: item.ownerEmail,
+        department: item.department || department || "Engineering",
+        priority: item.priority || "Medium",
+        status: "Pending",
+        deadline: new Date(Date.now() + (item.deadlineDaysFromNow || 3) * 86400000),
+        escalationLevel: 0,
+      }));
 
-      await db.task.create({
-        data: {
-          meetingId: newMeeting.id,
-          title: item.title,
-          description: item.description,
-          ownerName: item.ownerName,
-          ownerEmail: item.ownerEmail,
-          department: item.department || department || "Engineering",
-          priority: item.priority || "Medium",
-          status: "Pending",
-          deadline,
-          escalationLevel: 0,
-        },
+      await db.task.createMany({
+        data: taskData,
       });
     }
+
     revalidateTag("meetings");
     revalidateTag("tasks");
 
