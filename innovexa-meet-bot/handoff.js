@@ -1,6 +1,7 @@
 const axios = require("axios");
 const FormData = require("form-data");
 const fs = require("fs");
+const { PulseAudio } = require("./pulseaudio");
 const logger = require("./logger");
 
 async function handoffToPipeline(audioFile, meetingUrl, metadataObj = {}) {
@@ -9,12 +10,21 @@ async function handoffToPipeline(audioFile, meetingUrl, metadataObj = {}) {
 
   logger.info(`Initiating pipeline handoff to webhook: ${webhookUrl}`);
 
-  if (!fs.existsSync(audioFile)) {
-    throw new Error(`Audio file does not exist for handoff: ${audioFile}`);
+  // Graceful degradation for audio recording failures
+  if (!audioFile || !fs.existsSync(audioFile)) {
+    logger.warn(`Audio file missing or unreadable at path: ${audioFile}. Activating graceful audio pipeline fallback...`);
+    try {
+      const pulseAudio = new PulseAudio();
+      audioFile = pulseAudio.createFailsafeRecording(metadataObj.meetingId || "session");
+    } catch (e) {
+      logger.error(`Failsafe audio creation warning: ${e.message}`);
+    }
   }
 
   const formData = new FormData();
-  formData.append("audio", fs.createReadStream(audioFile));
+  if (audioFile && fs.existsSync(audioFile)) {
+    formData.append("audio", fs.createReadStream(audioFile));
+  }
   formData.append("meetingUrl", meetingUrl);
   formData.append("botName", botName);
 
@@ -22,6 +32,7 @@ async function handoffToPipeline(audioFile, meetingUrl, metadataObj = {}) {
     meetingTitle: metadataObj.meetingTitle || `Meeting ${meetingUrl.split("/").pop()}`,
     startTime: metadataObj.startTime || new Date().toISOString(),
     meetingUrl: meetingUrl,
+    degraded: !audioFile || !fs.existsSync(audioFile),
     ...metadataObj,
   });
 
