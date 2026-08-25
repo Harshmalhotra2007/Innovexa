@@ -15,15 +15,8 @@ export async function POST(req: Request) {
 
     const baasApiKey = apiKey || process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
 
-    const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
-    const targetUrl = meetingUrl || (meeting?.agenda && meeting.agenda.includes("meet.google.com") ? meeting.agenda : null);
-
-    if (!targetUrl) {
-      return NextResponse.json(
-        { error: "No valid Google Meet URL found for this meeting." },
-        { status: 400 }
-      );
-    }
+    const meeting = meetingId ? await db.meeting.findUnique({ where: { id: meetingId } }) : null;
+    const targetUrl = meetingUrl || (meeting?.agenda && meeting.agenda.includes("meet.google.com") ? meeting.agenda : "https://meet.google.com/qfz-imot-oic");
 
     const botName = process.env.BOT_NAME || "Innovexa Notetaker";
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://innovexa-innovexapu.vercel.app"}/api/meeting-baas/webhook`;
@@ -83,26 +76,30 @@ export async function POST(req: Request) {
     const botId = baasData.data?.bot_id || baasData.bot_id || "baas_bot";
 
     // Update agent status in database
-    await db.aIAgent.upsert({
-      where: { meetingId },
-      create: {
-        meetingId,
-        status: "joining",
-        joinedAt: new Date(),
-        recordingUrl: `baas_${botId}`,
-      },
-      update: {
-        status: "joining",
-        joinedAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
+    if (meetingId) {
+      await db.aIAgent.upsert({
+        where: { meetingId },
+        create: {
+          meetingId,
+          status: "joining",
+          joinedAt: new Date(),
+          recordingUrl: `baas_${botId}`,
+        },
+        update: {
+          status: "joining",
+          joinedAt: new Date(),
+          recordingUrl: `baas_${botId}`,
+          updatedAt: new Date(),
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
       botId: botId,
       status: "joining",
       provider: "MeetingBaas",
+      targetUrl,
       data: baasData,
     });
   } catch (error: any) {

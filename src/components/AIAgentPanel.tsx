@@ -112,6 +112,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   };
 
   // Option 2: Managed Cloud Bot Join Trigger
+  const [customMeetUrl, setCustomMeetUrl] = useState("");
+
   const handleManagedBotJoin = async () => {
     if (userRole !== "organizer") {
       setErrorMsg("Forbidden: Must be logged in as an Organizer.");
@@ -128,7 +130,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           "Content-Type": "application/json",
           "x-user-role": userRole,
         },
-        body: JSON.stringify({ meetingId }),
+        body: JSON.stringify({ meetingId, meetingUrl: customMeetUrl.trim() || undefined }),
       });
 
       if (!res.ok) {
@@ -139,7 +141,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             "Content-Type": "application/json",
             "x-user-role": userRole,
           },
-          body: JSON.stringify({ meetingId, useManagedBot: true }),
+          body: JSON.stringify({ meetingId, meetingUrl: customMeetUrl.trim() || undefined, useManagedBot: true }),
         });
       }
 
@@ -399,6 +401,13 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           <div className="font-mono text-[10px] uppercase font-bold text-[#E8A33D] flex items-center gap-1">
             <Cpu size={12} /> OPTION 2: MANAGED CLOUD BOT DISPATCH
           </div>
+          <input
+            type="text"
+            placeholder="Google Meet URL (e.g. https://meet.google.com/qfz-imot-oic)"
+            value={customMeetUrl}
+            onChange={(e) => setCustomMeetUrl(e.target.value)}
+            className="w-full px-2.5 py-1.5 rounded bg-[#182124] border border-[#2B383C] text-xs font-mono text-[#E7EEEF] placeholder-[#5B6A6E] focus:outline-none focus:border-[#E8A33D]"
+          />
           <button
             onClick={handleManagedBotJoin}
             disabled={agent.status !== "idle" && agent.status !== "completed" || loading || userRole !== "organizer"}
@@ -409,6 +418,16 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </button>
         </div>
       </div>
+
+      {/* Host Admission Required Banner */}
+      {(agent.status === "joining" || agent.status === "recording") && (
+        <div className="rounded-lg bg-[#E8A33D]/10 border border-[#E8A33D]/40 p-3 text-[#E8A33D] text-xs flex items-center gap-2 font-mono">
+          <Bot className="w-4 h-4 flex-shrink-0 animate-bounce" />
+          <span>
+            <strong>📢 HOST ADMISSION REQUIRED:</strong> Innovexa Notetaker has been dispatched to your Google Meet room! Please switch to your Google Meet browser tab and click <strong>"Admit"</strong> when the host entry popup appears.
+          </span>
+        </div>
+      )}
 
       {/* Recording Audio/Video Playback Player */}
       {agent.recordingUrl && agent.recordingUrl.length > 0 && (
