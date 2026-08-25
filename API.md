@@ -252,7 +252,33 @@ Innovexa uses role-based header authorization. Protected endpoints (such as `POS
     "transcript": null,
     "summary": null
   }
+### 19. Ghost Caller Bot Join Endpoint (`POST /bot/join`)
+- **Port**: `3000` (`innovexa-meet-bot`)
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  {
+    "meetingUrl": "https://meet.google.com/abc-defg-hij",
+    "botName": "Innovexa Notetaker",
+    "metadata": {
+      "meetingTitle": "Weekly Architecture Sync"
+    }
+  }
   ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "status": "success",
+    "audioFile": "/recordings/recording_abc-defg-hij_1724534000.wav",
+    "meetingUrl": "https://meet.google.com/abc-defg-hij",
+    "botName": "Innovexa Notetaker",
+    "handoff": {
+      "status": "success",
+      "webhookStatus": 200
+    }
+  }
+  ```
+
 
 
 
