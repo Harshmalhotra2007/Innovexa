@@ -30,6 +30,9 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     status: "idle",
   });
   const [actionItems, setActionItems] = useState<any[]>([]);
+  const [citations, setCitations] = useState<any[]>([]);
+  const [highlightedChunkIndex, setHighlightedChunkIndex] = useState<number | null>(null);
+  
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("participant");
@@ -41,9 +44,10 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     const role = sessionStorage.getItem("userRole") || "participant";
     setUserRole(role);
 
-    // Initial fetch of agent status & action items
+    // Initial fetch of agent status, action items, and citations
     fetchStatus();
     fetchActionItems();
+    fetchCitations();
 
     // Connect to WebSocket Server for stateful updates
     let wsConnected = false;
@@ -66,57 +70,52 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             setAgent((prev) => ({ ...prev, ...data }));
             if (data.status === "completed") {
               fetchActionItems();
+              fetchCitations();
             }
           }
-        } catch (e) {
-          // Ignore
+        } catch {
+          // Fallback parsing
         }
       };
 
       socket.onerror = () => {
-        // Fallback to EventSource if WebSocket fails
-        if (!wsConnected) {
-          connectSSE();
-        }
+        wsConnected = false;
       };
     } catch {
-      connectSSE();
+      // WebSocket fallback
     }
 
-    function connectSSE() {
-      try {
-        const es = new EventSource(`/api/ai-agent/${meetingId}/updates`);
-        eventSourceRef.current = es;
+    // Connect to Server-Sent Events endpoint as fallback
+    try {
+      const es = new EventSource(`/api/ai-agent/${meetingId}/updates`);
+      eventSourceRef.current = es;
 
-        es.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data && data.status) {
-              setAgent((prev) => ({ ...prev, ...data }));
-              if (data.status === "completed") {
-                fetchActionItems();
-              }
+      es.onmessage = (event) => {
+        if (wsConnected) return; // WebSocket takes priority
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.status) {
+            setAgent((prev) => ({ ...prev, ...data }));
+            if (data.status === "completed") {
+              fetchActionItems();
+              fetchCitations();
             }
-          } catch {
-            // Ignore
           }
-        };
+        } catch {
+          // Fallback parsing
+        }
+      };
 
-        es.onerror = () => {
-          es.close();
-        };
-      } catch {
-        // Fallback
-      }
+      es.onerror = () => {
+        es.close();
+      };
+    } catch {
+      // EventSource fallback
     }
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+      if (socketRef.current) socketRef.current.close();
+      if (eventSourceRef.current) eventSourceRef.current.close();
     };
   }, [meetingId]);
 
@@ -125,9 +124,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       const res = await fetch(`/api/ai-agent/status/${meetingId}`);
       if (res.ok) {
         const data = await res.json();
-        if (data) {
-          setAgent(data);
-        }
+        setAgent(data);
       }
     } catch {
       // Ignore
@@ -136,13 +133,26 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
   const fetchActionItems = async () => {
     try {
-      const res = await fetch(`/api/meetings/${meetingId}`);
+      const res = await fetch(`/api/recordings/meeting/${meetingId}`);
       if (res.ok) {
         const data = await res.json();
+        // Fallback action items fetch from Postgres if direct endpoint is active
         setActionItems(data.actionItems || []);
       }
     } catch {
       // Ignore
+    }
+  };
+
+  const fetchCitations = async () => {
+    try {
+      const res = await fetch(`/api/citations?meetingId=${meetingId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCitations(data);
+      }
+    } catch (err) {
+      console.warn("[AIAgentPanel] Mapped citations not found yet:", err);
     }
   };
 
@@ -155,7 +165,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     setLoading(true);
     setErrorMsg(null);
     try {
-      // 1. Post to API to update state to joining
+      // Trigger join via REST request
       const res = await fetch("/api/ai-agent/join", {
         method: "POST",
         headers: {
@@ -172,29 +182,42 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       const data = await res.json();
       setAgent(data);
-
-      // 2. Trigger active run via WebSocket if connected
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ action: "start" }));
-      } else {
-        // Fallback: poll status directly
-        const interval = setInterval(async () => {
-          const statusRes = await fetch(`/api/ai-agent/status/${meetingId}`);
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            setAgent(statusData);
-            if (statusData.status === "completed") {
-              clearInterval(interval);
-              fetchActionItems();
-            }
+      
+      // Setup backup polling interval
+      const interval = setInterval(async () => {
+        const statusRes = await fetch(`/api/ai-agent/status/${meetingId}`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setAgent(statusData);
+          if (statusData.status === "completed") {
+            clearInterval(interval);
+            fetchActionItems();
+            fetchCitations();
           }
-        }, 1000);
-      }
+        }
+      }, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error joining meeting";
       setErrorMsg(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCitationClick = (chunkId: string) => {
+    try {
+      // Format is meetingId_chunkIdx (e.g. 1234_2)
+      const parts = chunkId.split("_");
+      const idx = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(idx)) {
+        setHighlightedChunkIndex(idx);
+        const element = document.getElementById(`chunk-${idx}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -232,26 +255,59 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         );
       default:
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#141C1F] text-[#8FA0A4] border border-[#2A363A]">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#141C1F] text-[#8FA0A4] border border-[#212B2E]">
             <Bot className="w-3.5 h-3.5 text-[#8FA0A4]" /> AGENT IDLE
           </span>
         );
     }
   };
 
+  // Render executive summary with clickable citations
+  const renderSummaryText = (summaryText: string) => {
+    const lines = summaryText.split("\n");
+    let bulletIdx = 0;
+    
+    return lines.map((line, lIdx) => {
+      const isBullet = line.trim().startsWith("•") || line.trim().startsWith("-");
+      if (isBullet) {
+        const currentBulletIdx = bulletIdx;
+        bulletIdx++;
+        
+        // Find matching citation by index
+        const match = citations.find(c => c.id.endsWith(`_${currentBulletIdx}`));
+        
+        return (
+          <div key={lIdx} className="pl-3 relative flex items-baseline justify-between group py-0.5">
+            <span className="flex-1">{line}</span>
+            {match && (
+              <button
+                onClick={() => handleCitationClick(match.transcriptChunkId)}
+                className="ml-2 font-mono text-[9px] text-[#49B9AE] hover:text-[#E8A33D] border border-[#49B9AE]/30 hover:border-[#E8A33D] rounded px-1.5 py-0.5 transition-all bg-[#141C1F] flex-shrink-0"
+                title="Jump to source transcript snippet"
+              >
+                [Source: Citation]
+              </button>
+            )}
+          </div>
+        );
+      }
+      return <div key={lIdx}>{line}</div>;
+    });
+  };
+
   return (
-    <div className="ops-panel p-5 space-y-4 font-sans text-xs">
+    <div className="rounded-xl border border-[#212B2E] bg-[#182124] p-5 shadow-xl space-y-4 font-sans text-xs">
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2A363A] pb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-[#4A3A1E]/30 text-[#E8A33D] border border-[#E8A33D]/40">
+          <div className="p-2 rounded-lg bg-[#252a36] text-[#E8A33D] border border-[#212B2E]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-display font-bold text-sm tracking-wide text-[#E7EEEF] uppercase flex items-center gap-2">
-              INNOVEXA AI MEETING AGENT
+            <h3 className="font-display font-bold text-sm tracking-wide text-[#e8e1d5] uppercase flex items-center gap-2">
+              MEETIQ AI MEETING AGENT
             </h3>
-            <p className="font-mono text-[11px] text-[#8FA0A4] mt-0.5">
+            <p className="font-mono text-[11px] text-[#9a99a0] mt-0.5">
               Automated Virtual Participant • Whisper ASR • GPT-4 Summarizer
             </p>
           </div>
@@ -262,7 +318,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           <button
             onClick={handleJoinMeeting}
             disabled={agent.status !== "idle" || loading || userRole !== "organizer"}
-            className="px-4 py-2 rounded font-display text-xs font-bold uppercase tracking-wider bg-[#E8A33D] text-[#1A1305] hover:bg-[#d8932d] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-md shadow-[#E8A33D]/20"
+            className="px-4 py-2 rounded font-display text-xs font-bold uppercase tracking-wider bg-[#E8A33D] text-[#1a1f2d] hover:bg-[#a87f30] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-md shadow-[#E8A33D]/20"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
             JOIN MEETING
@@ -286,7 +342,13 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </div>
           <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-3 max-h-48 overflow-y-auto space-y-2 font-mono text-xs">
             {agent.transcript.map((seg, i) => (
-              <div key={i} className="flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0">
+              <div 
+                key={i} 
+                id={`chunk-${i}`}
+                className={`flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0 p-1 transition-all rounded ${
+                  highlightedChunkIndex === i ? "bg-[#E8A33D]/25 border-l-2 border-[#E8A33D] pl-2" : ""
+                }`}
+              >
                 <span className="text-[10px] text-[#5B6A6E] pt-0.5">{seg.timestamp}</span>
                 <span className="font-bold text-[#49B9AE] min-w-[130px]">{seg.speaker}:</span>
                 <span className="text-[#E7EEEF] flex-1">{seg.text}</span>
@@ -303,7 +365,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             <Sparkles className="w-3.5 h-3.5" /> AI GENERATED EXECUTIVE SUMMARY
           </div>
           <div className="rounded-lg bg-[#1D272B] border border-[#E8A33D]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
-            {agent.summary}
+            {renderSummaryText(agent.summary)}
           </div>
         </div>
       )}
