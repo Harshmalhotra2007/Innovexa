@@ -121,14 +121,27 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/ai-agent/join", {
+      // Priority 1: MeetingBaas API Dispatch
+      let res = await fetch("/api/meeting-baas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-user-role": userRole,
         },
-        body: JSON.stringify({ meetingId, useManagedBot: true }),
+        body: JSON.stringify({ meetingId }),
       });
+
+      if (!res.ok) {
+        // Priority 2: Standard Cloud Bot Endpoint
+        res = await fetch("/api/ai-agent/join", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-role": userRole,
+          },
+          body: JSON.stringify({ meetingId, useManagedBot: true }),
+        });
+      }
 
       if (!res.ok) {
         const err = await res.json();
