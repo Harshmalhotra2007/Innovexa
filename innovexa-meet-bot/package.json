@@ -14,5 +14,8 @@
     "form-data": "^4.0.0",
     "playwright": "^1.44.0",
     "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "next": "^14.2.7"
   }
 }
