@@ -1,4 +1,4 @@
-# Implementation Plan v2 - MeetIQ AI Meeting Agent
+# Implementation Plan v2 - Innovexa AI Meeting Agent
 
 Architect, implement, and verify a self-contained, disclosed **AI Meeting Agent** incorporating Playwright automation, WebSockets, Redis queues, Whisper.cpp/Llama.cpp self-hosted engines, AES-256 data encryption, and Kubernetes deployments.
 
@@ -48,7 +48,7 @@ graph TD
 | `auth-gateway.js` **[NEW]** | Validates that a Client UI request to join a meeting is authorized against the calendar event owner/invitee list — prevents cross-user join triggering |
 
 ### 3. Consent & Disclosure Layer *(new section)*
-- Bot joins with a clearly labeled name (e.g. "MeetIQ Notetaker") and avatar — never blank/anonymous.
+- Bot joins with a clearly labeled name (e.g. "Innovexa Notetaker") and avatar — never blank/anonymous.
 - On join, posts an announcement in meeting chat and/or triggers a visible on-screen banner where the platform supports it.
 - Meeting organizer can require explicit participant opt-in before recording begins (configurable per workspace, since consent law varies by jurisdiction — some are one-party, some two-party/all-party consent).
 - If a participant objects, the bot supports a "leave/stop recording" command.
