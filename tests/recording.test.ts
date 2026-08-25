@@ -1,6 +1,7 @@
 import { POST } from "../src/app/api/recordings/upload/route";
 import { GET } from "../src/app/api/recordings/meeting/[meetingId]/route";
 import { db } from "../src/lib/db";
+import { validateAudioBuffer } from "../src/lib/audio-validator";
 
 // Mock the Prisma DB client
 jest.mock("../src/lib/db", () => ({
@@ -26,6 +27,31 @@ jest.mock("next/cache", () => ({
   unstable_cache: (fn: any) => fn,
 }));
 
+const VALID_AUDIO_BASE64 = Buffer.alloc(200, 1).toString("base64");
+
+describe("Audio Validation Utility", () => {
+  it("should reject 0-byte or empty audio buffers", () => {
+    const emptyBuffer = Buffer.alloc(0);
+    const result = validateAudioBuffer(emptyBuffer);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("empty");
+  });
+
+  it("should reject buffers below minimum byte threshold (<100 bytes)", () => {
+    const smallBuffer = Buffer.from("tiny-audio");
+    const result = validateAudioBuffer(smallBuffer);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("too small");
+  });
+
+  it("should accept valid audio buffers above byte threshold", () => {
+    const validBuffer = Buffer.alloc(300, 1);
+    const result = validateAudioBuffer(validBuffer, "audio/mp3");
+    expect(result.valid).toBe(true);
+    expect(result.byteSize).toBe(300);
+  });
+});
+
 describe("Recordings Upload POST API Endpoint", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,7 +66,7 @@ describe("Recordings Upload POST API Endpoint", () => {
       },
       body: JSON.stringify({
         meetingId: "meeting-1",
-        audioBlob: "dGVzdC1hdWRpby1kYXRh", // "test-audio-data" in base64
+        audioBlob: VALID_AUDIO_BASE64,
         format: "audio/mp3",
         duration: 30
       }),
@@ -50,6 +76,27 @@ describe("Recordings Upload POST API Endpoint", () => {
     expect(res.status).toBe(403);
     const data = await res.json();
     expect(data.error).toContain("Forbidden");
+  });
+
+  it("should fail if audio payload fails validation", async () => {
+    const req = new Request("http://localhost/api/recordings/upload", {
+      method: "POST",
+      headers: {
+        "x-user-role": "organizer",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        meetingId: "meeting-1",
+        audioBlob: Buffer.from("corrupted-tiny-payload").toString("base64"),
+        format: "audio/mp3",
+        duration: 30
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("Audio validation failed");
   });
 
   it("should fail if the meeting is not found", async () => {
@@ -63,7 +110,7 @@ describe("Recordings Upload POST API Endpoint", () => {
       },
       body: JSON.stringify({
         meetingId: "non-existent-meeting",
-        audioBlob: "dGVzdC1hdWRpby1kYXRh",
+        audioBlob: VALID_AUDIO_BASE64,
         format: "audio/mp3",
         duration: 30
       }),
@@ -76,16 +123,14 @@ describe("Recordings Upload POST API Endpoint", () => {
   });
 
   it("should upload successfully and create database entry if role is organizer", async () => {
-    // Mock meeting exists
     (db.meeting.findUnique as jest.Mock).mockResolvedValueOnce({ id: "meeting-1", title: "Project Sync" });
     
-    // Mock database creation output
     const mockRecording = {
       id: "rec-123",
       meetingId: "meeting-1",
       url: "https://storage.provider.com/recordings/123/mock-audio.mp3",
       duration: 30,
-      size: 15,
+      size: 200,
       format: "audio/mp3",
       uploadedAt: new Date(),
     };
@@ -99,7 +144,7 @@ describe("Recordings Upload POST API Endpoint", () => {
       },
       body: JSON.stringify({
         meetingId: "meeting-1",
-        audioBlob: "dGVzdC1hdWRpby1kYXRh",
+        audioBlob: VALID_AUDIO_BASE64,
         format: "audio/mp3",
         duration: 30
       }),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { uploadToStorage } from "@/lib/storage";
 import { revalidateTag } from "next/cache";
+import { validateAudioBuffer } from "@/lib/audio-validator";
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_TYPES = [
@@ -79,6 +80,16 @@ export async function POST(req: Request) {
 
       const ext = mimeType.split("/")[1] || "mp3";
       fileName = `recording.${ext}`;
+    }
+
+    // Audio Buffer Usability & Quality Validation
+    const audioValidation = validateAudioBuffer(audioBuffer, mimeType);
+    if (!audioValidation.valid) {
+      console.warn("[Upload API] Audio validation rejected payload:", audioValidation.error);
+      return NextResponse.json(
+        { error: `Audio validation failed: ${audioValidation.error}` },
+        { status: 400 }
+      );
     }
 
     if (!meetingId) {
