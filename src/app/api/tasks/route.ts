@@ -62,6 +62,35 @@ export async function GET(req: Request) {
   }
 }
 
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { title, ownerName, department, priority, deadline, assigneeId } = body;
+
+    if (!title || !title.trim()) {
+      return NextResponse.json({ error: "Task title is required" }, { status: 400 });
+    }
+
+    const newTask = await db.task.create({
+      data: {
+        title: title.trim(),
+        ownerName: ownerName || "Unassigned",
+        department: department || "Operations",
+        priority: (priority as TaskPriority) || "Medium",
+        status: "Pending",
+        deadline: deadline ? new Date(deadline) : new Date(Date.now() + 86400000 * 3), // default 3 days
+        assigneeId: assigneeId || null,
+      },
+    });
+
+    revalidateTag("tasks");
+    return NextResponse.json({ success: true, task: newTask }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create task";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
@@ -87,6 +116,27 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true, task: updatedTask });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to update task";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const taskId = searchParams.get("taskId");
+
+    if (!taskId) {
+      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
+    }
+
+    await db.task.delete({
+      where: { id: taskId },
+    });
+
+    revalidateTag("tasks");
+    return NextResponse.json({ success: true, message: "Task deleted successfully" });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to delete task";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

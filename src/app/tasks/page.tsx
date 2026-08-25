@@ -11,10 +11,11 @@ import {
   Clock,
   User,
   Zap,
-  Filter,
-  Check,
-  Calendar,
+  Trash2,
+  Plus,
+  Loader2,
   Layers,
+  X,
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -24,6 +25,16 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "overdue" | "pending" | "completed">("all");
+
+  // New Task Form State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newOwner, setNewOwner] = useState("Unassigned");
+  const [newPriority, setNewPriority] = useState("Medium");
+  const [newDeadline, setNewDeadline] = useState(
+    new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10)
+  );
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -54,6 +65,61 @@ export default function TasksPage() {
       setLoading(false);
     }
   }
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+
+    setIsCreating(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          ownerName: newOwner,
+          priority: newPriority,
+          deadline: newDeadline,
+        }),
+      });
+
+      if (res.ok) {
+        setNewTitle("");
+        setShowAddModal(false);
+        setToast("Task created successfully!");
+        setTimeout(() => setToast(null), 3000);
+        fetchTasks();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create task");
+      }
+    } catch (err: any) {
+      alert("Error creating task: " + err.message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string, title: string) => {
+    if (!window.confirm(`Delete task "${title}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/tasks?taskId=${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        setToast("Task removed!");
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete task");
+      }
+    } catch (err: any) {
+      alert("Error deleting task: " + err.message);
+    }
+  };
 
   const handleAssignTask = async (taskId: string, assigneeId: string) => {
     if (userRole !== "organizer") {
@@ -172,7 +238,7 @@ export default function TasksPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#212B2E] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#212B2E] pb-4">
         <div>
           <h1 className="font-display text-xl font-bold text-[#E7EEEF] flex items-center gap-2">
             <ListChecks className="text-[#E8A33D] w-5 h-5" /> Task SLA & Action Board
@@ -183,11 +249,91 @@ export default function TasksPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs px-3 py-1 rounded bg-[#182124] border border-[#2B383C] text-[#E8A33D] font-bold">
-            {completionPct}% RESOLVED
-          </span>
+          <button
+            onClick={() => setShowAddModal(!showAddModal)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-[#E8A33D] text-[#1A1305] text-xs font-bold font-mono hover:bg-[#d8932d] transition-all shadow-md"
+          >
+            {showAddModal ? <X size={14} /> : <Plus size={14} />}
+            <span>{showAddModal ? "Cancel" : "ADD TASK"}</span>
+          </button>
         </div>
       </div>
+
+      {/* Add New Task Form Modal */}
+      {showAddModal && (
+        <div className="ops-panel p-4 space-y-3 border border-[#E8A33D]/40 bg-[#1D272B]">
+          <div className="font-mono text-xs font-bold text-[#E8A33D] uppercase flex items-center gap-1.5">
+            <Plus size={14} /> Add New Action Item
+          </div>
+
+          <form onSubmit={handleCreateTask} className="space-y-3">
+            <div>
+              <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                TASK TITLE *
+              </label>
+              <input
+                required
+                placeholder="e.g. Finalize Q3 Vendor Contract"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="ops-input w-full p-2 text-xs text-[#E7EEEF]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                  ASSIGNEE
+                </label>
+                <input
+                  placeholder="e.g. Rahul Sharma"
+                  value={newOwner}
+                  onChange={(e) => setNewOwner(e.target.value)}
+                  className="ops-input w-full p-2 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                  PRIORITY
+                </label>
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  className="ops-input w-full p-2 text-xs font-mono"
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                  DEADLINE
+                </label>
+                <input
+                  type="date"
+                  value={newDeadline}
+                  onChange={(e) => setNewDeadline(e.target.value)}
+                  className="ops-input w-full p-2 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={isCreating || !newTitle.trim()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded bg-[#49B9AE] text-[#0D1A18] text-xs font-bold font-mono hover:bg-[#3ca298] disabled:opacity-50"
+              >
+                {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                <span>{isCreating ? "Saving..." : "CREATE TASK"}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* SLA Metric Cards Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -225,7 +371,7 @@ export default function TasksPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#212B2E] pb-2 font-mono text-xs">
+      <div className="flex items-center gap-2 border-b border-[#212B2E] pb-2 font-mono text-xs flex-wrap">
         <button
           onClick={() => setActiveFilter("all")}
           className={`px-3 py-1.5 rounded transition-all ${
@@ -345,16 +491,27 @@ export default function TasksPage() {
                   </div>
                 </div>
 
-                {!isDone && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {!isDone && (
+                    <button
+                      onClick={() => sendReminder(t.ownerName)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded border border-[#2B383C] bg-[#182124] text-[11px] font-mono text-[#E8A33D] hover:border-[#E8A33D] transition-colors"
+                      title="Send SLA Nudge"
+                    >
+                      <Zap size={12} />
+                      <span>NUDGE SLA</span>
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => sendReminder(t.ownerName)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded border border-[#2B383C] bg-[#182124] text-[11px] font-mono text-[#E8A33D] hover:border-[#E8A33D] transition-colors shrink-0"
-                    title="Send SLA Nudge"
+                    onClick={() => handleDeleteTask(t.id, t.title)}
+                    className="p-1.5 rounded text-[#8FA0A4] hover:text-[#E2666A] hover:bg-[#2A181A] transition-colors"
+                    title="Delete Task"
+                    aria-label={`Delete task ${t.title}`}
                   >
-                    <Zap size={12} />
-                    <span>NUDGE SLA</span>
+                    <Trash2 size={15} />
                   </button>
-                )}
+                </div>
               </div>
             );
           })
