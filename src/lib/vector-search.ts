@@ -1,8 +1,10 @@
 import { db } from "./db";
+import { execSync } from "child_process";
+import path from "path";
 
 export interface SearchResultItem {
   id: string;
-  type: "decision" | "meeting" | "task" | "segment";
+  type: "decision" | "meeting" | "task" | "segment" | "chunk";
   title: string;
   content: string;
   score: number; // 0 to 1
@@ -15,49 +17,78 @@ export interface SearchResultItem {
   status?: string;
 }
 
-// In-memory cache to avoid rate-limiting on HF API for the demo
-const embeddingCache = new Map<string, number[]>();
-
-async function getEmbedding(text: string): Promise<number[]> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  if (!apiKey) throw new Error("No API key");
-  const res = await fetch("https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2", {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    method: "POST",
-    body: JSON.stringify({ inputs: [text] }),
-  });
-  if (!res.ok) throw new Error(`HF API error: ${res.statusText}`);
-  const data = await res.json();
-  return data[0] as number[];
-}
-
-async function getCachedEmbedding(text: string): Promise<number[] | null> {
-  const hashText = text.slice(0, 100); // simplify cache key
-  if (embeddingCache.has(hashText)) return embeddingCache.get(hashText)!;
+/**
+ * Generate embedding vector using local Python SentenceTransformers
+ */
+async function getChromaQueryVector(query: string): Promise<number[] | null> {
   try {
-    const emb = await getEmbedding(text);
-    embeddingCache.set(hashText, emb);
-    return emb;
-  } catch (e) {
-    console.error("Embedding error, falling back to basic similarity:", e);
-    return null;
+    const scriptPath = path.join(process.cwd(), "ai-agent-service/oracle_core_worker.py");
+    // Clean query text to avoid shell argument breakage
+    const cleanQuery = query.replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
+    const result = execSync(`python "${scriptPath}" --embed "${cleanQuery}"`, { encoding: "utf8" });
+    const parsed = JSON.parse(result.trim());
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch (err) {
+    console.warn("[VectorSearch] Embedding generation via Python skipped or failed:", err);
+  }
+  return null;
+}
+
+/**
+ * Query persistent ChromaDB vector store collection via REST API
+ */
+async function queryChromaCollection(vector: number[], limit: number = 5): Promise<any[]> {
+  const chromaUrl = process.env.CHROMADB_URL || "http://localhost:8000";
+  try {
+    // 1. Fetch collection metadata to get uuid
+    const getCollRes = await fetch(`${chromaUrl}/api/v1/collections/meeting_transcripts`, {
+      headers: { "Content-Type": "application/json" },
+      next: { revalidate: 0 }
+    });
+    if (!getCollRes.ok) return [];
+    const coll = await getCollRes.json();
+    const collId = coll.id;
+
+    // 2. Execute vector similarity search
+    const queryRes = await fetch(`${chromaUrl}/api/v1/collections/${collId}/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query_embeddings: [vector],
+        n_results: limit,
+      }),
+      next: { revalidate: 0 }
+    });
+    if (!queryRes.ok) return [];
+    const data = await queryRes.json();
+    
+    const results = [];
+    const docs = data.documents[0] || [];
+    const metadatas = data.metadatas[0] || [];
+    const ids = data.ids[0] || [];
+    const distances = data.distances ? (data.distances[0] || []) : [];
+
+    for (let i = 0; i < docs.length; i++) {
+      results.push({
+        id: ids[i],
+        content: docs[i],
+        metadata: metadatas[i],
+        score: distances[i] !== undefined ? Math.max(0, 1 - distances[i]) : 0.8,
+      });
+    }
+    return results;
+  } catch (err) {
+    console.warn("[VectorSearch] ChromaDB collection query failed. Falling back to Postgres search.");
+    return [];
   }
 }
 
-function cosineSimilarity(vecA: number[], vecB: number[]) {
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-function computeBasicSimilarity(text1: string, text2: string): number {
+/**
+ * Compute cosine similarity locally using term frequencies as fallback
+ */
+function tfCosineSimilarity(text1: string, text2: string): number {
   const tokenize = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter((w) => w.length > 2);
   const tokens1 = tokenize(text1);
   const tokens2 = tokenize(text2);
@@ -83,43 +114,71 @@ function computeBasicSimilarity(text1: string, text2: string): number {
   return dotProduct / (Math.sqrt(mag1) * Math.sqrt(mag2));
 }
 
-export async function performSemanticSearch(query: string, departmentFilter?: string): Promise<SearchResultItem[]> {
+export async function performSemanticSearch(
+  query: string, 
+  departmentFilter?: string, 
+  startDate?: string, 
+  endDate?: string
+): Promise<SearchResultItem[]> {
   if (!query || query.trim().length === 0) return [];
   const results: SearchResultItem[] = [];
   
-  // Attempt to get query embedding
-  const queryEmbedding = await getCachedEmbedding(query);
+  // 1. Attempt to search in ChromaDB using local SentenceTransformers vector representation
+  const queryVector = await getChromaQueryVector(query);
+  if (queryVector) {
+    const chromaMatches = await queryChromaCollection(queryVector, 10);
+    for (const match of chromaMatches) {
+      const meetingId = match.metadata.meeting_id;
+      if (!meetingId) continue;
 
+      const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
+      if (!meeting) continue;
+
+      // Filter by department and date range
+      if (departmentFilter && departmentFilter !== "All" && meeting.department !== departmentFilter) continue;
+      if (startDate && new Date(meeting.date) < new Date(startDate)) continue;
+      if (endDate && new Date(meeting.date) > new Date(endDate)) continue;
+
+      results.push({
+        id: match.id,
+        type: "chunk",
+        title: `Transcript segment: "${meeting.title}"`,
+        content: match.content,
+        score: match.score,
+        department: meeting.department || "General",
+        meetingId: meeting.id,
+        meetingTitle: meeting.title,
+        date: meeting.date.toISOString().split("T")[0],
+      });
+    }
+  }
+
+  // 2. Fetch Decisions, Tasks, and Segments from PostgreSQL for hybrid TF-IDF search
   const decisions = await db.decision.findMany({ include: { meeting: true } });
   for (const dec of decisions) {
     if (departmentFilter && departmentFilter !== "All" && dec.department !== departmentFilter) continue;
-    const fullText = `${dec.title} ${dec.context} ${dec.rationale} ${dec.tags}`;
-    
-    let score = 0;
-    if (queryEmbedding) {
-        const docEmbedding = await getCachedEmbedding(fullText);
-        if (docEmbedding) {
-            score = cosineSimilarity(queryEmbedding, docEmbedding);
-        } else {
-            score = computeBasicSimilarity(query, fullText);
-        }
-    } else {
-        score = computeBasicSimilarity(query, fullText);
-    }
+    if (startDate && new Date(dec.createdAt) < new Date(startDate)) continue;
+    if (endDate && new Date(dec.createdAt) > new Date(endDate)) continue;
 
-    if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase()) || (queryEmbedding && score > 0.3)) {
+    const fullText = `${dec.title} ${dec.context} ${dec.rationale} ${dec.tags}`;
+    const score = tfCosineSimilarity(query, fullText);
+
+    if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase())) {
       let parsedTags: string[] = [];
       if (Array.isArray(dec.tags)) {
         parsedTags = dec.tags;
-      } else if (typeof dec.tags === "string") {
-        try { parsedTags = JSON.parse(dec.tags); } catch { parsedTags = [dec.department]; }
       }
       results.push({
-        id: dec.id, type: "decision", title: dec.title,
+        id: dec.id, 
+        type: "decision", 
+        title: dec.title,
         content: `${dec.context} — Rationale: ${dec.rationale || "N/A"}`,
         score: Math.max(score, fullText.toLowerCase().includes(query.toLowerCase()) ? 0.75 : score),
-        department: dec.department, meetingId: dec.meetingId, meetingTitle: dec.meeting?.title,
-        date: dec.createdAt.toISOString().split("T")[0], tags: parsedTags,
+        department: dec.department, 
+        meetingId: dec.meetingId, 
+        meetingTitle: dec.meeting?.title,
+        date: dec.createdAt.toISOString().split("T")[0], 
+        tags: parsedTags,
       });
     }
   }
@@ -127,58 +186,40 @@ export async function performSemanticSearch(query: string, departmentFilter?: st
   const tasks = await db.task.findMany({ include: { meeting: true } });
   for (const t of tasks) {
     if (departmentFilter && departmentFilter !== "All" && t.department !== departmentFilter) continue;
-    const fullText = `${t.title} ${t.description} ${t.ownerName} ${t.status}`;
-    
-    let score = 0;
-    if (queryEmbedding) {
-        const docEmbedding = await getCachedEmbedding(fullText);
-        if (docEmbedding) {
-            score = cosineSimilarity(queryEmbedding, docEmbedding);
-        } else {
-            score = computeBasicSimilarity(query, fullText);
-        }
-    } else {
-        score = computeBasicSimilarity(query, fullText);
-    }
+    if (startDate && t.meeting && new Date(t.meeting.date) < new Date(startDate)) continue;
+    if (endDate && t.meeting && new Date(t.meeting.date) > new Date(endDate)) continue;
 
-    if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase()) || (queryEmbedding && score > 0.3)) {
+    const fullText = `${t.title} ${t.description} ${t.ownerName} ${t.status}`;
+    const score = tfCosineSimilarity(query, fullText);
+
+    if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase())) {
       results.push({
-        id: t.id, type: "task", title: `Task: ${t.title}`,
+        id: t.id, 
+        type: "task", 
+        title: `Task: ${t.title}`,
         content: t.description || `Assigned to ${t.ownerName} (Status: ${t.status})`,
         score: Math.max(score, fullText.toLowerCase().includes(query.toLowerCase()) ? 0.7 : score),
-        department: t.department, meetingId: t.meetingId || undefined, meetingTitle: t.meeting?.title,
-        ownerName: t.ownerName, status: t.status,
+        department: t.department, 
+        meetingId: t.meetingId || undefined, 
+        meetingTitle: t.meeting?.title,
+        ownerName: t.ownerName, 
+        status: t.status,
+        date: t.createdAt.toISOString().split("T")[0],
       });
     }
   }
 
-  const segments = await db.meetingSegment.findMany({ include: { meeting: true } });
-  for (const seg of segments) {
-    if (departmentFilter && departmentFilter !== "All" && seg.meeting.department !== departmentFilter) continue;
-    const fullText = `${seg.speaker}: ${seg.text}`;
-    
-    let score = 0;
-    if (queryEmbedding) {
-        const docEmbedding = await getCachedEmbedding(fullText);
-        if (docEmbedding) {
-            score = cosineSimilarity(queryEmbedding, docEmbedding);
-        } else {
-            score = computeBasicSimilarity(query, fullText);
-        }
-    } else {
-        score = computeBasicSimilarity(query, fullText);
-    }
-
-    if (score > 0.1 || (queryEmbedding && score > 0.3)) {
-      results.push({
-        id: seg.id, type: "segment", title: `Transcript snippet (${seg.speaker})`,
-        content: seg.text, score,
-        department: seg.meeting.department || "General", meetingId: seg.meetingId,
-        meetingTitle: seg.meeting.title, date: seg.meeting.date.toISOString().split("T")[0],
-      });
-    }
-  }
-
+  // Sort by score descending and return top 5
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, 3); // spec says "Return top 3 matches"
+  
+  // Deduplicate results by content to keep clean lists
+  const seenContent = new Set<string>();
+  const uniqResults = results.filter((item) => {
+    const key = item.content.slice(0, 100);
+    if (seenContent.has(key)) return false;
+    seenContent.add(key);
+    return true;
+  });
+
+  return uniqResults.slice(0, 5);
 }
