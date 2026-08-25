@@ -15,7 +15,6 @@ import {
   Plus,
   Loader2,
   Layers,
-  X,
 } from "lucide-react";
 
 export default function TasksPage() {
@@ -26,8 +25,7 @@ export default function TasksPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "overdue" | "pending" | "completed">("all");
 
-  // New Task Form State
-  const [showAddModal, setShowAddModal] = useState(false);
+  // New Task Form State (Visible inline)
   const [newTitle, setNewTitle] = useState("");
   const [newOwner, setNewOwner] = useState("Unassigned");
   const [newPriority, setNewPriority] = useState("Medium");
@@ -85,8 +83,7 @@ export default function TasksPage() {
 
       if (res.ok) {
         setNewTitle("");
-        setShowAddModal(false);
-        setToast("Task created successfully!");
+        setToast("Task added successfully!");
         setTimeout(() => setToast(null), 3000);
         fetchTasks();
       } else {
@@ -101,7 +98,7 @@ export default function TasksPage() {
   };
 
   const handleDeleteTask = async (taskId: string, title: string) => {
-    if (!window.confirm(`Delete task "${title}"?`)) return;
+    if (!window.confirm(`Remove task "${title}"?`)) return;
 
     try {
       const res = await fetch(`/api/tasks?taskId=${taskId}`, {
@@ -249,91 +246,85 @@ export default function TasksPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowAddModal(!showAddModal)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-[#E8A33D] text-[#1A1305] text-xs font-bold font-mono hover:bg-[#d8932d] transition-all shadow-md"
-          >
-            {showAddModal ? <X size={14} /> : <Plus size={14} />}
-            <span>{showAddModal ? "Cancel" : "ADD TASK"}</span>
-          </button>
+          <span className="font-mono text-xs px-3 py-1 rounded bg-[#182124] border border-[#2B383C] text-[#E8A33D] font-bold">
+            {completionPct}% RESOLVED
+          </span>
         </div>
       </div>
 
-      {/* Add New Task Form Modal */}
-      {showAddModal && (
-        <div className="ops-panel p-4 space-y-3 border border-[#E8A33D]/40 bg-[#1D272B]">
-          <div className="font-mono text-xs font-bold text-[#E8A33D] uppercase flex items-center gap-1.5">
-            <Plus size={14} /> Add New Action Item
+      {/* ➕ QUICK ADD NEW TASK PANEL */}
+      <div className="ops-panel p-4 space-y-3 border border-[#E8A33D]/40 bg-[#1D272B]">
+        <div className="font-mono text-xs font-bold text-[#E8A33D] uppercase flex items-center gap-1.5">
+          <Plus size={14} /> Quick Add Action Item
+        </div>
+
+        <form onSubmit={handleCreateTask} className="space-y-3">
+          <div>
+            <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1 font-bold">
+              TASK TITLE *
+            </label>
+            <input
+              required
+              placeholder="e.g. Finalize Q3 Vendor Contract"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="ops-input w-full p-2.5 text-xs text-[#E7EEEF]"
+            />
           </div>
 
-          <form onSubmit={handleCreateTask} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
-                TASK TITLE *
+                ASSIGNEE
               </label>
               <input
-                required
-                placeholder="e.g. Finalize Q3 Vendor Contract"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="ops-input w-full p-2 text-xs text-[#E7EEEF]"
+                placeholder="e.g. Rahul Sharma"
+                value={newOwner}
+                onChange={(e) => setNewOwner(e.target.value)}
+                className="ops-input w-full p-2 text-xs"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
-                  ASSIGNEE
-                </label>
-                <input
-                  placeholder="e.g. Rahul Sharma"
-                  value={newOwner}
-                  onChange={(e) => setNewOwner(e.target.value)}
-                  className="ops-input w-full p-2 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
-                  PRIORITY
-                </label>
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  className="ops-input w-full p-2 text-xs font-mono"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
-                  DEADLINE
-                </label>
-                <input
-                  type="date"
-                  value={newDeadline}
-                  onChange={(e) => setNewDeadline(e.target.value)}
-                  className="ops-input w-full p-2 text-xs font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <button
-                type="submit"
-                disabled={isCreating || !newTitle.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded bg-[#49B9AE] text-[#0D1A18] text-xs font-bold font-mono hover:bg-[#3ca298] disabled:opacity-50"
+            <div>
+              <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                PRIORITY
+              </label>
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value)}
+                className="ops-input w-full p-2 text-xs font-mono"
               >
-                {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-                <span>{isCreating ? "Saving..." : "CREATE TASK"}</span>
-              </button>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
             </div>
-          </form>
-        </div>
-      )}
+
+            <div>
+              <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+                DEADLINE
+              </label>
+              <input
+                type="date"
+                value={newDeadline}
+                onChange={(e) => setNewDeadline(e.target.value)}
+                className="ops-input w-full p-2 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={isCreating || !newTitle.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 rounded bg-[#E8A33D] text-[#1A1305] text-xs font-bold font-mono hover:bg-[#d8932d] disabled:opacity-50 shadow-md"
+            >
+              {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              <span>{isCreating ? "Adding..." : "+ ADD TASK TO BOARD"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* SLA Metric Cards Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -503,13 +494,15 @@ export default function TasksPage() {
                     </button>
                   )}
 
+                  {/* 🗑️ REMOVE TASK BUTTON */}
                   <button
                     onClick={() => handleDeleteTask(t.id, t.title)}
-                    className="p-1.5 rounded text-[#8FA0A4] hover:text-[#E2666A] hover:bg-[#2A181A] transition-colors"
-                    title="Delete Task"
-                    aria-label={`Delete task ${t.title}`}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[#3A2224] bg-[#221517] text-[11px] font-mono text-[#E2666A] hover:bg-[#3A2224] transition-colors"
+                    title="Remove Task"
+                    aria-label={`Remove task ${t.title}`}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
+                    <span className="hidden sm:inline">REMOVE</span>
                   </button>
                 </div>
               </div>
