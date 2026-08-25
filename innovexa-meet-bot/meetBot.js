@@ -166,10 +166,42 @@ class MeetBot {
       await this.sendConsentMessage(page);
       logger.info("Sent in-chat consent message");
 
-      // Start audio capture
+      // Start audio capture with retry mechanism & MediaRecorder fallback
       const meetingId = meetingUrl.split("/").pop() || "session";
-      audioFile = await pulseAudio.startRecording(meetingId);
-      logger.info("Started audio recording", { audioFile });
+      try {
+        audioFile = await pulseAudio.startRecording(meetingId);
+        logger.info("Started primary PulseAudio sink recording", { audioFile });
+      } catch (pulseErr) {
+        logger.warn("PulseAudio sink failed, attempting 1 retry...", { error: pulseErr.message });
+        try {
+          await new Promise((r) => setTimeout(r, 1000));
+          await pulseAudio.setupSink();
+          audioFile = await pulseAudio.startRecording(meetingId);
+          logger.info("PulseAudio retry succeeded!", { audioFile });
+        } catch (retryErr) {
+          logger.warn("PulseAudio retry failed. Activating browser MediaRecorder API fallback...", { error: retryErr.message });
+          await page.evaluate(() => {
+            try {
+              (window as any)._mediaChunks = [];
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const dest = ctx.createMediaStreamDestination();
+              const els = document.querySelectorAll('audio, video');
+              els.forEach(el => {
+                try {
+                  const src = ctx.createMediaElementSource(el as HTMLMediaElement);
+                  src.connect(dest);
+                  src.connect(ctx.destination);
+                } catch (e) {}
+              });
+              const recorder = new MediaRecorder(dest.stream);
+              recorder.ondataavailable = (e) => { if (e.data.size > 0) (window as any)._mediaChunks.push(e.data); };
+              recorder.start(1000);
+              (window as any)._mediaRecorder = recorder;
+            } catch (e) { console.error('MediaRecorder fallback error:', e); }
+          }).catch(() => {});
+          audioFile = pulseAudio.createFailsafeRecording(meetingId);
+        }
+      }
 
       // Detect meeting end
       await this.waitForMeetingEnd(page);

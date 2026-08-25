@@ -139,6 +139,17 @@ class PulseAudio {
     });
   }
 
+  createFailsafeRecording(meetingId = "session") {
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+    const fileName = `failsafe_${meetingId.replace(/[^a-zA-Z0-9_-]/g, "_")}_${Date.now()}.wav`;
+    this.audioFile = path.join(this.outputDir, fileName);
+    this.writeFailsafeWavHeader();
+    logger.info(`Created failsafe WAV recording file at: ${this.audioFile}`);
+    return this.audioFile;
+  }
+
   async stopRecording() {
     logger.info(`Stopping PulseAudio recording process...`);
 
