@@ -1,0 +1,39 @@
+# Dockerfile for Llama.cpp with GGML/GGUF support
+FROM ubuntu:22.04
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Clone and build llama.cpp
+RUN git clone https://github.com/ggerganov/llama.cpp.git && \
+    cd llama.cpp && \
+    cmake -B build -DGGML_CUDA=OFF -DLLAMA_CUBLAS=OFF && \
+    cmake --build build --config Release -j$(nproc) && \
+    cp build/bin/llama-cli /usr/local/bin/ && \
+    cp build/bin/llama-server /usr/local/bin/ 2>/dev/null || true
+
+# Download default model (Llama-2-7B-Chat GGUF)
+RUN mkdir -p /models && \
+    cd /models && \
+    wget -q https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf
+
+# Expose port for llama server mode
+EXPOSE 8083
+
+# Environment variables
+ENV LLAMA_MODEL_PATH=/models/llama-2-7b-chat.Q4_K_M.gguf
+ENV LLAMA_BINARY_PATH=/usr/local/bin/llama-cli
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD llama-cli -m $LLAMA_MODEL_PATH -h 2>&1 | head -1 || exit 1
+
+# Default: run as server for worker pool
+CMD ["llama-server", "-m", "/models/llama-2-7b-chat.Q4_K_M.gguf", "-p", "8083"]
