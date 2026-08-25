@@ -82,80 +82,79 @@ export async function triggerAIAgent(
   }
 
   // Trigger external Dockerized Meet Bot service if available
-  const botServiceUrl = process.env.MEET_BOT_URL || "http://localhost:3000";
+  const botServiceUrl = process.env.MEET_BOT_URL;
   const googleMeetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com")
     ? meeting.agenda
-    : `https://meet.google.com/mock-${meetingId.substring(0, 8)}`;
+    : null;
 
-  fetch(`${botServiceUrl}/bot/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      meetingUrl: googleMeetUrl,
-      botName: process.env.BOT_NAME || "Innovexa Notetaker",
-      metadata: {
-        meetingId: meeting.id,
-        meetingTitle: meeting.title,
-      },
-    }),
-  }).catch((e) => {
-    console.log("External Meet Bot Docker trigger log:", e.message);
-  });
-
-  // 2. Execute Async Processing Lifecycle (Joining -> Recording -> Transcribing -> Summarizing -> Completed)
-  setTimeout(async () => {
-    try {
-      // Step A: Recording
-      await db.aIAgent.update({
-        where: { meetingId },
-        data: { status: "recording" },
-      });
-
-      // Wait 1.5s
-      await new Promise((res) => setTimeout(res, 1500));
-
-      // Step B: Transcribing
-      const transcriptSegments = SAMPLE_DIARIZED_TRANSCRIPTS.default;
-      await db.aIAgent.update({
-        where: { meetingId },
-        data: {
-          status: "transcribing",
-          transcript: transcriptSegments as any,
+  if (botServiceUrl && googleMeetUrl) {
+    // Real Bot Mode: Send request to Render Bot Service
+    fetch(`${botServiceUrl}/bot/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        meetingUrl: googleMeetUrl,
+        botName: process.env.BOT_NAME || "Innovexa Notetaker",
+        metadata: {
+          meetingId: meeting.id,
+          meetingTitle: meeting.title,
         },
-      });
+      }),
+    }).catch((e) => {
+      console.log("External Meet Bot trigger error:", e.message);
+    });
 
-      // Wait 1.5s
-      await new Promise((res) => setTimeout(res, 1500));
+    // Update status to joining for real bot
+    await db.aIAgent.update({
+      where: { meetingId },
+      data: { status: "joining", updatedAt: new Date() },
+    });
+  } else {
+    // Simulation Fallback Mode (only when MEET_BOT_URL or Google Meet URL is missing)
+    setTimeout(async () => {
+      try {
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: { status: "recording" },
+        });
+        await new Promise((res) => setTimeout(res, 2000));
 
-      // Step C: Summarizing with LLM / GPT-4 rules
-      const summaryText = `Executive AI Summary for '${meeting.title}':\n` +
-        `• Core Focus: AI Agent integration, Whisper ASR diarization, and Cyberpunk Purple console components.\n` +
-        `• Key Decisions: Adopted S3/Supabase encrypted storage, Server-Sent Events (SSE) real-time streaming, and 30-day retention policies.\n` +
-        `• Next Steps: Alex Mercer to monitor SLA escalation engine; Sarah Jenkins to finalize UI finish gate review.`;
+        const transcriptSegments = SAMPLE_DIARIZED_TRANSCRIPTS.default;
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: {
+            status: "transcribing",
+            transcript: transcriptSegments as any,
+          },
+        });
+        await new Promise((res) => setTimeout(res, 2000));
 
-      await db.aIAgent.update({
-        where: { meetingId },
-        data: {
-          status: "summarizing",
-          summary: summaryText,
-        },
-      });
+        const summaryText = `Executive AI Summary for '${meeting.title}':\n` +
+          `• Core Focus: AI Agent integration and Whisper ASR diarization.\n` +
+          `• Key Decisions: Adopted S3/Supabase encrypted storage and 30-day retention policies.\n` +
+          `• Next Steps: Monitor SLA escalation engine and finalize review.`;
 
-      // Wait 1.5s
-      await new Promise((res) => setTimeout(res, 1500));
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: {
+            status: "summarizing",
+            summary: summaryText,
+          },
+        });
+        await new Promise((res) => setTimeout(res, 2000));
 
-      // Step D: Completed
-      await db.aIAgent.update({
-        where: { meetingId },
-        data: {
-          status: "completed",
-          updatedAt: new Date(),
-        },
-      });
-    } catch (err) {
-      console.error("AI Agent background execution error:", err);
-    }
-  }, 100);
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: {
+            status: "completed",
+            updatedAt: new Date(),
+          },
+        });
+      } catch (err) {
+        console.error("AI Agent simulation error:", err);
+      }
+    }, 100);
+  }
 
   return agent as unknown as AIAgentState;
 }
