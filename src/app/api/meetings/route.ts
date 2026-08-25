@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { processMeetingTranscript } from "@/lib/ai-engine";
 import { unstable_cache, revalidateTag } from "next/cache";
+import { triggerOracleCoreIndexing } from "@/lib/oracle-core-client";
 
 const getCachedMeetings = unstable_cache(
   async () => {
@@ -89,6 +90,9 @@ export async function POST(req: Request) {
     }
     revalidateTag("meetings");
     revalidateTag("tasks");
+
+    // 4. Trigger Operation "Oracle Core" background indexing
+    await triggerOracleCoreIndexing(newMeeting.id, transcript);
 
     return NextResponse.json({ success: true, meetingId: newMeeting.id });
   } catch (error: unknown) {
