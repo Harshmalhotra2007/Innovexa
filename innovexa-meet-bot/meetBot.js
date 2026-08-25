@@ -125,7 +125,36 @@ class MeetBot {
       }
 
       if (!clicked) {
-        logger.warn("Primary join selectors missed, attempting direct ENTER key press...");
+        logger.info("Attempting robust JS DOM injection fallback for Google Meet join button...");
+        clicked = await page.evaluate(() => {
+          const els = Array.from(document.querySelectorAll('button, div[role="button"], span[role="button"]'));
+          const btn = els.find((el) => {
+            const txt = (el.textContent || "").toLowerCase();
+            const aria = (el.getAttribute("aria-label") || "").toLowerCase();
+            const jsname = el.getAttribute("jsname");
+            return (
+              txt.includes("ask to join") ||
+              txt.includes("join now") ||
+              aria.includes("ask to join") ||
+              aria.includes("join now") ||
+              jsname === "QYrYVd" ||
+              jsname === "CQYiBc"
+            );
+          });
+          if (btn) {
+            (btn as any).click();
+            return true;
+          }
+          return false;
+        }).catch(() => false);
+
+        if (clicked) {
+          logger.info("Successfully clicked join button via JS DOM injection!");
+        }
+      }
+
+      if (!clicked) {
+        logger.warn("Primary & JS injection selectors missed, attempting direct ENTER key press...");
         await page.keyboard.press("Enter");
       }
 
