@@ -75,3 +75,23 @@ SUPABASE_KEY="your-supabase-key"
 
 *Note: If neither provider is configured, the console automatically falls back to local disk storage (`public/recordings/`) for development and testing.*
 
+---
+
+## 🤖 Ghost Caller Bot Deployment (`innovexa-meet-bot`)
+
+Run the containerized Playwright & PulseAudio bot service:
+
+```bash
+cd innovexa-meet-bot
+docker-compose up -d --build
+```
+
+### Environment Configuration
+```env
+BOT_NAME="Innovexa Notetaker"
+PULSE_SERVER="unix:/run/user/1000/pulse/native"
+N8N_WEBHOOK_URL="http://n8n:5678/webhook/innovexa-meeting"
+LOG_LEVEL="info"
+```
+
+
