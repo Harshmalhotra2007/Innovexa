@@ -12,15 +12,8 @@ echo "[Entrypoint] Starting D-Bus session..."
 eval $(dbus-launch --sh-syntax)
 
 echo "[Entrypoint] Starting PulseAudio daemon..."
-mkdir -p /root/.config/pulse
-mkdir -p /var/run/pulse
-echo "default-server = unix:/tmp/pulse-socket/pulse-socket" > /root/.config/pulse/client.conf
-
-# Start PulseAudio in system mode inside Docker container
-pulseaudio -D --exit-idle-time=-1 --system --disallow-exit --disallow-module-loading=0 || pulseaudio --start --exit-idle-time=-1 || true
-
-# Wait for PulseAudio server to load
-sleep 2
+pulseaudio --start --exit-idle-time=-1 --realtime=false || true
+sleep 1
 
 echo "[Entrypoint] Creating virtual null-sink MeetSink..."
 pactl load-module module-null-sink sink_name=MeetSink sink_properties=device.description=MeetSink || true
