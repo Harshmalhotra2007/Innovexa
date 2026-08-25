@@ -166,17 +166,23 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
     setLoading(true);
     setErrorMsg(null);
-    try {
-      const res = await fetch("/api/ai-agent/leave", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meetingId }),
-      });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to end meeting");
-      }
+    // Optimistic UI state update to completed
+    setAgent((prev: any) => ({ ...prev, status: "completed" }));
+
+    try {
+      await Promise.all([
+        fetch("/api/ai-agent/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingId }),
+        }).catch(() => {}),
+        fetch("/api/meeting-baas/leave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingId }),
+        }).catch(() => {}),
+      ]);
 
       await fetchStatus();
       await fetchActionItems();
