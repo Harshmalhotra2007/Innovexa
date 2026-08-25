@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
         console.log(`[EndMeeting] Found ${activeBots.length} active MeetingBaas bots to leave.`);
 
-        // Send POST /v2/bots/:id/leave to ALL matching active bots
+        // Send POST /v2/bots/:id/leave with valid JSON body to ALL matching active bots
         for (const b of activeBots) {
           console.log(`[EndMeeting] Dispatching leave to MeetingBaas bot: ${b.bot_id}`);
           await fetch(`https://api.meetingbaas.com/v2/bots/${b.bot_id}/leave`, {
@@ -59,6 +59,7 @@ export async function POST(req: Request) {
               "x-meeting-baas-api-key": baasApiKey,
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({}),
           }).catch((err) => console.warn(`[EndMeeting] Leave error for bot ${b.bot_id}:`, err));
         }
       }
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
           "x-meeting-baas-api-key": baasApiKey,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({}),
       }).catch((err) => console.warn("[EndMeeting] Stored bot leave error:", err));
     }
 

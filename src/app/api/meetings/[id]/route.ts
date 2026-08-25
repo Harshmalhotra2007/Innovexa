@@ -89,6 +89,7 @@ export async function DELETE(
               "x-meeting-baas-api-key": baasApiKey,
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({}),
           }).catch((err) => console.warn(`[DELETE] Leave error for bot ${b.bot_id}:`, err));
         }
       }
