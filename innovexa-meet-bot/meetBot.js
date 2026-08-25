@@ -36,18 +36,30 @@ class MeetBot {
       logger.info("Navigating to Google Meet URL", { meetingUrl });
       await page.goto(meetingUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-      // Handle guest name input if present
+      // Wait for Google Meet lobby UI to fully load
+      await page.waitForTimeout(3000);
+
+      // 1. Handle guest name input if present
       try {
-        const guestInput = page.getByRole("textbox", { name: /your name/i });
-        if (await guestInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await guestInput.fill(botName);
-          logger.info("Entered bot name as guest", { botName });
+        const nameSelectors = [
+          'input[aria-label*="name" i]',
+          'input[placeholder*="name" i]',
+          'input[type="text"]'
+        ];
+        for (const selector of nameSelectors) {
+          const input = await page.$(selector);
+          if (input && (await input.isVisible().catch(() => false))) {
+            await input.fill(botName);
+            logger.info("Entered bot name as guest", { botName, selector });
+            await page.waitForTimeout(1000);
+            break;
+          }
         }
       } catch (e) {
         logger.debug("Guest name input check skipped", { error: e.message });
       }
 
-      // Turn off camera and mic using ARIA role selectors or keyboard shortcuts
+      // 2. Mute camera and microphone
       try {
         await page.keyboard.press("Control+d");
         await page.keyboard.press("Control+e");
@@ -56,28 +68,51 @@ class MeetBot {
       try {
         const camBtn = page.getByRole("button", { name: /turn off camera/i });
         if (await camBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await camBtn.click();
+          await camBtn.click().catch(() => {});
         }
       } catch (e) { /* ignore */ }
 
       try {
         const micBtn = page.getByRole("button", { name: /turn off microphone/i });
         if (await micBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await micBtn.click();
+          await micBtn.click().catch(() => {});
         }
       } catch (e) { /* ignore */ }
 
       logger.info("Disabled camera and microphone");
 
-      // Click "Ask to join" or "Join now" using ARIA role selector
-      try {
-        const joinBtn = page.getByRole("button", { name: /ask to join|join now/i });
-        await joinBtn.click({ timeout: 10000 });
-        logger.info("Clicked join button via ARIA role selector");
-      } catch (err) {
-        logger.warn("Role-based join button click failed, attempting text selector fallback", { error: err.message });
-        const fallbackBtn = await page.$('button:has-text("Join now"), button:has-text("Ask to join")');
-        if (fallbackBtn) await fallbackBtn.click();
+      // 3. Click "Ask to join" or "Join now" with resilient multi-selector retry loop
+      let clicked = false;
+      const joinSelectors = [
+        'button:has-text("Ask to join")',
+        'button:has-text("Join now")',
+        'button[aria-label*="Ask to join" i]',
+        'button[aria-label*="Join now" i]',
+        'div[role="button"]:has-text("Ask to join")',
+        'div[role="button"]:has-text("Join now")',
+        'button[data-id]',
+        'button[jsname]'
+      ];
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        for (const sel of joinSelectors) {
+          try {
+            const btn = await page.$(sel);
+            if (btn && (await btn.isVisible().catch(() => false))) {
+              await btn.click({ force: true });
+              clicked = true;
+              logger.info(`Successfully clicked join button via selector: ${sel}`);
+              break;
+            }
+          } catch (e) { /* ignore */ }
+        }
+        if (clicked) break;
+        await page.waitForTimeout(1500);
+      }
+
+      if (!clicked) {
+        logger.warn("Primary join selectors missed, attempting direct ENTER key press...");
+        await page.keyboard.press("Enter");
       }
 
       // Wait for admission
