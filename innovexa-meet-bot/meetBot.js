@@ -174,6 +174,18 @@ class MeetBot {
 
       const meetingId = meetingUrl.split("/").pop() || "session";
 
+      // Context Awareness Audit Trail
+      this.sessionContext = {
+        meetingId,
+        meetingUrl,
+        joinedAt: new Date().toISOString(),
+        admittedBy: "Host / Meeting Organizer",
+        maxParticipantsSeen: 1,
+        participantCountHistory: [],
+        leaveReason: null,
+      };
+      logger.info("[Context Audit] Bot session context initialized:", this.sessionContext);
+
       // Start Watchdog Health Monitoring
       this.startHealthWatchdog(page, meetingId);
 
@@ -293,15 +305,94 @@ class MeetBot {
     }
   }
 
-  async waitForMeetingEnd(page) {
+  async getParticipantCount(page) {
     try {
-      const maxDuration = process.env.MAX_MEETING_DURATION_MS 
-        ? parseInt(process.env.MAX_MEETING_DURATION_MS) 
-        : 3600000;
-      await page.waitForSelector('text="You left the meeting"', { timeout: maxDuration });
-      logger.info("Meeting end detected ('You left the meeting')");
-    } catch (e) {
-      logger.info("Meeting wait limit reached or manual disconnect triggered");
+      const count = await page.evaluate(() => {
+        const selectors = [
+          'div[aria-label*="people" i]',
+          'button[aria-label*="people" i]',
+          'div[aria-label*="participants" i]',
+          'button[aria-label*="participants" i]',
+          'span.uGfcg',
+          'div.wnU2fd',
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el) {
+            const txt = el.getAttribute("aria-label") || el.textContent || "";
+            const match = txt.match(/\d+/);
+            if (match) return parseInt(match[0], 10);
+          }
+        }
+        const tiles = document.querySelectorAll('div[data-participant-id]');
+        if (tiles.length > 0) return tiles.length;
+        return 1;
+      }).catch(() => 1);
+      return count || 1;
+    } catch {
+      return 1;
+    }
+  }
+
+  async waitForMeetingEnd(page) {
+    logger.info("Initializing Smart End Detection loop (participant tracking & empty-room detection)...");
+    const start = Date.now();
+    const maxDuration = process.env.MAX_MEETING_DURATION_MS 
+      ? parseInt(process.env.MAX_MEETING_DURATION_MS) 
+      : 3600000;
+
+    let aloneConsecutiveCount = 0;
+
+    while (Date.now() - start < maxDuration) {
+      if (!page || page.isClosed()) {
+        logger.info("Page closed. Smart End loop exiting.");
+        break;
+      }
+
+      // 1. Check for explicit "You left" or "Meeting ended" text
+      const leftDetected = await page.evaluate(() => {
+        const txt = document.body ? document.body.innerText : "";
+        return (
+          txt.includes("You left the meeting") ||
+          txt.includes("You've been removed from the meeting") ||
+          txt.includes("Meeting ended for everyone")
+        );
+      }).catch(() => false);
+
+      if (leftDetected) {
+        if (this.sessionContext) this.sessionContext.leaveReason = "Explicit meeting end or ejection detected";
+        logger.info(`Smart End triggered: Explicit disconnect`);
+        break;
+      }
+
+      // 2. Participant Count Tracking & Empty Room Smart End
+      const currentParticipants = await this.getParticipantCount(page);
+      if (this.sessionContext) {
+        this.sessionContext.participantCountHistory.push({ time: new Date().toISOString(), count: currentParticipants });
+        if (currentParticipants > this.sessionContext.maxParticipantsSeen) {
+          this.sessionContext.maxParticipantsSeen = currentParticipants;
+        }
+      }
+
+      logger.info(`[Participant Count Tracker] Currently ${currentParticipants} active participant(s) in call (Peak: ${this.sessionContext ? this.sessionContext.maxParticipantsSeen : 1})`);
+
+      if (currentParticipants <= 1 && this.sessionContext && this.sessionContext.maxParticipantsSeen > 1) {
+        aloneConsecutiveCount++;
+        logger.warn(`[Smart End Warning] Bot is alone in call (${aloneConsecutiveCount}/3 checks).`);
+        if (aloneConsecutiveCount >= 3) {
+          this.sessionContext.leaveReason = "Smart End: All human participants left meeting call";
+          logger.info(`Smart End triggered: ${this.sessionContext.leaveReason}`);
+          break;
+        }
+      } else {
+        aloneConsecutiveCount = 0;
+      }
+
+      await page.waitForTimeout(10000).catch(() => {});
+    }
+
+    if (this.sessionContext) {
+      logger.info("[Context Audit] Final Session Audit Summary:", this.sessionContext);
     }
   }
 
