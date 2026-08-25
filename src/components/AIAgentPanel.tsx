@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useAIAgent } from "@/hooks/useAIAgent";
 import { AudioPlayer } from "./AudioPlayer";
 import {
   Bot,
@@ -17,328 +17,79 @@ import {
   Cpu,
 } from "lucide-react";
 
-interface TranscriptSegment {
-  speaker: string;
-  text: string;
-  timestamp: string;
-}
-
-interface AIAgentData {
-  id?: string;
-  meetingId: string;
-  status: "idle" | "joining" | "recording" | "transcribing" | "summarizing" | "completed";
-  joinedAt?: string;
-  recordingUrl?: string;
-  transcript?: TranscriptSegment[];
-  summary?: string;
-}
-
 interface AIAgentPanelProps {
   meetingId: string;
   meetingTitle?: string;
 }
 
 export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelProps) {
-  const [agent, setAgent] = useState<AIAgentData>({
-    meetingId,
-    status: "idle",
-  });
-  const [actionItems, setActionItems] = useState<any[]>([]);
-  const [citations, setCitations] = useState<any[]>([]);
-  const [highlightedChunkIndex, setHighlightedChunkIndex] = useState<number | null>(null);
-  
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>("organizer");
-
-  // Option 1: Live Tab Audio Capture State
-  const [isTabRecording, setIsTabRecording] = useState(false);
-  const [tabRecordSeconds, setTabRecordSeconds] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    const role = sessionStorage.getItem("userRole") || "organizer";
-    setUserRole(role);
-
-    fetchStatus();
-    fetchActionItems();
-    fetchCitations();
-
-    return () => {
-      if (socketRef.current) socketRef.current.close();
-      if (eventSourceRef.current) eventSourceRef.current.close();
-      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-    };
-  }, [meetingId]);
-
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch(`/api/ai-agent/status/${meetingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAgent(data);
-      }
-    } catch {
-      // Ignore
-    }
-  };
-
-  const fetchActionItems = async () => {
-    try {
-      const res = await fetch(`/api/recordings/meeting/${meetingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setActionItems(data.actionItems || []);
-      }
-    } catch {
-      // Ignore
-    }
-  };
-
-  const fetchCitations = async () => {
-    try {
-      const res = await fetch(`/api/citations?meetingId=${meetingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCitations(data);
-      }
-    } catch (err) {
-      console.warn("[AIAgentPanel] Mapped citations not found yet:", err);
-    }
-  };
-
-  // Option 2: Managed Cloud Bot Join Trigger
-  const [customMeetUrl, setCustomMeetUrl] = useState("");
-
-  const handleManagedBotJoin = async () => {
-    if (userRole !== "organizer") {
-      setErrorMsg("Forbidden: Must be logged in as an Organizer.");
-      return;
-    }
-
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      // Priority 1: MeetingBaas API Dispatch
-      let res = await fetch("/api/meeting-baas", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": userRole,
-        },
-        body: JSON.stringify({ meetingId, meetingUrl: customMeetUrl.trim() || undefined }),
-      });
-
-      if (!res.ok) {
-        // Priority 2: Standard Cloud Bot Endpoint
-        res = await fetch("/api/ai-agent/join", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-role": userRole,
-          },
-          body: JSON.stringify({ meetingId, meetingUrl: customMeetUrl.trim() || undefined, useManagedBot: true }),
-        });
-      }
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to trigger AI Agent");
-      }
-
-      const data = await res.json();
-      setAgent(data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error joining meeting";
-      setErrorMsg(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEndMeeting = async () => {
-    if (isTabRecording) {
-      stopTabAudioCapture();
-      return;
-    }
-
-    setLoading(true);
-    setErrorMsg(null);
-
-    // Optimistic UI state update to completed
-    setAgent((prev: any) => ({ ...prev, status: "completed" }));
-
-    try {
-      await Promise.all([
-        fetch("/api/ai-agent/leave", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ meetingId }),
-        }).catch(() => {}),
-        fetch("/api/meeting-baas/leave", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ meetingId }),
-        }).catch(() => {}),
-      ]);
-
-      await fetchStatus();
-      await fetchActionItems();
-      await fetchCitations();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Error ending meeting");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Option 1: Live Tab Audio Recorder Implementation
-  const startTabAudioCapture = async () => {
-    setErrorMsg(null);
-    try {
-      audioChunksRef.current = [];
-      
-      // Request screen/tab media with audio stream
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          } as any,
-        });
-      } catch (err) {
-        // Fallback to direct microphone audio if tab picker is cancelled
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        stream.getTracks().forEach((track) => track.stop());
-        
-        setIsTabRecording(false);
-        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-        
-        await uploadAndProcessTabAudio(audioBlob);
-      };
-
-      recorder.start(1000);
-      setIsTabRecording(true);
-      setTabRecordSeconds(0);
-      setAgent((prev) => ({ ...prev, status: "recording" }));
-
-      recordTimerRef.current = setInterval(() => {
-        setTabRecordSeconds((prev) => prev + 1);
-      }, 1000);
-    } catch (err: any) {
-      console.error("Tab audio capture error:", err);
-      setErrorMsg("Could not capture tab audio. Please grant screen/audio permissions.");
-    }
-  };
-
-  const stopTabAudioCapture = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const uploadAndProcessTabAudio = async (audioBlob: Blob) => {
-    setAgent((prev) => ({ ...prev, status: "transcribing" }));
-    try {
-      const formData = new FormData();
-      formData.append("audio", audioBlob, `meeting_tab_${Date.now()}.webm`);
-      formData.append("meetingId", meetingId);
-
-      const res = await fetch("/api/recordings/upload", {
-        method: "POST",
-        headers: { "x-user-role": userRole },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to upload tab audio recording.");
-      }
-
-      setAgent((prev) => ({ ...prev, status: "summarizing" }));
-      await new Promise((res) => setTimeout(res, 1500));
-
-      await fetchStatus();
-      await fetchActionItems();
-      await fetchCitations();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to process captured tab audio.");
-      setAgent((prev) => ({ ...prev, status: "idle" }));
-    }
-  };
-
-  const formatTime = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+  const {
+    agent,
+    actionItems,
+    citations,
+    highlightedChunkIndex,
+    setHighlightedChunkIndex,
+    loading,
+    errorMsg,
+    userRole,
+    customMeetUrl,
+    setCustomMeetUrl,
+    isTabRecording,
+    tabRecordSeconds,
+    handleManagedBotJoin,
+    handleEndMeeting,
+    startTabAudioCapture,
+    stopTabAudioCapture,
+  } = useAIAgent(meetingId);
 
   const getStatusBadge = () => {
     switch (agent.status) {
       case "joining":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#4A3A1E] text-[#E8A33D] border border-[#E8A33D]/50 animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> DISPATCHING CLOUD BOT
+          <span className="px-2.5 py-1 rounded font-mono text-[11px] font-bold uppercase tracking-wider bg-[#E8A33D]/20 text-[#E8A33D] border border-[#E8A33D]/40 flex items-center gap-1.5 animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> DISPATCHING CLOUD BOT...
           </span>
         );
       case "recording":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#3A2224] text-[#E2666A] border border-[#E2666A]/50">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E2666A] animate-ping" /> RECORDING TAB AUDIO
+          <span className="px-2.5 py-1 rounded font-mono text-[11px] font-bold uppercase tracking-wider bg-[#E2666A]/20 text-[#E2666A] border border-[#E2666A]/40 flex items-center gap-1.5 animate-pulse">
+            <Radio className="w-3.5 h-3.5 animate-ping text-[#E2666A]" /> CAPTURING & DIARIZING AUDIO...
           </span>
         );
       case "transcribing":
-        return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1B3634] text-[#49B9AE] border border-[#49B9AE]/50 animate-pulse">
-            <Mic className="w-3.5 h-3.5" /> WHISPER ASR TRANSCRIBING
-          </span>
-        );
       case "summarizing":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#4A3A1E] text-[#E8A33D] border border-[#E8A33D]/50 animate-pulse">
-            <Sparkles className="w-3.5 h-3.5" /> GPT-4 SUMMARIZING
+          <span className="px-2.5 py-1 rounded font-mono text-[11px] font-bold uppercase tracking-wider bg-[#49B9AE]/20 text-[#49B9AE] border border-[#49B9AE]/40 flex items-center gap-1.5 animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> SYNTHESIZING AI EXECUTIVE INSIGHTS...
           </span>
         );
       case "completed":
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1B3634] text-[#49B9AE] border border-[#49B9AE]/50">
-            <CheckCircle2 className="w-3.5 h-3.5" /> AI INSIGHTS EXTRACTED
+          <span className="px-2.5 py-1 rounded font-mono text-[11px] font-bold uppercase tracking-wider bg-[#49B9AE]/20 text-[#49B9AE] border border-[#49B9AE]/40 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#49B9AE]" /> EXECUTIVE INSIGHTS READY
           </span>
         );
       default:
         return (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#141C1F] text-[#8FA0A4] border border-[#212B2E]">
-            <Bot className="w-3.5 h-3.5 text-[#8FA0A4]" /> AGENT IDLE
+          <span className="px-2.5 py-1 rounded font-mono text-[11px] font-bold uppercase tracking-wider bg-[#2B383C] text-[#9a99a0] border border-[#3A494E]">
+            IDLE / READY TO DISPATCH
           </span>
         );
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
   return (
-    <div className="rounded-xl border border-[#212B2E] bg-[#182124] p-5 shadow-xl space-y-4 font-sans text-xs">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2A363A] pb-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-[#252a36] text-[#E8A33D] border border-[#212B2E]">
+    <div className="rounded-xl border border-[#212B2E] bg-[#182124] p-5 shadow-2xl space-y-5 text-[#e8e1d5]">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#212B2E] pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E8A33D]/10 border border-[#E8A33D]/30 text-[#E8A33D]">
             <Bot className="w-5 h-5" />
           </div>
           <div>
@@ -445,48 +196,53 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             {agent.transcript.map((seg, i) => (
               <div 
                 key={i} 
-                className="flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0 p-1 rounded"
+                className={`flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0 p-1 rounded transition-colors ${
+                  highlightedChunkIndex === i ? "bg-[#49B9AE]/20 border-[#49B9AE] text-white" : ""
+                }`}
               >
-                <span className="text-[10px] text-[#5B6A6E] pt-0.5">{seg.timestamp}</span>
-                <span className="font-bold text-[#49B9AE] min-w-[130px]">{seg.speaker}:</span>
-                <span className="text-[#E7EEEF] flex-1">{seg.text}</span>
+                <span className="text-[#E8A33D] font-bold flex-shrink-0">[{seg.timestamp}] {seg.speaker}:</span>
+                <span className="text-[#e8e1d5]">{seg.text}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* AI Summary Box */}
+      {/* Executive Summary */}
       {agent.summary && (
-        <div className="space-y-1.5">
+        <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-4 space-y-2">
           <div className="font-mono text-[11px] uppercase tracking-wider text-[#E8A33D] flex items-center gap-1.5 font-semibold">
-            <Sparkles className="w-3.5 h-3.5" /> AI GENERATED EXECUTIVE SUMMARY
+            <Sparkles className="w-4 h-4" /> EXECUTIVE AI SYNTHESIS & RATIONALE
           </div>
-          <div className="rounded-lg bg-[#1D272B] border border-[#E8A33D]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
-            {agent.summary}
+          <p className="text-sm text-[#c5c0b8] leading-relaxed font-sans">{agent.summary}</p>
+        </div>
+      )}
+
+      {/* Extracted Action Items */}
+      {actionItems.length > 0 && (
+        <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-4 space-y-3">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-[#49B9AE] flex items-center gap-1.5 font-semibold">
+            <CheckCircle2 className="w-4 h-4" /> AUTOMATED ACTION ITEMS & TASK ASSIGNMENTS
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {actionItems.map((item, idx) => (
+              <div key={idx} className="rounded border border-[#2B383C] bg-[#182124] p-2.5 space-y-1 font-mono text-xs">
+                <div className="flex items-center justify-between text-[#E8A33D]">
+                  <span className="font-bold">{item.ownerName || item.assignee}</span>
+                  <span className="text-[10px] text-[#9a99a0]">{item.priority || "Medium"}</span>
+                </div>
+                <div className="text-[#e8e1d5] text-[11px]">{item.title || item.task}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Extracted Action Items Box */}
-      {actionItems && actionItems.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="font-mono text-[11px] uppercase tracking-wider text-[#49B9AE] flex items-center gap-1.5 font-semibold">
-            <CheckCircle2 className="w-3.5 h-3.5" /> AI EXTRACTED ACTION ITEMS
-          </div>
-          <div className="rounded-lg bg-[#141C1F] border border-[#2A363A] p-3.5 space-y-2 text-[#E7EEEF] font-mono text-xs">
-            {actionItems.map((item) => (
-              <div key={item.id} className="flex items-start gap-3 border-b border-[#212B2E] pb-2 last:border-0 last:pb-0">
-                <span className="font-bold text-[#E8A33D] min-w-[130px]">{item.assignee}:</span>
-                <span className="flex-1">{item.task}</span>
-                {item.dueDate && (
-                  <span className="text-[10px] text-[#8FA0A4]">
-                    Due: {new Date(item.dueDate).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+      {/* Error Banner */}
+      {errorMsg && (
+        <div className="rounded-lg bg-[#E2666A]/10 border border-[#E2666A]/30 p-3 text-[#E2666A] text-xs flex items-center gap-2 font-mono">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
     </div>
