@@ -1,0 +1,16 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-oracle.txt .
+RUN pip install --no-cache-dir -r requirements-oracle.txt
+
+COPY ai-agent-service/oracle_core_worker.py /app/
+
+CMD ["python", "oracle_core_worker.py"]
