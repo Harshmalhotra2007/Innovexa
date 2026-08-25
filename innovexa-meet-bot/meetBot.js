@@ -283,7 +283,7 @@ class MeetBot {
       const delay = getExponentialBackoffDelay(attemptCount++, 1000, 1.3, 4000);
       await page.waitForTimeout(delay);
     }
-    throw new Error("Host did not admit bot within timeout");
+    throw new Error("The bot couldn't join because the host didn't admit it within 5 minutes. Please ensure a meeting organizer clicks 'Admit'.");
   }
 
   async sendConsentMessage(page) {
@@ -334,6 +334,29 @@ class MeetBot {
     }
   }
 
+  async checkConsentObjections(page) {
+    try {
+      const objectionFound = await page.evaluate(() => {
+        const msgs = Array.from(document.querySelectorAll('div[data-message-text], div[jsname="d1F9d"], div[role="listitem"]'));
+        return msgs.some((m) => {
+          const txt = (m.textContent || "").trim().toUpperCase();
+          return txt === "STOP" || txt.includes("STOP RECORDING") || txt.includes("DO NOT RECORD") || txt.includes("I OBJECT");
+        });
+      }).catch(() => false);
+
+      if (objectionFound) {
+        logger.warn("[Consent Management] Participant objection received ('STOP'). Disconnecting bot gracefully...");
+        if (this.sessionContext) {
+          this.sessionContext.leaveReason = "Interactive Consent Objection: Participant requested STOP in meeting chat";
+        }
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   async waitForMeetingEnd(page) {
     logger.info("Initializing Smart End Detection loop (participant tracking & empty-room detection)...");
     const start = Date.now();
@@ -349,7 +372,14 @@ class MeetBot {
         break;
       }
 
-      // 1. Check for explicit "You left" or "Meeting ended" text
+      // 1. Interactive Consent Objection Monitoring (STOP)
+      const objection = await this.checkConsentObjections(page);
+      if (objection) {
+        logger.info("Smart End triggered: Participant STOP consent objection received.");
+        break;
+      }
+
+      // 2. Check for explicit "You left" or "Meeting ended" text
       const leftDetected = await page.evaluate(() => {
         const txt = document.body ? document.body.innerText : "";
         return (
