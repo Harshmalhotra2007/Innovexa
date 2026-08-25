@@ -4,6 +4,12 @@ import { revalidateTag } from "next/cache";
 
 const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
 
+function extractMeetCode(url: string | null): string | null {
+  if (!url) return null;
+  const match = url.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -50,6 +56,7 @@ export async function DELETE(
 
     const botServiceUrl = process.env.BOT_SERVICE_URL || process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
     const meetingUrl = meeting?.agenda?.includes("meet.google.com") ? meeting.agenda : null;
+    const meetCode = extractMeetCode(meetingUrl);
     const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
 
     // 1. Signal Render Cloud Bot to leave BEFORE deleting the record
@@ -66,7 +73,7 @@ export async function DELETE(
       }
     }
 
-    // 2. Query MeetingBaas API for active bots matching meeting URL
+    // 2. Query MeetingBaas API for active bots matching meeting URL or Meet Code
     try {
       const listRes = await fetch("https://api.meetingbaas.com/v2/bots", {
         headers: { "x-meeting-baas-api-key": baasApiKey },
@@ -74,10 +81,12 @@ export async function DELETE(
       if (listRes.ok) {
         const listData = await listRes.json();
         const botsList: any[] = listData.data || [];
+        const nonCompleted = botsList.filter((b) => b.status !== "completed" && b.status !== "failed");
         
-        const activeBots = botsList.filter((b) => {
-          if (b.status === "completed" || b.status === "failed") return false;
+        const activeBots = nonCompleted.filter((b) => {
+          if (meetCode && b.meeting_url && b.meeting_url.toLowerCase().includes(meetCode)) return true;
           if (meetingUrl && b.meeting_url && (meetingUrl.includes(b.meeting_url) || b.meeting_url.includes(meetingUrl))) return true;
+          if (nonCompleted.length === 1) return true;
           return false;
         });
 
@@ -91,6 +100,20 @@ export async function DELETE(
             },
             body: JSON.stringify({}),
           }).catch((err) => console.warn(`[DELETE] Leave error for bot ${b.bot_id}:`, err));
+        }
+
+        if (activeBots.length === 0 && nonCompleted.length > 0) {
+          for (const b of nonCompleted) {
+            console.log(`[DELETE] Global fail-safe leave to bot: ${b.bot_id}`);
+            await fetch(`https://api.meetingbaas.com/v2/bots/${b.bot_id}/leave`, {
+              method: "POST",
+              headers: {
+                "x-meeting-baas-api-key": baasApiKey,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({}),
+            }).catch((err) => console.warn(`[DELETE] Leave error for bot ${b.bot_id}:`, err));
+          }
         }
       }
     } catch (e) {
