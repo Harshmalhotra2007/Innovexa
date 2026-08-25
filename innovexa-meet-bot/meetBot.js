@@ -206,21 +206,48 @@ class MeetBot {
     }
   }
 
-  async leave() {
+  async leave(retries = 3) {
     logger.info("Explicit leave signal received. Disconnecting bot from Google Meet...");
     try {
       if (this.page && !this.page.isClosed()) {
-        const leaveBtn = this.page.getByRole("button", { name: /leave call/i });
-        if (await leaveBtn.isVisible().catch(() => false)) {
-          await leaveBtn.click().catch(() => {});
+        const leaveSelectors = [
+          'button[aria-label*="Leave call" i]',
+          'button[aria-label*="Leave" i]',
+          'button:has-text("Leave")',
+          'button[jsname="CQYiBc"]',
+          'div[role="button"][aria-label*="Leave" i]',
+        ];
+
+        let clicked = false;
+        for (let r = 0; r < retries; r++) {
+          for (const sel of leaveSelectors) {
+            try {
+              const btn = await this.page.$(sel);
+              if (btn && (await btn.isVisible().catch(() => false))) {
+                await btn.click({ force: true }).catch(() => {});
+                clicked = true;
+                logger.info(`Successfully clicked leave call button via selector: ${sel}`);
+                break;
+              }
+            } catch (e) { /* ignore */ }
+          }
+          if (clicked) break;
+          await this.page.waitForTimeout(500).catch(() => {});
         }
+
         await this.page.close().catch(() => {});
       }
+
       if (this.browser) {
         await this.browser.close().catch(() => {});
       }
+      logger.info("Bot browser instance closed cleanly.");
     } catch (e) {
       logger.warn("Error during explicit bot leave execution:", { error: e.message });
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return this.leave(retries - 1);
+      }
     }
   }
 }
