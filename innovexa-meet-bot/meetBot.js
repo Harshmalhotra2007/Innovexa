@@ -195,11 +195,31 @@ class MeetBot {
     const start = Date.now();
     logger.info("Waiting for host admission to meeting call...");
     while (Date.now() - start < timeoutMs) {
+      // 1. URL parameter change check (e.g., ?pli=1, authuser=, or meeting join session params)
+      const currentUrl = page.url();
+      if (currentUrl.includes("pli=") || currentUrl.includes("authuser=") || currentUrl.includes("&hs=")) {
+        logger.info("Admission detected via URL parameter change:", { currentUrl });
+        return true;
+      }
+
+      // 2. Playwright element and button visibility check
       const inCall = await page.getByText(/you're presenting|leave call/i).isVisible().catch(() => false);
       if (inCall) return true;
+
       const leaveBtn = page.getByRole("button", { name: /leave call/i });
       if (await leaveBtn.isVisible().catch(() => false)) return true;
-      await page.waitForTimeout(3000);
+
+      // 3. DOM JS evaluation for in-call state or leave button
+      const domInCall = await page.evaluate(() => {
+        const url = window.location.href;
+        if (url.includes("pli=") || url.includes("authuser=")) return true;
+        const leave = document.querySelector('button[aria-label*="Leave call" i], button[jsname="CQYiBc"]');
+        return !!leave;
+      }).catch(() => false);
+
+      if (domInCall) return true;
+
+      await page.waitForTimeout(2000);
     }
     throw new Error("Host did not admit bot within timeout");
   }
