@@ -81,6 +81,27 @@ export async function triggerAIAgent(
     });
   }
 
+  // Trigger external Dockerized Meet Bot service if available
+  const botServiceUrl = process.env.MEET_BOT_URL || "http://localhost:3000";
+  const googleMeetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com")
+    ? meeting.agenda
+    : `https://meet.google.com/mock-${meetingId.substring(0, 8)}`;
+
+  fetch(`${botServiceUrl}/bot/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meetingUrl: googleMeetUrl,
+      botName: process.env.BOT_NAME || "Innovexa Notetaker",
+      metadata: {
+        meetingId: meeting.id,
+        meetingTitle: meeting.title,
+      },
+    }),
+  }).catch((e) => {
+    console.log("External Meet Bot Docker trigger log:", e.message);
+  });
+
   // 2. Execute Async Processing Lifecycle (Joining -> Recording -> Transcribing -> Summarizing -> Completed)
   setTimeout(async () => {
     try {
