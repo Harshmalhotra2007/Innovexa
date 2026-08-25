@@ -48,10 +48,11 @@ export async function DELETE(
       meeting = null;
     }
 
-    // Signal bot to leave BEFORE deleting the record
     const botServiceUrl = process.env.BOT_SERVICE_URL || process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
     const meetingUrl = meeting?.agenda?.includes("meet.google.com") ? meeting.agenda : null;
+    const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
 
+    // 1. Signal Render Cloud Bot to leave BEFORE deleting the record
     if (meetingUrl) {
       try {
         await fetch(`${botServiceUrl}/bot/leave`, {
@@ -65,28 +66,34 @@ export async function DELETE(
       }
     }
 
-    // Check if MeetingBaas bot was active
-    let agent: any = null;
+    // 2. Query MeetingBaas API for active bots matching meeting URL
     try {
-      agent = await db.aIAgent.findUnique({ where: { meetingId: id } });
-    } catch (e) {
-      agent = null;
-    }
-
-    if (agent && agent.recordingUrl && agent.recordingUrl.startsWith("baas_")) {
-      const botId = agent.recordingUrl.replace("baas_", "");
-      const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
-      try {
-        await fetch(`https://api.meetingbaas.com/v2/bots/${botId}/leave`, {
-          method: "POST",
-          headers: {
-            "x-meeting-baas-api-key": baasApiKey,
-            "Content-Type": "application/json",
-          },
+      const listRes = await fetch("https://api.meetingbaas.com/v2/bots", {
+        headers: { "x-meeting-baas-api-key": baasApiKey },
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const botsList: any[] = listData.data || [];
+        
+        const activeBots = botsList.filter((b) => {
+          if (b.status === "completed" || b.status === "failed") return false;
+          if (meetingUrl && b.meeting_url && (meetingUrl.includes(b.meeting_url) || b.meeting_url.includes(meetingUrl))) return true;
+          return false;
         });
-      } catch (e) {
-        console.warn("[DELETE] MeetingBaas bot leave signal failed:", e);
+
+        for (const b of activeBots) {
+          console.log(`[DELETE] Dispatching leave to MeetingBaas bot: ${b.bot_id}`);
+          await fetch(`https://api.meetingbaas.com/v2/bots/${b.bot_id}/leave`, {
+            method: "POST",
+            headers: {
+              "x-meeting-baas-api-key": baasApiKey,
+              "Content-Type": "application/json",
+            },
+          }).catch((err) => console.warn(`[DELETE] Leave error for bot ${b.bot_id}:`, err));
+        }
       }
+    } catch (e) {
+      console.warn("[DELETE] Error querying active MeetingBaas bots:", e);
     }
 
     // Delete associated records & meeting record

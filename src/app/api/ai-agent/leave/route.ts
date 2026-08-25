@@ -4,10 +4,10 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
-const RENDER_BOT_URL = process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
+const RENDER_BOT_URL = process.env.MEET_BOT_URL || process.env.BOT_SERVICE_URL || "https://innovexa-meet-bot.onrender.com";
 
 /**
- * End Meeting & Signal Bot Disconnect Endpoint
+ * End Meeting & Guaranteed Bot Disconnect Endpoint
  */
 export async function POST(req: Request) {
   try {
@@ -31,30 +31,51 @@ export async function POST(req: Request) {
       body: JSON.stringify({ meetingUrl: targetUrl, meetingId }),
     }).catch((err) => console.warn("[EndMeeting] Render bot leave signal error:", err));
 
-    // 2. Extract botId if set in recordingUrl reference
-    let botId: string | null = null;
-    if (agent && agent.recordingUrl && agent.recordingUrl.startsWith("baas_")) {
-      botId = agent.recordingUrl.replace("baas_", "");
+    // 2. Query MeetingBaas API for active bots matching meeting URL or bot ID
+    try {
+      const listRes = await fetch("https://api.meetingbaas.com/v2/bots", {
+        headers: { "x-meeting-baas-api-key": baasApiKey },
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const botsList: any[] = listData.data || [];
+        
+        // Find all active bots for this meeting
+        const activeBots = botsList.filter((b) => {
+          if (b.status === "completed" || b.status === "failed") return false;
+          if (agent?.recordingUrl === `baas_${b.bot_id}`) return true;
+          if (targetUrl && b.meeting_url && (targetUrl.includes(b.meeting_url) || b.meeting_url.includes(targetUrl))) return true;
+          return false;
+        });
+
+        console.log(`[EndMeeting] Found ${activeBots.length} active MeetingBaas bots to leave.`);
+
+        // Send POST /v2/bots/:id/leave to ALL matching active bots
+        for (const b of activeBots) {
+          console.log(`[EndMeeting] Dispatching leave to MeetingBaas bot: ${b.bot_id}`);
+          await fetch(`https://api.meetingbaas.com/v2/bots/${b.bot_id}/leave`, {
+            method: "POST",
+            headers: {
+              "x-meeting-baas-api-key": baasApiKey,
+              "Content-Type": "application/json",
+            },
+          }).catch((err) => console.warn(`[EndMeeting] Leave error for bot ${b.bot_id}:`, err));
+        }
+      }
+    } catch (e) {
+      console.warn("[EndMeeting] Error querying active MeetingBaas bots:", e);
     }
 
-    // 3. Instruct MeetingBaas to leave call immediately (POST v2 /leave & DELETE v2 /bots)
-    if (botId) {
-      console.log(`[EndMeeting] Instructing MeetingBaas bot ${botId} to leave room...`);
-
-      fetch(`https://api.meetingbaas.com/v2/bots/${botId}/leave`, {
+    // 3. Fallback direct botId leave if stored in agent record
+    if (agent && agent.recordingUrl && agent.recordingUrl.startsWith("baas_")) {
+      const storedBotId = agent.recordingUrl.replace("baas_", "");
+      fetch(`https://api.meetingbaas.com/v2/bots/${storedBotId}/leave`, {
         method: "POST",
         headers: {
           "x-meeting-baas-api-key": baasApiKey,
           "Content-Type": "application/json",
         },
-      }).catch((err) => console.warn("[EndMeeting] MeetingBaas leave error:", err));
-
-      fetch(`https://api.meetingbaas.com/v2/bots/${botId}`, {
-        method: "DELETE",
-        headers: {
-          "x-meeting-baas-api-key": baasApiKey,
-        },
-      }).catch((err) => console.warn("[EndMeeting] MeetingBaas delete error:", err));
+      }).catch((err) => console.warn("[EndMeeting] Stored bot leave error:", err));
     }
 
     // 4. Update state in database to completed
@@ -74,7 +95,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Meeting ended successfully. Bot instructed to leave room.",
+      message: "Meeting ended successfully. All active bots instructed to leave room.",
       agent: updatedAgent,
     });
   } catch (error: any) {
