@@ -1,0 +1,189 @@
+version: '3.8'
+
+services:
+  # Redis for Bull Queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # AI Agent Service (Playwright + WebSocket)
+  ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/Innovexa
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_EMAIL=${GOOGLE_EMAIL}
+      - GOOGLE_PASSWORD=${GOOGLE_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENCRYPTION_SECRET_KEY=${ENCRYPTION_SECRET_KEY}
+      - COMPLIANCE_JURISDICTION=${COMPLIANCE_JURISDICTION:-default}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - recordings-data:/app/public/recordings
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  # Whisper.cpp GPU Worker Pool
+  whisper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper
+    deploy:
+      replicas: 2
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4'
+          memory: 8G
+    environment:
+      - WHISPER_MODEL_PATH=/models/ggml-base.en.bin
+    volumes:
+      - whisper-models:/models
+    healthcheck:
+      test: ["CMD", "whisper-cli", "-m", "/models/ggml-base.en.bin", "-h"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Llama.cpp Worker Pool
+  llama-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.llama
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    environment:
+      - LLAMA_MODEL_PATH=/models/llama-2-7b-chat.Q4_K_M.gguf
+    volumes:
+      - llama-models:/models
+    healthcheck:
+      test: ["CMD", "llama-cli", "-m", "/models/llama-2-7b-chat.Q4_K_M.gguf", "-h"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=Innovexa
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO for S3-compatible storage (staging)
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb-data:/data
+    environment:
+      - IS_PERSISTENT=TRUE
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # Kafka Message Queue
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFERINGS_TOPIC_REPLICATION_FACTOR: 1
+
+  # Oracle Core background AI embedding & clustering pipeline
+  oracle-core:
+    build:
+      context: .
+      dockerfile: Dockerfile.oracle-core
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/Innovexa
+      - CHROMADB_URL=http://chromadb:8000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - kafka
+      - chromadb
+      - postgres
+
+volumes:
+  redis-data:
+  postgres-data:
+  recordings-data:
+  whisper-models:
+  llama-models:
+  minio-data:
+  chromadb-data:
+
