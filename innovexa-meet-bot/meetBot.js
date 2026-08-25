@@ -36,8 +36,8 @@ class MeetBot {
       logger.info("Navigating to Google Meet URL", { meetingUrl });
       await page.goto(meetingUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
 
-      // Wait for Google Meet lobby UI to fully load
-      await page.waitForTimeout(3000);
+      // Wait for Google Meet lobby UI to load instantly
+      await page.waitForTimeout(500);
 
       // 1. Handle guest name input if present
       try {
@@ -51,7 +51,7 @@ class MeetBot {
           if (input && (await input.isVisible().catch(() => false))) {
             await input.fill(botName);
             logger.info("Entered bot name as guest", { botName, selector });
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(100);
             break;
           }
         }
@@ -67,14 +67,14 @@ class MeetBot {
 
       try {
         const camBtn = page.getByRole("button", { name: /turn off camera/i });
-        if (await camBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await camBtn.isVisible({ timeout: 500 }).catch(() => false)) {
           await camBtn.click().catch(() => {});
         }
       } catch (e) { /* ignore */ }
 
       try {
         const micBtn = page.getByRole("button", { name: /turn off microphone/i });
-        if (await micBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        if (await micBtn.isVisible({ timeout: 500 }).catch(() => false)) {
           await micBtn.click().catch(() => {});
         }
       } catch (e) { /* ignore */ }
@@ -107,7 +107,7 @@ class MeetBot {
           } catch (e) { /* ignore */ }
         }
         if (clicked) break;
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(300);
       }
 
       if (!clicked) {

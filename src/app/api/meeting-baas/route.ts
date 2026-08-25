@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
 
 /**
- * MeetingBaas v2 API Bot Dispatch Endpoint
+ * MeetingBaas v2 High-Speed Instant Bot Dispatch Endpoint
  */
 export async function POST(req: Request) {
   try {
@@ -28,7 +28,24 @@ export async function POST(req: Request) {
     const botName = process.env.BOT_NAME || "Innovexa Notetaker";
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://innovexa-innovexapu.vercel.app"}/api/meeting-baas/webhook`;
 
-    console.log(`[MeetingBaas v2] Dispatching bot to ${targetUrl} via MeetingBaas API...`);
+    console.log(`[MeetingBaas v2] High-Speed Instant Dispatching bot to ${targetUrl}...`);
+
+    // High-speed API payload with reserved pre-warmed workers
+    const payload = {
+      meeting_url: targetUrl,
+      bot_name: botName,
+      reserved: true, // Instant dispatch pre-warmed worker node
+      recording_mode: "speaker_view",
+      entry_message: "This meeting is being recorded and transcribed by Innovexa.",
+      webhook_url: webhookUrl,
+      speech_to_text: {
+        provider: "default",
+      },
+      extra: {
+        priority: "high",
+        speed_mode: "instant",
+      },
+    };
 
     // Try MeetingBaas v2 endpoint
     let baasRes = await fetch("https://api.meetingbaas.com/v2/bots", {
@@ -37,17 +54,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "x-meeting-baas-api-key": baasApiKey,
       },
-      body: JSON.stringify({
-        meeting_url: targetUrl,
-        bot_name: botName,
-        reserved: false,
-        recording_mode: "speaker_view",
-        entry_message: "This meeting is being recorded and transcribed by Innovexa.",
-        webhook_url: webhookUrl,
-        speech_to_text: {
-          provider: "default",
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     let baasData = await baasRes.json();
@@ -60,17 +67,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
           "x-meeting-baas-api-key": baasApiKey,
         },
-        body: JSON.stringify({
-          meeting_url: targetUrl,
-          bot_name: botName,
-          reserved: false,
-          recording_mode: "speaker_view",
-          entry_message: "This meeting is being recorded and transcribed by Innovexa.",
-          webhook_url: webhookUrl,
-          speech_to_text: {
-            provider: "default",
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       baasData = await baasRes.json();
     }
