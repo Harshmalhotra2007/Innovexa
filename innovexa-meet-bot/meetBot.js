@@ -22,6 +22,7 @@ class MeetBot {
     }
 
     const browser = await chromium.launch(launchOptions);
+    this.browser = browser;
 
     const context = await browser.newContext({
       permissions: ["microphone", "camera"],
@@ -29,6 +30,7 @@ class MeetBot {
     });
 
     const page = await context.newPage();
+    this.page = page;
     const pulseAudio = new PulseAudio();
     let audioFile = null;
 
@@ -189,6 +191,24 @@ class MeetBot {
       logger.info("Meeting end detected ('You left the meeting')");
     } catch (e) {
       logger.info("Meeting wait limit reached or manual disconnect triggered");
+    }
+  }
+
+  async leave() {
+    logger.info("Explicit leave signal received. Disconnecting bot from Google Meet...");
+    try {
+      if (this.page && !this.page.isClosed()) {
+        const leaveBtn = this.page.getByRole("button", { name: /leave call/i });
+        if (await leaveBtn.isVisible().catch(() => false)) {
+          await leaveBtn.click().catch(() => {});
+        }
+        await this.page.close().catch(() => {});
+      }
+      if (this.browser) {
+        await this.browser.close().catch(() => {});
+      }
+    } catch (e) {
+      logger.warn("Error during explicit bot leave execution:", { error: e.message });
     }
   }
 }
