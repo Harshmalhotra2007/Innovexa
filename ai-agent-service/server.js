@@ -211,6 +211,19 @@ async function startAgentProcess(meetingId) {
 
     broadcast(meetingId, completedAgent);
 
+    // E. Index in Oracle Core
+    try {
+      const { exec } = require("child_process");
+      const scriptPath = path.join(__dirname, "oracle_core_worker.py");
+      console.log(`[AgentService] Triggering Oracle Core indexing for meeting: ${meetingId}`);
+      exec(`python "${scriptPath}" --meeting-id "${meetingId}"`, (error, stdout) => {
+        if (error) console.error(`[AgentService] Oracle Core indexing error:`, error);
+        else console.log(`[AgentService] Oracle Core indexing output:`, stdout.trim());
+      });
+    } catch (e) {
+      console.error("[AgentService] Oracle Core trigger error:", e);
+    }
+
   } catch (err) {
     console.error(`[AgentService] Meeting process failure:`, err);
     await prisma.aIAgent.update({
