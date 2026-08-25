@@ -101,4 +101,14 @@ The **Innovexa AI Meeting Agent** acts as an autonomous virtual participant in s
 - **AI Extracted Action Items**: Extracted tasks, assignees, and dates are saved directly to the database and rendered on the dashboard.
 - **Data Retention & Privacy**: To comply with data privacy policies, all recordings are encrypted at rest and automatically purged after 30 days.
 
+### Operation Ghost Caller API Trigger (`innovexa-meet-bot`)
+1. Trigger meeting join via cURL or Postman:
+   ```bash
+   curl -X POST http://localhost:3000/bot/join \
+     -H "Content-Type: application/json" \
+     -d '{"meetingUrl": "https://meet.google.com/abc-defg-hij", "botName": "Innovexa Notetaker"}'
+   ```
+2. Admit the bot to the Google Meet session when requested by the host.
+3. The bot posts a consent disclaimer in the call chat, records 16kHz WAV audio, and forwards the file to `N8N_WEBHOOK_URL`.
+
 
