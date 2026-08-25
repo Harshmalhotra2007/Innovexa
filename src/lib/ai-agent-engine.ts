@@ -19,34 +19,6 @@ export interface AIAgentState {
 }
 
 /**
- * Default sample transcript templates for AI Agent ingestion & diarization
- */
-const SAMPLE_DIARIZED_TRANSCRIPTS: Record<string, TranscriptSegment[]> = {
-  default: [
-    {
-      speaker: "Dr. Vikram Seth (Dept Lead)",
-      text: "Welcome team. Let's initiate the Innovexa AI Meeting Agent protocol and review system parameters.",
-      timestamp: "00:00:02",
-    },
-    {
-      speaker: "Alex Mercer (Senior Architect)",
-      text: "The AI Agent model and SSE real-time stream routes are active. Audio streams are encrypted and processed via Whisper ASR.",
-      timestamp: "00:00:15",
-    },
-    {
-      speaker: "Sarah Jenkins (Lead UI/UX)",
-      text: "The Cyberpunk Purple UI panel features terminal pulse indicators and real-time caption feeds with speaker badges.",
-      timestamp: "00:00:32",
-    },
-    {
-      speaker: "Innovexa AI Agent",
-      text: "System status nominal. Diarization active, action items extracted, and 30-day retention policies enforced.",
-      timestamp: "00:00:50",
-    },
-  ],
-};
-
-/**
  * Triggers the AI Meeting Agent to join, record, transcribe, and summarize a meeting.
  */
 export async function triggerAIAgent(
@@ -81,80 +53,31 @@ export async function triggerAIAgent(
     });
   }
 
-  // Trigger external Dockerized Meet Bot service if available
-  const botServiceUrl = process.env.MEET_BOT_URL;
+  // Always use the real Render Bot Service URL
+  const botServiceUrl = process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
+  
+  // Extract Google Meet URL from agenda or fallback to test room
   const googleMeetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com")
     ? meeting.agenda
-    : null;
+    : `https://meet.google.com/test-${meetingId.substring(0, 8)}`;
 
-  if (botServiceUrl && googleMeetUrl) {
-    // Real Bot Mode: Send request to Render Bot Service
-    fetch(`${botServiceUrl}/bot/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        meetingUrl: googleMeetUrl,
-        botName: process.env.BOT_NAME || "Innovexa Notetaker",
-        metadata: {
-          meetingId: meeting.id,
-          meetingTitle: meeting.title,
-        },
-      }),
-    }).catch((e) => {
-      console.log("External Meet Bot trigger error:", e.message);
-    });
-
-    // Update status to joining for real bot
-    await db.aIAgent.update({
-      where: { meetingId },
-      data: { status: "joining", updatedAt: new Date() },
-    });
-  } else {
-    // Simulation Fallback Mode (only when MEET_BOT_URL or Google Meet URL is missing)
-    setTimeout(async () => {
-      try {
-        await db.aIAgent.update({
-          where: { meetingId },
-          data: { status: "recording" },
-        });
-        await new Promise((res) => setTimeout(res, 2000));
-
-        const transcriptSegments = SAMPLE_DIARIZED_TRANSCRIPTS.default;
-        await db.aIAgent.update({
-          where: { meetingId },
-          data: {
-            status: "transcribing",
-            transcript: transcriptSegments as any,
-          },
-        });
-        await new Promise((res) => setTimeout(res, 2000));
-
-        const summaryText = `Executive AI Summary for '${meeting.title}':\n` +
-          `• Core Focus: AI Agent integration and Whisper ASR diarization.\n` +
-          `• Key Decisions: Adopted S3/Supabase encrypted storage and 30-day retention policies.\n` +
-          `• Next Steps: Monitor SLA escalation engine and finalize review.`;
-
-        await db.aIAgent.update({
-          where: { meetingId },
-          data: {
-            status: "summarizing",
-            summary: summaryText,
-          },
-        });
-        await new Promise((res) => setTimeout(res, 2000));
-
-        await db.aIAgent.update({
-          where: { meetingId },
-          data: {
-            status: "completed",
-            updatedAt: new Date(),
-          },
-        });
-      } catch (err) {
-        console.error("AI Agent simulation error:", err);
-      }
-    }, 100);
-  }
+  // Send trigger payload directly to live cloud bot service
+  console.log(`[AIAgentEngine] Triggering real bot at ${botServiceUrl}/bot/join for URL: ${googleMeetUrl}`);
+  
+  fetch(`${botServiceUrl}/bot/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      meetingUrl: googleMeetUrl,
+      botName: process.env.BOT_NAME || "Innovexa Notetaker",
+      metadata: {
+        meetingId: meeting.id,
+        meetingTitle: meeting.title,
+      },
+    }),
+  }).catch((e) => {
+    console.error("[AIAgentEngine] Live bot trigger failed:", e.message);
+  });
 
   return agent as unknown as AIAgentState;
 }
