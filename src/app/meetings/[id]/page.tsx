@@ -1,28 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft,
   Clock,
-  Users,
   FileText,
-  Sparkles,
-  Gavel,
-  ListChecks,
-  Bell,
-  CircleCheck,
-  Circle,
   Loader2,
   AlertTriangle,
-  Lock,
-  Mic,
-  Square,
-  Pause,
-  Play,
-  UploadCloud,
-  FileAudio,
   Trash2,
   Video,
 } from "lucide-react";
@@ -34,35 +20,14 @@ export default function MeetingDetailPage() {
   const id = params?.id as string;
 
   const [meeting, setMeeting] = useState<any>(null);
-  const [recordings, setRecordings] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("organizer");
-
-  // Audio recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [showBackupAudio, setShowBackupAudio] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUserRole(sessionStorage.getItem("userRole") || "organizer");
     }
     fetchMeetingDetails();
-    fetchRecordings();
-    fetchUsers();
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
   }, [id]);
 
   async function fetchMeetingDetails() {
@@ -74,26 +39,6 @@ export default function MeetingDetailPage() {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function fetchRecordings() {
-    try {
-      const res = await fetch(`/api/recordings?meetingId=${id}`);
-      const data = await res.json();
-      setRecordings(data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async function fetchUsers() {
-    try {
-      const res = await fetch("/api/users");
-      const data = await res.json();
-      setUsers(data || []);
-    } catch (err) {
-      console.error(err);
     }
   }
 
@@ -170,18 +115,9 @@ export default function MeetingDetailPage() {
   }
 
   const meetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com") ? meeting.agenda : null;
-  const isReadOnly = userRole === "participant";
 
   return (
     <div className="mx-auto max-w-[840px] space-y-5 py-4">
-      {/* Toast Alert */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded bg-[#182124] border border-[#E8A33D] px-4 py-2 text-xs text-[#E7EEEF] shadow-2xl font-mono">
-          <Bell size={13} className="text-[#E8A33D]" />
-          <span>{toast}</span>
-        </div>
-      )}
-
       {/* Navigation & Header */}
       <div className="space-y-2 border-b border-[#212B2E] pb-4">
         <Link
@@ -232,41 +168,6 @@ export default function MeetingDetailPage() {
 
       {/* CORE FEATURE: AI Agent Panel (One-Click Bot Join, Live Recording & Insights) */}
       <AIAgentPanel meetingId={id} meetingTitle={meeting?.title} />
-
-      {/* Secondary Backup Audio & Upload Section (Clean Collapsible Accordion) */}
-      <div className="ops-panel p-4 border border-[#2B383C]">
-        <button
-          onClick={() => setShowBackupAudio(!showBackupAudio)}
-          className="w-full flex items-center justify-between font-mono text-xs font-semibold text-[#8FA0A4] hover:text-[#E7EEEF] transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <FileAudio size={13} className="text-[#49B9AE]" /> Backup Audio Files ({recordings.length})
-          </span>
-          <span className="text-[10px] text-[#5B6A6E]">{showBackupAudio ? "Hide" : "Show Upload Options"}</span>
-        </button>
-
-        {showBackupAudio && (
-          <div className="mt-4 pt-3 border-t border-[#212B2E] space-y-3">
-            {recordings.length === 0 ? (
-              <div className="text-xs font-mono text-[#5B6A6E] py-1">
-                No backup audio files uploaded.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recordings.map((rec) => (
-                  <div key={rec.id} className="p-2 rounded bg-[#141C1F] border border-[#212B2E]">
-                    <audio controls src={rec.url} className="w-full h-8" />
-                    <div className="flex justify-between font-mono text-[10px] text-[#5B6A6E] mt-1">
-                      <span>{(rec.size / (1024 * 1024)).toFixed(2)} MB</span>
-                      <span>{new Date(rec.uploadedAt).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

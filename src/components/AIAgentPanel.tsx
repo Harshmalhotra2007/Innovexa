@@ -392,13 +392,6 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         </div>
       )}
 
-      {/* Privacy & Retention Disclaimer */}
-      <div className="rounded-lg bg-[#141C1F] border border-[#212B2E] p-2.5 text-[11px] text-[#8FA0A4] flex items-center gap-2 font-mono">
-        <ShieldAlert className="w-4 h-4 text-[#49B9AE] flex-shrink-0" />
-        <span>
-          ⚠️ Privacy Disclaimer: Meetings are recorded and transcribed for summary purposes. Audio files are encrypted at rest in S3/Supabase and subject to a 30-day retention policy.
-        </span>
-      </div>
     </div>
   );
 }
