@@ -52,7 +52,18 @@ if not db_url:
 def get_db_connection():
     if not db_url:
         raise ValueError("DATABASE_URL is not set")
-    return psycopg2.connect(db_url)
+    cleaned_url = db_url
+    if "pgbouncer=" in cleaned_url:
+        if "?" in cleaned_url:
+            parts = cleaned_url.split("?", 1)
+            base = parts[0]
+            params = parts[1].split("&")
+            clean_params = [p for p in params if not p.startswith("pgbouncer")]
+            if clean_params:
+                cleaned_url = base + "?" + "&".join(clean_params)
+            else:
+                cleaned_url = base
+    return psycopg2.connect(cleaned_url)
 
 # Load machine learning models with fallbacks
 print("[OracleCore] Initializing ML models...")
