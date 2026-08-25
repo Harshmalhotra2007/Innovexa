@@ -158,6 +158,36 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     }
   };
 
+  const handleEndMeeting = async () => {
+    if (isTabRecording) {
+      stopTabAudioCapture();
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/ai-agent/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meetingId }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to end meeting");
+      }
+
+      await fetchStatus();
+      await fetchActionItems();
+      await fetchCitations();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Error ending meeting");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Option 1: Live Tab Audio Recorder Implementation
   const startTabAudioCapture = async () => {
     setErrorMsg(null);
@@ -314,6 +344,16 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
         <div className="flex items-center gap-2 flex-wrap">
           {getStatusBadge()}
+          {(agent.status === "joining" || agent.status === "recording" || isTabRecording) && (
+            <button
+              onClick={handleEndMeeting}
+              disabled={loading}
+              className="px-3.5 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[#E2666A] text-white hover:bg-[#c54e52] transition-all flex items-center gap-1.5 shadow-md shadow-[#E2666A]/20"
+            >
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-current" />}
+              <span>END MEETING</span>
+            </button>
+          )}
         </div>
       </div>
 
