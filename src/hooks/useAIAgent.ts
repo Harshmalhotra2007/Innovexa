@@ -187,9 +187,34 @@ export function useAIAgent(meetingId: string) {
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
+      let chunkIndex = 0;
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+
+          // Progressive Upload: Stream audio chunk to backend in real-time
+          const currentChunkIndex = chunkIndex++;
+          const formData = new FormData();
+          formData.append("chunk", event.data, `chunk_${currentChunkIndex}.webm`);
+          formData.append("meetingId", meetingId);
+          formData.append("chunkIndex", currentChunkIndex.toString());
+
+          fetch("/api/recordings/stream-chunk", {
+            method: "POST",
+            body: formData,
+          })
+            .then(async (res) => {
+              if (res.ok) {
+                const data = await res.json();
+                if (data.segment) {
+                  setAgent((prev) => ({
+                    ...prev,
+                    transcript: [...(prev.transcript || []), data.segment],
+                  }));
+                }
+              }
+            })
+            .catch(() => {});
         }
       };
 
