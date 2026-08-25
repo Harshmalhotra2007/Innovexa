@@ -2,6 +2,15 @@ const { chromium } = require("playwright");
 const { PulseAudio } = require("./pulseaudio");
 const logger = require("./logger");
 
+/**
+ * Progressive Exponential Backoff Delay with Jitter
+ */
+function getExponentialBackoffDelay(attempt, initialMs = 300, factor = 1.5, maxMs = 3000) {
+  const delay = Math.min(initialMs * Math.pow(factor, attempt), maxMs);
+  const jitter = delay * 0.1 * Math.random();
+  return Math.round(delay + jitter);
+}
+
 class MeetBot {
   async join(meetingUrl, botName = process.env.BOT_NAME || "Innovexa Notetaker") {
     logger.info("Initiating MeetBot join task", { meetingUrl, botName });
@@ -121,7 +130,8 @@ class MeetBot {
           } catch (e) { /* ignore */ }
         }
         if (clicked) break;
-        await page.waitForTimeout(300);
+        const delay = getExponentialBackoffDelay(attempt, 300, 1.5, 2000);
+        await page.waitForTimeout(delay);
       }
 
       if (!clicked) {
@@ -225,6 +235,7 @@ class MeetBot {
 
   async waitForAdmission(page, timeoutMs = 5 * 60 * 1000) {
     const start = Date.now();
+    let attemptCount = 0;
     logger.info("Waiting for host admission to meeting call...");
     while (Date.now() - start < timeoutMs) {
       // 1. URL parameter change check (e.g., ?pli=1, authuser=, or meeting join session params)
@@ -251,7 +262,8 @@ class MeetBot {
 
       if (domInCall) return true;
 
-      await page.waitForTimeout(2000);
+      const delay = getExponentialBackoffDelay(attemptCount++, 1000, 1.3, 4000);
+      await page.waitForTimeout(delay);
     }
     throw new Error("Host did not admit bot within timeout");
   }
