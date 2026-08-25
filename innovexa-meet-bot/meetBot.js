@@ -6,7 +6,7 @@ class MeetBot {
   async join(meetingUrl, botName = process.env.BOT_NAME || "Innovexa Notetaker") {
     logger.info("Initiating MeetBot join task", { meetingUrl, botName });
 
-    const browser = await chromium.launch({
+    const launchOptions = {
       headless: process.env.HEADLESS !== "false",
       args: [
         "--use-fake-ui-for-media-stream",
@@ -15,7 +15,13 @@ class MeetBot {
         "--no-sandbox",
         "--disable-setuid-sandbox",
       ],
-    });
+    };
+
+    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+    }
+
+    const browser = await chromium.launch(launchOptions);
 
     const context = await browser.newContext({
       permissions: ["microphone", "camera"],

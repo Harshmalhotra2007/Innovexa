@@ -1,16 +1,20 @@
-# Multi-stage Dockerfile for AI Agent Service with Playwright, Node, and FFmpeg
-FROM mcr.microsoft.com/playwright/node:v1.44.0-jammy AS runtime
+# Multi-stage Dockerfile for AI Agent Service with Chromium, Node, and FFmpeg
+FROM node:20-slim AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install system dependencies for audio processing & Python
+# Install system dependencies for Chromium, audio processing & Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
     ffmpeg \
     xvfb \
     pulseaudio \
     pulseaudio-utils \
     dbus-x11 \
     alsa-utils \
+    ca-certificates \
     python3 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
