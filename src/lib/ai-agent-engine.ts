@@ -76,7 +76,9 @@ export async function triggerAIAgent(
       },
     }),
   }).catch((e) => {
-    console.error("[AIAgentEngine] Live bot trigger failed:", e.message);
+    if (process.env.NODE_ENV !== "test") {
+      console.error("[AIAgentEngine] Live bot trigger failed:", e.message);
+    }
   });
 
   return agent as unknown as AIAgentState;
