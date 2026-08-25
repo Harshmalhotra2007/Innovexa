@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent
+  labels:
+    app: ai-agent
+    component: meeting-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+        component: meeting-agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+    spec:
+      containers:
+        - name: ai-agent
+          image: innovexa/ai-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: websocket
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: innovexa-secrets
+                  key: database-url
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: GOOGLE_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: innovexa-secrets
+                  key: google-email
+            - name: GOOGLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: innovexa-secrets
+                  key: google-password
+            - name: ENCRYPTION_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: innovexa-secrets
+                  key: encryption-key
+            - name: COMPLIANCE_JURISDICTION
+              value: "default"
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          volumeMounts:
+            - name: recordings
+              mountPath: /app/public/recordings
+          livenessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: recordings
+          persistentVolumeClaim:
+            claimName: recordings-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-agent
+spec:
+  selector:
+    app: ai-agent
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: websocket
+  type: ClusterIP

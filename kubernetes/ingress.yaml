@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: innovexa-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/websocket-services: "ai-agent"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: innovexa.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway  # Next.js API service
+                port:
+                  number: 3000
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-agent
+                port:
+                  number: 8081
+          - path: /transcribe
+            pathType: Prefix
+            backend:
+              service:
+                name: whisper-worker
+                port:
+                  number: 8082
+          - path: /summarize
+            pathType: Prefix
+            backend:
+              service:
+                name: llama-worker
+                port:
+                  number: 8083
