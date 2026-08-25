@@ -69,6 +69,7 @@ model Meeting {
   recordings   Recording[]
   aiAgent      AIAgent?
   actionItems  ActionItem[]
+  citations    Citation[]
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -90,15 +91,20 @@ model MeetingSegment {
 
 /// Represents a formal decision derived from a meeting transcript.
 model Decision {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   meetingId   String
-  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meeting     Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   title       String
   context     String
   rationale   String?
   department  String
-  tags        String[] @default([])
-  createdAt   DateTime @default(now())
+  tags        String[]      @default([])
+  clusterId   String?
+  cluster     TopicCluster? @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  decisions1  Contradiction[] @relation("Dec1")
+  decisions2  Contradiction[] @relation("Dec2")
 }
 
 /// Represents an action item or task generated from a meeting transcript.
@@ -187,4 +193,34 @@ model ActionItem {
 
   @@index([meetingId])
 }
+
+/// Represents a topic cluster computed by HDBSCAN on decision embeddings.
+model TopicCluster {
+  id        String     @id @default(uuid())
+  keywords  String[]   @default([])
+  decisions Decision[]
+  createdAt DateTime   @default(now())
+}
+
+/// Represents a detected contradiction between two decisions.
+model Contradiction {
+  id          String   @id @default(uuid())
+  decision1Id String
+  decision1   Decision @relation("Dec1", fields: [decision1Id], references: [id], onDelete: Cascade)
+  decision2Id String
+  decision2   Decision @relation("Dec2", fields: [decision2Id], references: [id], onDelete: Cascade)
+  confidence  Float
+  createdAt   DateTime @default(now())
+}
+
+/// Represents a citation trail mapping a summary block to a transcript chunk.
+model Citation {
+  id                String   @id @default(uuid())
+  meetingId         String
+  meeting           Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  transcriptChunkId String
+  confidence        Float
+  createdAt         DateTime @default(now())
+}
+
 
