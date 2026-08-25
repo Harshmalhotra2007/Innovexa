@@ -316,6 +316,31 @@ class MeetBot {
           await this.page.waitForTimeout(500).catch(() => {});
         }
 
+        if (!clicked) {
+          logger.info("Selector retry loop missed. Attempting JS DOM evaluation for leave button...");
+          clicked = await this.page.evaluate(() => {
+            const btns = Array.from(document.querySelectorAll('button, div[role="button"], span[role="button"]'));
+            const leaveBtn = btns.find((b) => {
+              const txt = (b.textContent || "").toLowerCase();
+              const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+              const jsname = b.getAttribute("jsname");
+              return txt.includes("leave") || aria.includes("leave") || jsname === "CQYiBc";
+            });
+            if (leaveBtn) {
+              (leaveBtn as any).click();
+              return true;
+            }
+            return false;
+          }).catch(() => false);
+        }
+
+        if (!clicked) {
+          logger.info("Attempting Google Meet keyboard shortcut fallback (Ctrl+E / Cmd+E)...");
+          await this.page.keyboard.press("Control+e").catch(() => {});
+          await this.page.keyboard.press("Meta+e").catch(() => {});
+          await this.page.waitForTimeout(500).catch(() => {});
+        }
+
         await this.page.close().catch(() => {});
       }
 
