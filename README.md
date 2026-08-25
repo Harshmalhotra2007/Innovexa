@@ -120,3 +120,22 @@ docker-compose up -d --build
 - [Architecture Overview](file:///c:/Code/Hackathon/ARCHITECTURE.md) — System architecture diagram and data lifecycles
 - [Performance Benchmarks](file:///c:/Code/Hackathon/PERFORMANCE.md) — Lighthouse scores and database profiling
 
+---
+
+## 🤖 Operation Ghost Caller (Headless Google Meet Bot)
+
+The `innovexa-meet-bot` service provides automated Google Meet joining, PulseAudio null-sink 16kHz mono WAV recording, in-chat consent disclaimers, and multipart n8n pipeline handoffs.
+
+### Known Limitations
+- **Manual Admission**: Google Meet host must admit the bot if guest access requires host approval.
+- **CAPTCHAs**: Extreme anti-bot security policies may require headful browser mode for manual solving.
+- **Anonymous Join**: Guest join functionality operates when Google Meet room policies permit unauthenticated guests.
+- **Audio Mixing**: Captures single mixed system audio stream (16kHz mono WAV) via PulseAudio null-sink monitor.
+
+### Demo Script
+1. **Trigger Bot**: Send a `POST` request to `http://localhost:3000/bot/join` with `{ "meetingUrl": "https://meet.google.com/..." }`.
+2. **Admit Bot**: Host accepts the bot ("Innovexa Notetaker") into the Google Meet call.
+3. **Observe Consent Disclaimer**: The bot posts `"This meeting is being recorded and transcribed by Innovexa. Reply STOP to object."` into the call chat.
+4. **Handoff Verification**: Upon call completion, the 16kHz mono WAV file and meeting metadata are sent automatically to `N8N_WEBHOOK_URL`.
+
+
