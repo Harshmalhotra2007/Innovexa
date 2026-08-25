@@ -37,30 +37,31 @@ export async function DELETE(
 
     const { id } = params;
 
-    // 1. Fetch meeting first so we have the meetingUrl (stored in agenda)
+    // Fetch meeting first so we have the meetingUrl (stored in agenda field)
     let meeting: any = null;
     try {
-      meeting = await db.meeting.findUnique({ where: { id } });
+      meeting = await db.meeting.findUnique({
+        where: { id },
+        select: { id: true, agenda: true },
+      });
     } catch (e) {
       meeting = null;
     }
 
-    // 2. Signal bot to leave BEFORE deleting the record
-    const botServiceUrl = process.env.MEET_BOT_URL || process.env.BOT_SERVICE_URL || "https://innovexa-meet-bot.onrender.com";
-    const meetingUrl = meeting?.agenda?.includes("meet.google.com")
-      ? meeting.agenda
-      : null;
+    // Signal bot to leave BEFORE deleting the record
+    const botServiceUrl = process.env.BOT_SERVICE_URL || process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
+    const meetingUrl = meeting?.agenda?.includes("meet.google.com") ? meeting.agenda : null;
 
     if (meetingUrl) {
-      console.log(`[DELETE /meetings] Triggering bot leave at ${botServiceUrl}/bot/leave for URL: ${meetingUrl}`);
       try {
         await fetch(`${botServiceUrl}/bot/leave`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ meetingUrl }),
         });
+        console.log("[DELETE] Bot leave signal sent for:", meetingUrl);
       } catch (e) {
-        console.warn("[DELETE /meetings] Render bot leave signal failed:", e);
+        console.warn("[DELETE] Bot leave signal failed (non-blocking):", e);
       }
     }
 
@@ -71,6 +72,7 @@ export async function DELETE(
     } catch (e) {
       agent = null;
     }
+
     if (agent && agent.recordingUrl && agent.recordingUrl.startsWith("baas_")) {
       const botId = agent.recordingUrl.replace("baas_", "");
       const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
@@ -83,11 +85,11 @@ export async function DELETE(
           },
         });
       } catch (e) {
-        console.warn("[DELETE /meetings] MeetingBaas bot leave signal failed:", e);
+        console.warn("[DELETE] MeetingBaas bot leave signal failed:", e);
       }
     }
 
-    // 3. Delete associated records and the meeting record
+    // Delete associated records & meeting record
     await db.task.deleteMany({ where: { meetingId: id } });
     await db.decision.deleteMany({ where: { meetingId: id } });
     await db.actionItem.deleteMany({ where: { meetingId: id } });
@@ -95,6 +97,7 @@ export async function DELETE(
       await (db.aIAgent as any).deleteMany({ where: { meetingId: id } }).catch(() => {});
     }
 
+    // Now delete the meeting record
     await db.meeting.delete({ where: { id } });
 
     revalidateTag("meetings");
@@ -102,7 +105,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Meeting deleted successfully" });
   } catch (error: any) {
-    console.error("[DELETE /meetings]", error);
+    console.error("[DELETE /api/meetings/[id]]", error);
     return NextResponse.json({ error: error.message || "Failed to delete meeting" }, { status: 500 });
   }
 }
