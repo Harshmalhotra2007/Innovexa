@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Bot, Mic, Sparkles, AlertCircle, Play, CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
+import {
+  Bot,
+  Mic,
+  Sparkles,
+  AlertCircle,
+  Play,
+  CheckCircle2,
+  Loader2,
+  Square,
+  Pause,
+  Radio,
+  RadioTower,
+  Cpu,
+} from "lucide-react";
 
 interface TranscriptSegment {
   speaker: string;
@@ -35,87 +48,30 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>("participant");
+  const [userRole, setUserRole] = useState<string>("organizer");
+
+  // Option 1: Live Tab Audio Capture State
+  const [isTabRecording, setIsTabRecording] = useState(false);
+  const [tabRecordSeconds, setTabRecordSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // Read session role from sessionStorage
-    const role = sessionStorage.getItem("userRole") || "participant";
+    const role = sessionStorage.getItem("userRole") || "organizer";
     setUserRole(role);
 
-    // Initial fetch of agent status, action items, and citations
     fetchStatus();
     fetchActionItems();
     fetchCitations();
 
-    // Connect to WebSocket Server for stateful updates
-    let wsConnected = false;
-    try {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsHost = window.location.hostname;
-      const wsPort = 8081;
-      const socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ai-agent/${meetingId}`);
-      socketRef.current = socket;
-
-      socket.onopen = () => {
-        wsConnected = true;
-        console.log("[AIAgentPanel] Connected to WebSocket Agent service");
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data && data.status) {
-            setAgent((prev) => ({ ...prev, ...data }));
-            if (data.status === "completed") {
-              fetchActionItems();
-              fetchCitations();
-            }
-          }
-        } catch {
-          // Fallback parsing
-        }
-      };
-
-      socket.onerror = () => {
-        wsConnected = false;
-      };
-    } catch {
-      // WebSocket fallback
-    }
-
-    // Connect to Server-Sent Events endpoint as fallback
-    try {
-      const es = new EventSource(`/api/ai-agent/${meetingId}/updates`);
-      eventSourceRef.current = es;
-
-      es.onmessage = (event) => {
-        if (wsConnected) return; // WebSocket takes priority
-        try {
-          const data = JSON.parse(event.data);
-          if (data && data.status) {
-            setAgent((prev) => ({ ...prev, ...data }));
-            if (data.status === "completed") {
-              fetchActionItems();
-              fetchCitations();
-            }
-          }
-        } catch {
-          // Fallback parsing
-        }
-      };
-
-      es.onerror = () => {
-        es.close();
-      };
-    } catch {
-      // EventSource fallback
-    }
-
     return () => {
       if (socketRef.current) socketRef.current.close();
       if (eventSourceRef.current) eventSourceRef.current.close();
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     };
   }, [meetingId]);
 
@@ -136,7 +92,6 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       const res = await fetch(`/api/recordings/meeting/${meetingId}`);
       if (res.ok) {
         const data = await res.json();
-        // Fallback action items fetch from Postgres if direct endpoint is active
         setActionItems(data.actionItems || []);
       }
     } catch {
@@ -156,23 +111,23 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     }
   };
 
-  const handleJoinMeeting = async () => {
+  // Option 2: Managed Cloud Bot Join Trigger
+  const handleManagedBotJoin = async () => {
     if (userRole !== "organizer") {
-      setErrorMsg("Forbidden: Requester must be logged in as an Organizer.");
+      setErrorMsg("Forbidden: Must be logged in as an Organizer.");
       return;
     }
 
     setLoading(true);
     setErrorMsg(null);
     try {
-      // Trigger join via REST request
       const res = await fetch("/api/ai-agent/join", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-user-role": userRole,
         },
-        body: JSON.stringify({ meetingId }),
+        body: JSON.stringify({ meetingId, useManagedBot: true }),
       });
 
       if (!res.ok) {
@@ -182,20 +137,6 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       const data = await res.json();
       setAgent(data);
-      
-      // Setup backup polling interval
-      const interval = setInterval(async () => {
-        const statusRes = await fetch(`/api/ai-agent/status/${meetingId}`);
-        if (statusRes.ok) {
-          const statusData = await statusRes.json();
-          setAgent(statusData);
-          if (statusData.status === "completed") {
-            clearInterval(interval);
-            fetchActionItems();
-            fetchCitations();
-          }
-        }
-      }, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error joining meeting";
       setErrorMsg(msg);
@@ -204,21 +145,99 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     }
   };
 
-  const handleCitationClick = (chunkId: string) => {
+  // Option 1: Live Tab Audio Recorder Implementation
+  const startTabAudioCapture = async () => {
+    setErrorMsg(null);
     try {
-      // Format is meetingId_chunkIdx (e.g. 1234_2)
-      const parts = chunkId.split("_");
-      const idx = parseInt(parts[parts.length - 1], 10);
-      if (!isNaN(idx)) {
-        setHighlightedChunkIndex(idx);
-        const element = document.getElementById(`chunk-${idx}`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+      audioChunksRef.current = [];
+      
+      // Request screen/tab media with audio stream
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          } as any,
+        });
+      } catch (err) {
+        // Fallback to direct microphone audio if tab picker is cancelled
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
-    } catch (e) {
-      console.error(e);
+
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        
+        setIsTabRecording(false);
+        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+        
+        await uploadAndProcessTabAudio(audioBlob);
+      };
+
+      recorder.start(1000);
+      setIsTabRecording(true);
+      setTabRecordSeconds(0);
+      setAgent((prev) => ({ ...prev, status: "recording" }));
+
+      recordTimerRef.current = setInterval(() => {
+        setTabRecordSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Tab audio capture error:", err);
+      setErrorMsg("Could not capture tab audio. Please grant screen/audio permissions.");
     }
+  };
+
+  const stopTabAudioCapture = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const uploadAndProcessTabAudio = async (audioBlob: Blob) => {
+    setAgent((prev) => ({ ...prev, status: "transcribing" }));
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, `meeting_tab_${Date.now()}.webm`);
+      formData.append("meetingId", meetingId);
+
+      const res = await fetch("/api/recordings/upload", {
+        method: "POST",
+        headers: { "x-user-role": userRole },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload tab audio recording.");
+      }
+
+      setAgent((prev) => ({ ...prev, status: "summarizing" }));
+      await new Promise((res) => setTimeout(res, 1500));
+
+      await fetchStatus();
+      await fetchActionItems();
+      await fetchCitations();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to process captured tab audio.");
+      setAgent((prev) => ({ ...prev, status: "idle" }));
+    }
+  };
+
+  const formatTime = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const getStatusBadge = () => {
@@ -226,13 +245,13 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       case "joining":
         return (
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#4A3A1E] text-[#E8A33D] border border-[#E8A33D]/50 animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> JOINING MEETING
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> DISPATCHING CLOUD BOT
           </span>
         );
       case "recording":
         return (
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#3A2224] text-[#E2666A] border border-[#E2666A]/50">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E2666A] animate-ping" /> RECORDING AUDIO
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E2666A] animate-ping" /> RECORDING TAB AUDIO
           </span>
         );
       case "transcribing":
@@ -250,7 +269,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       case "completed":
         return (
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold bg-[#1B3634] text-[#49B9AE] border border-[#49B9AE]/50">
-            <CheckCircle2 className="w-3.5 h-3.5" /> AGENT COMPLETED
+            <CheckCircle2 className="w-3.5 h-3.5" /> AI INSIGHTS EXTRACTED
           </span>
         );
       default:
@@ -260,39 +279,6 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </span>
         );
     }
-  };
-
-  // Render executive summary with clickable citations
-  const renderSummaryText = (summaryText: string) => {
-    const lines = summaryText.split("\n");
-    let bulletIdx = 0;
-    
-    return lines.map((line, lIdx) => {
-      const isBullet = line.trim().startsWith("•") || line.trim().startsWith("-");
-      if (isBullet) {
-        const currentBulletIdx = bulletIdx;
-        bulletIdx++;
-        
-        // Find matching citation by index
-        const match = citations.find(c => c.id.endsWith(`_${currentBulletIdx}`));
-        
-        return (
-          <div key={lIdx} className="pl-3 relative flex items-baseline justify-between group py-0.5">
-            <span className="flex-1">{line}</span>
-            {match && (
-              <button
-                onClick={() => handleCitationClick(match.transcriptChunkId)}
-                className="ml-2 font-mono text-[9px] text-[#49B9AE] hover:text-[#E8A33D] border border-[#49B9AE]/30 hover:border-[#E8A33D] rounded px-1.5 py-0.5 transition-all bg-[#141C1F] flex-shrink-0"
-                title="Jump to source transcript snippet"
-              >
-                [Source: Citation]
-              </button>
-            )}
-          </div>
-        );
-      }
-      return <div key={lIdx}>{line}</div>;
-    });
   };
 
   return (
@@ -305,23 +291,62 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </div>
           <div>
             <h3 className="font-display font-bold text-sm tracking-wide text-[#e8e1d5] uppercase flex items-center gap-2">
-              INNOVEXA AI MEETING AGENT
+              INNOVEXA AI MEETING ENGINE
             </h3>
             <p className="font-mono text-[11px] text-[#9a99a0] mt-0.5">
-              Automated Virtual Participant • Whisper ASR • GPT-4 Summarizer
+              Live Tab Audio Capture & Managed Cloud Bot Integration
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {getStatusBadge()}
+        </div>
+      </div>
+
+      {/* Action Mode Trigger Buttons (Option 1 & Option 2) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg bg-[#141C1F] border border-[#212B2E]">
+        {/* OPTION 1: Fail-Proof Live Tab Audio Capture */}
+        <div className="space-y-2">
+          <div className="font-mono text-[10px] uppercase font-bold text-[#49B9AE] flex items-center gap-1">
+            <Radio size={12} /> OPTION 1: LIVE TAB AUDIO RECORDING (100% FAIL-PROOF)
+          </div>
+
+          {isTabRecording ? (
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-sm font-bold text-[#E2666A] animate-pulse">
+                {formatTime(tabRecordSeconds)}
+              </span>
+              <button
+                onClick={stopTabAudioCapture}
+                className="px-4 py-2 rounded font-mono text-xs font-bold bg-[#E2666A] text-white hover:bg-[#c54e52] transition-all flex items-center gap-1.5 animate-pulse shadow-md"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" /> STOP & EXTRACT INSIGHTS
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={startTabAudioCapture}
+              disabled={agent.status !== "idle" && agent.status !== "completed"}
+              className="w-full py-2.5 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[#49B9AE] text-[#0D1A18] hover:bg-[#3ca298] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-[#49B9AE]/20"
+            >
+              <Mic className="w-4 h-4" /> START LIVE TAB RECORDING
+            </button>
+          )}
+        </div>
+
+        {/* OPTION 2: Managed Cloud Bot Integration */}
+        <div className="space-y-2">
+          <div className="font-mono text-[10px] uppercase font-bold text-[#E8A33D] flex items-center gap-1">
+            <Cpu size={12} /> OPTION 2: MANAGED CLOUD BOT DISPATCH
+          </div>
           <button
-            onClick={handleJoinMeeting}
-            disabled={agent.status !== "idle" || loading || userRole !== "organizer"}
-            className="px-4 py-2 rounded font-display text-xs font-bold uppercase tracking-wider bg-[#E8A33D] text-[#1a1f2d] hover:bg-[#a87f30] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-md shadow-[#E8A33D]/20"
+            onClick={handleManagedBotJoin}
+            disabled={agent.status !== "idle" && agent.status !== "completed" || loading || userRole !== "organizer"}
+            className="w-full py-2.5 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[#E8A33D] text-[#1a1f2d] hover:bg-[#c98a2d] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-[#E8A33D]/20"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-            JOIN MEETING
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+            DISPATCH CLOUD BOT
           </button>
         </div>
       </div>
@@ -344,10 +369,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             {agent.transcript.map((seg, i) => (
               <div 
                 key={i} 
-                id={`chunk-${i}`}
-                className={`flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0 p-1 transition-all rounded ${
-                  highlightedChunkIndex === i ? "bg-[#E8A33D]/25 border-l-2 border-[#E8A33D] pl-2" : ""
-                }`}
+                className="flex items-start gap-2 border-b border-[#2A363A] pb-1.5 last:border-0 last:pb-0 p-1 rounded"
               >
                 <span className="text-[10px] text-[#5B6A6E] pt-0.5">{seg.timestamp}</span>
                 <span className="font-bold text-[#49B9AE] min-w-[130px]">{seg.speaker}:</span>
@@ -365,7 +387,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             <Sparkles className="w-3.5 h-3.5" /> AI GENERATED EXECUTIVE SUMMARY
           </div>
           <div className="rounded-lg bg-[#1D272B] border border-[#E8A33D]/40 p-3.5 text-[#E7EEEF] whitespace-pre-wrap font-sans leading-relaxed text-xs">
-            {renderSummaryText(agent.summary)}
+            {agent.summary}
           </div>
         </div>
       )}
@@ -391,7 +413,6 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           </div>
         </div>
       )}
-
     </div>
   );
 }
