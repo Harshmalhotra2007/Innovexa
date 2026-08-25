@@ -38,7 +38,7 @@ class PulseAudio {
     }
   }
 
-  async startRecording(meetingId = "session") {
+  async startRecording(meetingId = "session", quality = "medium") {
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
@@ -48,9 +48,12 @@ class PulseAudio {
     const fileName = `recording_${meetingId.replace(/[^a-zA-Z0-9_-]/g, "_")}_${Date.now()}.wav`;
     this.audioFile = path.join(this.outputDir, fileName);
 
-    logger.info(`Starting audio capture to file: ${this.audioFile}`);
+    logger.info(`Starting audio capture to file: ${this.audioFile} (Quality Profile: ${quality})`);
 
     const monitorSource = this.sinkName ? `${this.sinkName}.monitor` : "default";
+
+    // Quality Profiles: High (44.1kHz), Medium (22.05kHz), Low (16kHz)
+    const sampleRate = quality === "high" ? "44100" : quality === "low" ? "16000" : "22050";
 
     // Attempt FFmpeg recording (Primary)
     try {
@@ -59,7 +62,7 @@ class PulseAudio {
         "-f", "pulse",
         "-i", monitorSource,
         "-ac", "1",
-        "-ar", "16000",
+        "-ar", sampleRate,
         "-c:a", "pcm_s16le",
         this.audioFile
       ];

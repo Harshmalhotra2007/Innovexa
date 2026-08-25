@@ -31,6 +31,7 @@ export function useAIAgent(meetingId: string) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("organizer");
   const [customMeetUrl, setCustomMeetUrl] = useState("");
+  const [audioQuality, setAudioQuality] = useState<"high" | "medium" | "low">("medium");
 
   // Live Tab Audio Capture State
   const [isTabRecording, setIsTabRecording] = useState(false);
@@ -184,7 +185,8 @@ export function useAIAgent(meetingId: string) {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
 
-      const recorder = new MediaRecorder(stream);
+      const targetBitrate = audioQuality === "high" ? 128000 : audioQuality === "low" ? 32000 : 64000;
+      const recorder = new MediaRecorder(stream, { audioBitsPerSecond: targetBitrate });
       mediaRecorderRef.current = recorder;
 
       let chunkIndex = 0;
@@ -293,6 +295,8 @@ export function useAIAgent(meetingId: string) {
     userRole,
     customMeetUrl,
     setCustomMeetUrl,
+    audioQuality,
+    setAudioQuality,
     isTabRecording,
     tabRecordSeconds,
     handleManagedBotJoin,

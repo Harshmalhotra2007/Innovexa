@@ -34,6 +34,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
     userRole,
     customMeetUrl,
     setCustomMeetUrl,
+    audioQuality,
+    setAudioQuality,
     isTabRecording,
     tabRecordSeconds,
     handleManagedBotJoin,
@@ -114,6 +116,29 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
               <span>END MEETING</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Audio Quality Profile Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-[#141C1F] border border-[#212B2E]">
+        <div className="font-mono text-xs text-[#9a99a0] flex items-center gap-1.5 font-bold uppercase">
+          <RadioTower className="w-4 h-4 text-[#49B9AE]" />
+          <span>AUDIO QUALITY PROFILE:</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {(["high", "medium", "low"] as const).map((q) => (
+            <button
+              key={q}
+              onClick={() => setAudioQuality(q)}
+              className={`px-3 py-1 rounded font-mono text-xs font-bold uppercase transition-all ${
+                audioQuality === q
+                  ? "bg-[#49B9AE] text-[#0D1A18] border border-[#49B9AE] shadow-sm shadow-[#49B9AE]/30"
+                  : "bg-[#182124] text-[#9a99a0] border border-[#2B383C] hover:text-white"
+              }`}
+            >
+              {q === "high" ? "High (128k)" : q === "medium" ? "Medium (64k)" : "Low (32k)"}
+            </button>
+          ))}
         </div>
       </div>
 
