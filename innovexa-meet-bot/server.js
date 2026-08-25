@@ -6,7 +6,7 @@ const { MeetBot } = require("./meetBot");
 const { handoffToPipeline } = require("./handoff");
 const logger = require("./logger");
 
-const PORT = process.env.BOT_PORT || process.env.PORT || 3000;
+const PORT = process.env.PORT || process.env.BOT_PORT || 3000;
 
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, { "Content-Type": "application/json" });
@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 if (process.env.NODE_ENV !== "test") {
-  server.listen(PORT, () => {
+  server.listen(PORT, "0.0.0.0", () => {
     logger.info(`Innovexa Meet Bot service running on port ${PORT}`);
   });
 }
