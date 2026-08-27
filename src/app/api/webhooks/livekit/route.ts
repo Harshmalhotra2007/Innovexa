@@ -1,109 +1,97 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { isLiveKitConfigured, getLiveKitWsUrl } from "@/lib/livekit";
+import { NextResponse } from "next/server";
+import { WebhookReceiver } from "livekit-server-sdk";
 import { config } from "@/lib/config";
+import { db } from "@/lib/db";
+import { triggerAIAgent } from "@/lib/ai-agent-engine";
 
-/**
- * Handle LiveKit webhooks for room and egress events.
- * This endpoint receives POST requests from LiveKit when events occur.
- *
- * Expected webhook body structure (based on LiveKit documentation):
- * {
- *   "event": "room_started" | "room_ended" | "egress_started" | "egress_completed" | "egress_failed",
- *   "roomId": "...",
- *   "egressId": "...", // for egress events
- *   "output": [ // for egress_completed
- *     {
- *       "file": {
- *         "url": "https://example.com/recording.mp4"
- *       }
- *     }
- *   ]
- * }
- */
-export async function POST(request: NextRequest) {
+export const dynamic = "force-dynamic";
+
+export async function POST(req: Request) {
   try {
-    // Optional: Verify webhook signature if LiveKit is configured with a webhook secret
-    // For now, we assume the webhook is coming from our trusted LiveKit server.
-    // In production, you should validate the signature using a shared secret.
+    const rawBody = await req.text();
+    const authHeader = req.headers.get("Authorization");
 
-    const body = await request.json();
+    const apiKey = config.livekitApiKey;
+    const apiSecret = config.livekitApiSecret;
 
-    const { event, roomId, egressId, output } = body;
+    let event: any;
 
-    if (!roomId) {
-      return NextResponse.json(
-        { error: "Missing roomId in webhook" },
-        { status: 400 }
+    if (apiKey && apiSecret && authHeader) {
+      try {
+        const receiver = new WebhookReceiver(apiKey, apiSecret);
+        event = await receiver.receive(rawBody, authHeader);
+      } catch (authErr) {
+        console.warn("[LiveKit Webhook] Signature verification failed or missing, parsing fallback payload:", authErr);
+        event = JSON.parse(rawBody || "{}");
+      }
+    } else {
+      event = JSON.parse(rawBody || "{}");
+    }
+
+    const eventType = event.event;
+    const room = event.room;
+    const egressInfo = event.egressInfo;
+
+    console.log(`[LiveKit Webhook] Received event: ${eventType} for room: ${room?.name || egressInfo?.roomName}`);
+
+    // Resolve meetingId from roomName (pattern: innovexa-meeting-[id])
+    const roomName = room?.name || egressInfo?.roomName;
+    let meetingId: string | null = null;
+
+    if (roomName) {
+      const match = roomName.match(/^innovexa-meeting-(.+)$/);
+      if (match) {
+        meetingId = match[1];
+      } else {
+        const roomRecord = await db.liveKitRoom.findUnique({
+          where: { roomName },
+        });
+        meetingId = roomRecord?.meetingId || null;
+      }
+    }
+
+    if (eventType === "room_finished" && meetingId) {
+      await db.liveKitRoom.update({
+        where: { meetingId },
+        data: {
+          status: "closed",
+          closedAt: new Date(),
+        },
+      }).catch(() => {});
+
+      await db.meeting.update({
+        where: { id: meetingId },
+        data: { status: "Processing" },
+      }).catch(() => {});
+
+      // Trigger AI Agent
+      await triggerAIAgent(meetingId).catch((err) =>
+        console.warn(`[LiveKit Webhook] Auto AI trigger for meeting ${meetingId}:`, err)
       );
     }
 
-    // Find the meeting associated with this LiveKit room
-    const livekitRoom = await db.liveKitRoom.findFirst({
-      where: { roomName: roomId },
-      select: {
-        meetingId: true,
-        meeting: {
-          select: { id: true }
-        }
-      }
-    });
-
-    if (!livekitRoom) {
-      console.warn(`[LiveKit Webhook] No meeting found for room ${roomId}`);
-      // Not an error - the room might be from a different system or test
-      return NextResponse.json({ success: true });
-    }
-
-    const meetingId = livekitRoom.meetingId;
-
-    // Handle room events
-    if (event === "room_started") {
-      // Room is now active - we could update status if needed
-      await db.liveKitRoom.update({
-        where: { roomName: roomId },
-        data: { status: "active" }
-      });
-    } else if (event === "room_ended") {
-      // Room has ended - update status
-      await db.liveKitRoom.update({
-        where: { roomName: roomId },
-        data: { status: "closed", closedAt: new Date() }
-      });
-    }
-
-    // Handle egress events
-    if (event === "egress_completed" && output && Array.isArray(output)) {
-      // We expect at least one output file
-      const fileInfo = output[0]?.file;
-      if (fileInfo && fileInfo.url) {
-        const recordingUrl = fileInfo.url;
-
-        // Create a Recording record for this meeting
+    if (eventType === "egress_ended" && meetingId) {
+      const fileUrl = egressInfo?.fileResults?.[0]?.url || egressInfo?.fileResults?.[0]?.filename;
+      if (fileUrl) {
         await db.recording.create({
           data: {
             meetingId,
-            url: recordingUrl,
-            duration: fileInfo.duration || 0,
-            size: fileInfo.size || 0,
+            url: fileUrl,
+            duration: Math.round(egressInfo.duration || 0),
+            size: 0,
             format: "video/mp4",
-          }
-        });
-
-        console.log(`[LiveKit Webhook] Updated meeting ${meetingId} with recording URL: ${recordingUrl}`);
-      } else {
-        console.warn(`[LiveKit Webhook] No file info in egress completed event for room ${roomId}`);
+          },
+        }).catch(() => {});
       }
-    } else if (event === "egress_failed") {
-      console.error(`[LiveKit Webhook] Egress failed for room ${roomId}:`, body);
-      // Optionally, we could trigger a fallback recording or alert
+
+      await triggerAIAgent(meetingId).catch(() => {});
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, event: eventType });
   } catch (error: any) {
-    console.error("[LiveKit Webhook] Error processing webhook:", error);
+    console.error("[LiveKit Webhook Error]", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "LiveKit webhook error" },
       { status: 500 }
     );
   }

@@ -167,6 +167,14 @@ ${meeting.summary || "No summary available yet."}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/meeting/innovexa-meeting-${id}?meetingId=${id}`}
+              className="flex items-center gap-1.5 rounded border border-[var(--primary)] bg-[var(--primary)] text-white px-3 py-1.5 text-xs font-mono font-bold hover:bg-[var(--primary-hover)] transition-all shadow-sm"
+            >
+              <Video size={13} />
+              <span>JOIN VIDEO ROOM</span>
+            </Link>
+
             <button
               onClick={exportSummary}
               className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--panel-alt)] px-3 py-1.5 text-xs font-mono text-[var(--primary)] hover:border-[var(--primary)] transition-colors font-bold"

@@ -48,7 +48,8 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
 
       const data = await res.json();
       onClose();
-      router.push(`/meetings/${data.meetingId}`);
+      const targetRoom = data.roomName || `innovexa-meeting-${data.meetingId}`;
+      router.push(`/meeting/${targetRoom}?meetingId=${data.meetingId}`);
     } catch (err: any) {
       setError(err.message || "Failed to host instant meeting.");
     } finally {
