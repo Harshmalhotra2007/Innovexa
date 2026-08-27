@@ -15,6 +15,8 @@ const filesToUpload = {
   "config.js": path.join(__dirname, "../innovexa-meet-bot/config.js"),
   "metrics.js": path.join(__dirname, "../innovexa-meet-bot/metrics.js"),
   "circuit-breaker.ts": path.join(__dirname, "../src/lib/circuit-breaker.ts"),
+  "Sidebar.tsx": path.join(__dirname, "../src/components/Sidebar.tsx"),
+  "AppLayout.tsx": path.join(__dirname, "../src/components/AppLayout.tsx"),
 };
 
 const payloadFiles = {};

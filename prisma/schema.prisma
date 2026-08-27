@@ -54,26 +54,32 @@ model User {
 
 /// Represents a scheduled or processed meeting in the Innovexa console.
 model Meeting {
-  id           String           @id @default(uuid())
-  title        String
-  date         DateTime
-  durationMins Int              @default(45)
-  department   String?
-  agenda       String?
-  objectives   String?
-  transcript   String?
-  status       String           @default("Processed")
-  segments     MeetingSegment[]
-  decisions    Decision[]
-  tasks        Task[]
-  recordings   Recording[]
-  aiAgent      AIAgent?
-  actionItems  ActionItem[]
-  citations    Citation[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id              String           @id @default(uuid())
+  title           String
+  date            DateTime
+  scheduledDate   DateTime?
+  durationMins    Int              @default(45)
+  durationMinutes Int              @default(30)
+  googleMeetLink  String?
+  department      String?
+  agenda          String?
+  objectives      String?
+  transcript      String?
+  status          String           @default("Scheduled")
+  recurring       Boolean          @default(false)
+  participants    String?
+  segments        MeetingSegment[]
+  decisions       Decision[]
+  tasks           Task[]
+  recordings      Recording[]
+  aiAgent         AIAgent?
+  actionItems     ActionItem[]
+  citations       Citation[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([date])
+  @@index([scheduledDate])
   @@index([department])
 }
 

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ScheduleMeetingModal } from "@/components/ScheduleMeetingModal";
+import { UpcomingMeetingsView } from "@/components/UpcomingMeetingsView";
 import {
   CalendarDays,
   Bot,
@@ -11,7 +13,7 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  Radio,
+  Calendar,
   FileText,
 } from "lucide-react";
 
@@ -26,6 +28,10 @@ interface MeetingItem {
 }
 
 export default function MeetingsPage() {
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   const [meetings, setMeetings] = useState<MeetingItem[]>([
     {
       id: "meet-001",
@@ -70,102 +76,128 @@ export default function MeetingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#212B2E] pb-6">
         <div>
           <h1 className="text-2xl font-display font-bold text-[#e8e1d5] tracking-wide uppercase">
-            MY MEETINGS & AI INTELLIGENCE
+            MEETING SCHEDULING & AI INTELLIGENCE
           </h1>
           <p className="text-xs font-mono text-[#9a99a0] mt-1">
-            Search, inspect, and trigger meeting bot sessions and diarized audio transcripts.
+            Pick dates & time slots, auto-generate Google Meet links, and manage AI Bot dispatch schedules.
           </p>
         </div>
 
-        <Link
-          href="/meetings/meet-001"
-          className="px-4 py-2.5 rounded-lg bg-[#E8A33D] text-[#1a1f2d] font-mono text-xs font-bold uppercase tracking-wider hover:bg-[#c98a2d] transition-all shadow-lg shadow-[#E8A33D]/20 flex items-center justify-center gap-2 self-start sm:self-auto"
+        <button
+          onClick={() => setIsScheduleModalOpen(true)}
+          className="px-5 py-2.5 rounded-lg bg-[#E8A33D] text-[#1a1f2d] font-mono text-xs font-bold uppercase tracking-wider hover:bg-[#c98a2d] transition-all shadow-lg shadow-[#E8A33D]/20 flex items-center justify-center gap-2 self-start sm:self-auto"
         >
-          <Bot className="w-4 h-4" />
-          <span>LAUNCH DEMO BOT SESSION</span>
-        </Link>
+          <Calendar className="w-4 h-4" />
+          <span>SCHEDULE NEW MEETING</span>
+        </button>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#5B6A6E] absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search meetings by title, agenda, or keyword..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#141C1F] border border-[#212B2E] text-xs font-mono text-[#E7EEEF] placeholder-[#5B6A6E] focus:outline-none focus:border-[#49B9AE]"
-          />
-        </div>
+      {/* Tab Navigation Bar */}
+      <div className="flex items-center gap-2 border-b border-[#212B2E] pb-2 font-mono text-xs">
+        <button
+          onClick={() => setActiveTab("upcoming")}
+          className={`px-4 py-2 rounded-lg font-bold uppercase transition-all flex items-center gap-2 ${
+            activeTab === "upcoming"
+              ? "bg-[#49B9AE]/20 text-[#49B9AE] border border-[#49B9AE]/40 shadow-sm"
+              : "text-[#9a99a0] hover:bg-[#182124] hover:text-white"
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>UPCOMING SCHEDULED MEETINGS</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("past")}
+          className={`px-4 py-2 rounded-lg font-bold uppercase transition-all flex items-center gap-2 ${
+            activeTab === "past"
+              ? "bg-[#E8A33D]/20 text-[#E8A33D] border border-[#E8A33D]/40 shadow-sm"
+              : "text-[#9a99a0] hover:bg-[#182124] hover:text-white"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>PAST PROCESSED MEETINGS</span>
+        </button>
       </div>
 
-      {/* Meetings Table View */}
-      {filteredMeetings.length > 0 ? (
-        <div className="rounded-xl border border-[#212B2E] bg-[#182124] overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="bg-[#141C1F] border-b border-[#212B2E] text-[#9a99a0] uppercase text-[10px]">
-                <tr>
-                  <th className="p-4">DATE & TIME</th>
-                  <th className="p-4">MEETING TITLE</th>
-                  <th className="p-4">STATUS</th>
-                  <th className="p-4">AI SUMMARY PREVIEW</th>
-                  <th className="p-4 text-right">ACTION</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#212B2E]">
-                {filteredMeetings.map((meet) => (
-                  <tr key={meet.id} className="hover:bg-[#141C1F]/60 transition-colors">
-                    <td className="p-4 text-[#9a99a0] whitespace-nowrap flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-[#49B9AE]" />
-                      <span>{meet.date}</span>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-[#e8e1d5]">{meet.title}</div>
-                      <div className="text-[10px] text-[#5B6A6E] truncate max-w-xs">{meet.agenda}</div>
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase bg-[#49B9AE]/20 text-[#49B9AE] border border-[#49B9AE]/40 flex items-center gap-1.5 w-max">
-                        <CheckCircle2 className="w-3 h-3 text-[#49B9AE]" /> {meet.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-[#c5c0b8] text-[11px] max-w-sm">
-                      {meet.summaryPreview}
-                    </td>
-                    <td className="p-4 text-right">
-                      <Link
-                        href={`/meetings/${meet.id}`}
-                        className="px-3 py-1.5 rounded font-mono text-xs font-bold uppercase bg-[#49B9AE] text-[#0D1A18] hover:bg-[#3ca298] transition-all inline-flex items-center gap-1 shadow-md shadow-[#49B9AE]/20"
-                      >
-                        <span>VIEW INSIGHTS</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
-                    </td>
+      {/* Tab 1: Upcoming Scheduled Meetings */}
+      {activeTab === "upcoming" && (
+        <UpcomingMeetingsView
+          key={refreshTrigger}
+          onRefreshNeeded={() => setRefreshTrigger((prev) => prev + 1)}
+        />
+      )}
+
+      {/* Tab 2: Past Processed Meetings */}
+      {activeTab === "past" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-[#5B6A6E] absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="Search past meetings by title, agenda, or keyword..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#141C1F] border border-[#212B2E] text-xs font-mono text-[#E7EEEF] placeholder-[#5B6A6E] focus:outline-none focus:border-[#49B9AE]"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#212B2E] bg-[#182124] overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-xs">
+                <thead className="bg-[#141C1F] border-b border-[#212B2E] text-[#9a99a0] uppercase text-[10px]">
+                  <tr>
+                    <th className="p-4">DATE & TIME</th>
+                    <th className="p-4">MEETING TITLE</th>
+                    <th className="p-4">STATUS</th>
+                    <th className="p-4">AI SUMMARY PREVIEW</th>
+                    <th className="p-4 text-right">ACTION</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#212B2E]">
+                  {filteredMeetings.map((meet) => (
+                    <tr key={meet.id} className="hover:bg-[#141C1F]/60 transition-colors">
+                      <td className="p-4 text-[#9a99a0] whitespace-nowrap flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-[#49B9AE]" />
+                        <span>{meet.date}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-[#e8e1d5]">{meet.title}</div>
+                        <div className="text-[10px] text-[#5B6A6E] truncate max-w-xs">{meet.agenda}</div>
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2.5 py-1 rounded font-mono text-[10px] font-bold uppercase bg-[#49B9AE]/20 text-[#49B9AE] border border-[#49B9AE]/40 flex items-center gap-1.5 w-max">
+                          <CheckCircle2 className="w-3 h-3 text-[#49B9AE]" /> {meet.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-[#c5c0b8] text-[11px] max-w-sm">
+                        {meet.summaryPreview}
+                      </td>
+                      <td className="p-4 text-right">
+                        <Link
+                          href={`/meetings/${meet.id}`}
+                          className="px-3 py-1.5 rounded font-mono text-xs font-bold uppercase bg-[#49B9AE] text-[#0D1A18] hover:bg-[#3ca298] transition-all inline-flex items-center gap-1 shadow-md shadow-[#49B9AE]/20"
+                        >
+                          <span>VIEW INSIGHTS</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      ) : (
-        /* Smart Empty State */
-        <div className="rounded-xl border border-dashed border-[#2B383C] bg-[#141C1F] p-12 text-center space-y-4 font-mono">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E8A33D]/10 border border-[#E8A33D]/30 text-[#E8A33D] mx-auto">
-            <CalendarDays className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-bold text-sm text-[#e8e1d5]">NO MEETINGS FOUND</h3>
-            <p className="text-xs text-[#9a99a0]">Schedule your first AI-powered meeting to capture live transcripts and tasks.</p>
-          </div>
-          <Link
-            href="/meetings/meet-001"
-            className="px-4 py-2 rounded-lg bg-[#E8A33D] text-[#1a1f2d] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 hover:bg-[#c98a2d] transition-all"
-          >
-            <Plus className="w-4 h-4" /> Schedule Your First AI-Powered Meeting
-          </Link>
         </div>
       )}
+
+      {/* Schedule Meeting Modal */}
+      <ScheduleMeetingModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+      />
     </div>
   );
 }
