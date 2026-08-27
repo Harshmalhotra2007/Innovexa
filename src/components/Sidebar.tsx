@@ -44,7 +44,7 @@ export function Sidebar({ onHostClick }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col justify-between h-screen sticky top-0 z-40 select-none shadow-sm">
+    <aside className="w-64 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col justify-between h-screen sticky top-0 z-40 select-none shadow-xs">
       <div>
         {/* Brand Header */}
         <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">

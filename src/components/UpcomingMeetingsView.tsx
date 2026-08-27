@@ -61,22 +61,25 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
     if (!confirm("Are you sure you want to cancel this scheduled meeting?")) return;
     setActionLoadingId(meetingId);
     try {
+      const role = sessionStorage.getItem("userRole") || "organizer";
       const res = await fetch(`/api/meetings/${meetingId}`, {
         method: "DELETE",
-        headers: { "x-user-role": "organizer" },
+        headers: { "x-user-role": role },
       });
       if (res.ok) {
-        fetchUpcomingMeetings();
+        setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
         if (onRefreshNeeded) onRefreshNeeded();
+      } else {
+        alert("Failed to cancel meeting. Organizer permission required.");
       }
     } catch (err) {
-      console.error("Error cancelling meeting:", err);
+      console.error("Cancel meeting error:", err);
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleTriggerBotNow = async (meetingId: string) => {
+  const handleStartEarly = async (meetingId: string) => {
     setActionLoadingId(meetingId);
     try {
       const res = await fetch("/api/ai-agent/join", {
@@ -89,7 +92,7 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
         if (onRefreshNeeded) onRefreshNeeded();
       }
     } catch (err) {
-      console.error("Error launching bot:", err);
+      console.error("Start early error:", err);
     } finally {
       setActionLoadingId(null);
     }
@@ -97,20 +100,20 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-xs font-mono text-[var(--text-faint)] flex items-center justify-center gap-2">
-        <Loader2 className="w-4 h-4 animate-spin text-[var(--teal)]" />
-        <span>Loading upcoming scheduled meetings...</span>
+      <div className="p-8 text-center text-xs font-mono text-[var(--text-dim)] flex items-center justify-center gap-2">
+        <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
+        <span>Loading scheduled meetings...</span>
       </div>
     );
   }
 
   if (meetings.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel)] p-8 text-center space-y-2 font-mono text-xs text-[var(--text-dim)]">
-        <Calendar className="w-6 h-6 text-[var(--primary)] mx-auto opacity-75" />
-        <div className="font-bold text-[var(--text)]">NO UPCOMING SCHEDULED MEETINGS</div>
-        <p className="text-[11px] text-[var(--text-faint)]">
-          Click "Schedule Meeting" to create a new slot with Google Meet integration.
+      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel)] p-8 text-center font-mono text-xs space-y-3">
+        <Calendar className="w-8 h-8 text-[var(--text-faint)] mx-auto" />
+        <div className="text-[var(--text-dim)] font-bold">NO UPCOMING MEETINGS SCHEDULED</div>
+        <p className="text-[var(--text-faint)] max-w-md mx-auto font-sans">
+          Schedule a meeting using the button above to reserve an AI Notetaker slot.
         </p>
       </div>
     );
@@ -136,12 +139,12 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
         return (
           <div
             key={meet.id}
-            className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl space-y-4 flex flex-col justify-between hover:border-[var(--primary)]/50 transition-all"
+            className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-[var(--primary)]/40 transition-all"
           >
             <div className="space-y-2">
               {/* Header Badge */}
               <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30 flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30 flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {meet.status}
                 </span>
                 <span className="text-[10px] text-[var(--text-dim)]">{meet.department || "General"}</span>
@@ -179,28 +182,30 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
                 href={meetLink}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 py-1.5 px-3 rounded bg-[var(--teal)] text-white font-bold uppercase text-[11px] hover:bg-[var(--teal)]/80 transition-all flex items-center justify-center gap-1 shadow-md shadow-[var(--teal)]/20"
+                className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
               >
-                <Video className="w-3.5 h-3.5" /> JOIN GOOGLE MEET
+                <Video className="w-3.5 h-3.5" />
+                <span>JOIN GOOGLE MEET</span>
               </a>
 
-              <button
-                onClick={() => handleTriggerBotNow(meet.id)}
-                disabled={actionLoadingId === meet.id}
-                className="py-1.5 px-3 rounded bg-[var(--primary)] text-white font-bold uppercase text-[11px] hover:bg-[var(--primary-hover)] transition-all flex items-center justify-center gap-1 shadow-md shadow-[var(--primary)]/20"
-              >
-                {actionLoadingId === meet.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
-                <span>LAUNCH BOT</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/meetings/${meet.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-[var(--primary)] hover:border-[var(--primary)] font-bold text-xs flex items-center gap-1.5 transition-all"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>ROOM</span>
+                </Link>
 
-              <button
-                onClick={() => handleCancelMeeting(meet.id)}
-                disabled={actionLoadingId === meet.id}
-                className="p-1.5 rounded bg-[var(--panel-alt)] border border-[var(--red)]/40 text-[var(--red)] hover:bg-[var(--red)]/20 transition-all"
-                title="Cancel Meeting"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                <button
+                  onClick={() => handleCancelMeeting(meet.id)}
+                  disabled={actionLoadingId === meet.id}
+                  className="p-1.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--red)] hover:border-[var(--red)] transition-all"
+                  title="Cancel Scheduled Meeting"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         );

@@ -2,58 +2,41 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { triggerAIAgent } from "@/lib/ai-agent-engine";
 
-export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const {
-      title,
-      department = "Engineering",
-      googleMeetLink,
-      agenda,
-    } = body;
+    const body = await req.json().catch(() => ({}));
+    const { title, department, googleMeetLink, agenda } = body;
 
-    const now = new Date();
-    const meetingTitle = (title && title.trim())
-      ? title.trim()
-      : `Instant Host AI Session - ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+    const meetingTitle = title || `Instant AI Meeting (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+    const meetingDepartment = department || "Engineering";
+    const meetingAgenda = googleMeetLink || agenda || "Instant AI Notetaker session launched by user.";
 
-    const meetUrl = googleMeetLink && googleMeetLink.trim()
-      ? googleMeetLink.trim()
-      : undefined;
-
-    // 1. Create instant meeting record with status "In Progress"
+    // 1. Create instant Meeting record with "In Progress" status
     const meeting = await db.meeting.create({
       data: {
         title: meetingTitle,
-        date: now,
-        scheduledDate: now,
-        durationMins: 45,
-        durationMinutes: 45,
-        googleMeetLink: meetUrl,
-        department,
-        agenda: agenda || (meetUrl ? `Google Meet Room: ${meetUrl}` : `Instant Host Meeting Session`),
+        department: meetingDepartment,
+        agenda: meetingAgenda,
         status: "In Progress",
+        date: new Date(),
       },
     });
 
-    // 2. Trigger AI Bot immediately
-    triggerAIAgent(meeting.id).catch((err) => {
-      console.warn(`[Host Meeting API] Bot dispatch note for meeting ${meeting.id}:`, err.message);
-    });
-
-    console.log(`[Host Meeting API] Created instant meeting '${meetingTitle}' (${meeting.id}). Bot dispatched.`);
+    // 2. Trigger Playwright Bot asynchronously
+    triggerAIAgent(meeting.id).catch((err) =>
+      console.warn(`[POST /api/meetings/host] Async bot trigger failed for ${meeting.id}:`, err)
+    );
 
     return NextResponse.json({
-      status: "success",
-      message: "Instant meeting hosted successfully",
+      message: "Instant meeting created successfully",
       meetingId: meeting.id,
-      meeting,
-      googleMeetLink: meetUrl,
+      status: meeting.status,
     });
-  } catch (err: any) {
-    console.error("[Host Meeting API Error]", err);
-    return NextResponse.json({ error: err.message || "Failed to host instant meeting" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[POST /api/meetings/host]", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to host instant meeting" },
+      { status: 500 }
+    );
   }
 }

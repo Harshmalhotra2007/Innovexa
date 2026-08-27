@@ -1,68 +1,64 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ListChecks,
-  Circle,
   CheckCircle2,
-  Bell,
-  AlertTriangle,
+  Circle,
   Clock,
+  AlertTriangle,
   User,
-  Zap,
-  Trash2,
   Plus,
   Loader2,
+  Send,
+  Zap,
+  Filter,
   Layers,
 } from "lucide-react";
 
-export default function TasksPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [userRole, setUserRole] = useState("organizer");
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "overdue" | "pending" | "completed">("all");
+interface ActionTask {
+  id: string;
+  task: string;
+  assignee: string;
+  deadline?: string | null;
+  priority?: string;
+  status: "Pending" | "Completed" | "In Progress";
+  meetingId?: string;
+}
 
-  // New Task Form State (Visible inline)
+export default function TasksPage() {
+  const [tasks, setTasks] = useState<ActionTask[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // New task form state
   const [newTitle, setNewTitle] = useState("");
-  const [newOwner, setNewOwner] = useState("Unassigned");
+  const [newOwner, setNewOwner] = useState("");
   const [newPriority, setNewPriority] = useState("Medium");
-  const [newDeadline, setNewDeadline] = useState(
-    new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10)
-  );
+  const [newDeadline, setNewDeadline] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
+  // Re-assignee state map
+  const [reassignMap, setReassignMap] = useState<Record<string, string>>({});
+  const [activeFilter, setActiveFilter] = useState<"all" | "overdue" | "pending" | "completed">("all");
+  const [toast, setToast] = useState<string | null>(null);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setUserRole(sessionStorage.getItem("userRole") || "organizer");
-    }
     fetchTasks();
-    fetchUsers();
   }, []);
 
-  async function fetchUsers() {
-    try {
-      const res = await fetch("/api/users");
-      const data = await res.json();
-      setUsers(data || []);
-    } catch (e) {
-      console.error("Failed to fetch users", e);
-    }
-  }
-
-  async function fetchTasks() {
+  const fetchTasks = async () => {
     try {
       const res = await fetch("/api/tasks");
-      const data = await res.json();
-      setTasks(data || []);
-    } catch (err) {
-      console.error(err);
+      if (res.ok) {
+        const data = await res.json();
+        setTasks(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch tasks:", e);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,146 +70,94 @@ export default function TasksPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: newTitle.trim(),
-          ownerName: newOwner,
+          task: newTitle,
+          assignee: newOwner || "Unassigned",
           priority: newPriority,
-          deadline: newDeadline,
+          deadline: newDeadline || null,
         }),
       });
 
       if (res.ok) {
+        const created = await res.json();
+        setTasks((prev) => [created, ...prev]);
         setNewTitle("");
-        setToast("Task added successfully!");
-        setTimeout(() => setToast(null), 3000);
-        fetchTasks();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to create task");
+        setNewOwner("");
+        setNewDeadline("");
+        showToast("Task added to SLA action board.");
       }
-    } catch (err: any) {
-      alert("Error creating task: " + err.message);
+    } catch (err) {
+      console.error("Error creating task:", err);
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleDeleteTask = async (taskId: string, title: string) => {
-    if (!window.confirm(`Remove task "${title}"?`)) return;
+  const toggleTaskStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "Completed" ? "Pending" : "Completed";
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t))
+    );
 
     try {
-      const res = await fetch(`/api/tasks?taskId=${taskId}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        setTasks((prev) => prev.filter((t) => t.id !== taskId));
-        setToast("Task removed!");
-        setTimeout(() => setToast(null), 3000);
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to delete task");
-      }
-    } catch (err: any) {
-      alert("Error deleting task: " + err.message);
-    }
-  };
-
-  const handleAssignTask = async (taskId: string, assigneeId: string) => {
-    if (userRole !== "organizer") {
-      alert("Forbidden: Only organizers can assign tasks.");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/assign`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-role": userRole,
-        },
-        body: JSON.stringify({ assigneeId }),
-      });
-      if (res.ok) {
-        fetchTasks();
-      } else {
-        const err = await res.json();
-        alert(err.error || "Failed to assign task");
-      }
-    } catch (err: any) {
-      alert("Failed to assign task: " + err.message);
-    }
-  };
-
-  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "Completed" ? "Pending" : "Completed";
-    try {
-      await fetch("/api/tasks", {
+      await fetch(`/api/tasks/${id}/assign`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId, status: newStatus }),
+        body: JSON.stringify({ status: nextStatus }),
       });
+      showToast(`Task status updated to ${nextStatus}.`);
+    } catch (e) {
+      console.error("Failed to toggle status:", e);
       fetchTasks();
-    } catch (err) {
-      console.error(err);
     }
   };
 
-  const sendReminder = (assignee: string) => {
-    setToast(`⚡ SLA Nudge dispatched to ${assignee || "Assignee"}`);
+  const handleReassign = async (id: string) => {
+    const newOwnerName = reassignMap[id];
+    if (!newOwnerName || !newOwnerName.trim()) return;
+
+    try {
+      const res = await fetch(`/api/tasks/${id}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignee: newOwnerName.trim() }),
+      });
+
+      if (res.ok) {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, assignee: newOwnerName.trim() } : t))
+        );
+        setReassignMap((prev) => ({ ...prev, [id]: "" }));
+        showToast(`Task reassigned to ${newOwnerName.trim()}.`);
+      }
+    } catch (e) {
+      console.error("Failed to reassign task:", e);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const daysUntil = (dateStr: string) => {
-    if (!dateStr) return null;
-    const target = new Date(dateStr);
-    const now = new Date();
-    return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const daysUntil = (deadlineStr?: string | null) => {
+    if (!deadlineStr) return null;
+    const due = new Date(deadlineStr).getTime();
+    const now = new Date().getTime();
+    const diff = Math.ceil((due - now) / (1000 * 3600 * 24));
+    return diff;
   };
 
-  const getSlaBadge = (days: number | null, isDone: boolean) => {
-    if (isDone) {
-      return (
-        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30">
-          RESOLVED
-        </span>
-      );
-    }
-    if (days === null) {
-      return (
-        <span className="font-mono text-[10px] text-[var(--text-dim)] px-2 py-0.5 rounded bg-[var(--panel-alt)] border border-[var(--border)]">
-          NO DEADLINE
-        </span>
-      );
-    }
-    if (days < 0) {
-      return (
-        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--red-dim)] text-[var(--red)] border border-[var(--red)]/35 animate-pulse flex items-center gap-1">
-          <AlertTriangle size={10} /> {Math.abs(days)}D OVERDUE (BREACH)
-        </span>
-      );
-    }
-    if (days <= 2) {
-      return (
-        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/35 flex items-center gap-1">
-          <Clock size={10} /> DUE IN {days === 0 ? "TODAY" : `${days}D`}
-        </span>
-      );
-    }
-    return (
-      <span className="font-mono text-[10px] text-[var(--teal)] px-2 py-0.5 rounded bg-[var(--teal)]/10 border border-[var(--teal)]/30">
-        ON TRACK ({days}D)
-      </span>
-    );
-  };
-
-  // Metrics calculation
+  // Aggregates
   const totalCount = tasks.length;
+  const overdueCount = tasks.filter((t) => {
+    const d = daysUntil(t.deadline);
+    return t.status !== "Completed" && d !== null && d < 0;
+  }).length;
+  const pendingCount = tasks.filter((t) => t.status !== "Completed").length;
   const completedCount = tasks.filter((t) => t.status === "Completed").length;
-  const overdueCount = tasks.filter((t) => t.status !== "Completed" && daysUntil(t.deadline) !== null && (daysUntil(t.deadline) as number) < 0).length;
-  const pendingCount = totalCount - completedCount;
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Filtering
   const filteredTasks = tasks.filter((t) => {
     const days = daysUntil(t.deadline);
     const isDone = t.status === "Completed";
@@ -225,7 +169,7 @@ export default function TasksPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[840px] space-y-6 py-4">
+    <div className="mx-auto max-w-[840px] space-y-6 py-4 font-sans text-[var(--text)]">
       {/* Toast Alert */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded bg-[var(--panel)] border border-[var(--primary)] px-4 py-2 text-xs text-[var(--text)] shadow-2xl font-mono">
@@ -237,23 +181,23 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
         <div>
-          <h1 className="font-display text-xl font-bold text-[var(--text)] flex items-center gap-2">
+          <h1 className="font-display text-xl font-bold text-[var(--text)] flex items-center gap-2 uppercase">
             <ListChecks className="text-[var(--primary)] w-5 h-5" /> Task SLA & Action Board
           </h1>
-          <p className="text-xs text-[var(--text-dim)] mt-0.5">
+          <p className="text-xs text-[var(--text-dim)] mt-0.5 font-mono">
             Real-time tracking of extracted meeting action items and SLA resolution timers.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs px-3 py-1 rounded bg-[var(--panel-alt)] border border-[var(--border)] text-[var(--primary)] font-bold">
+          <span className="font-mono text-xs px-3 py-1 rounded bg-[var(--panel-alt)] border border-[var(--border)] text-[var(--teal)] font-bold">
             {completionPct}% RESOLVED
           </span>
         </div>
       </div>
 
       {/* ➕ QUICK ADD NEW TASK PANEL */}
-      <div className="ops-panel p-4 space-y-3 border border-[var(--primary)]/40 bg-[var(--panel-alt)]">
+      <div className="ops-panel p-4 space-y-3 border border-[var(--border)] bg-[var(--panel)]">
         <div className="font-mono text-xs font-bold text-[var(--primary)] uppercase flex items-center gap-1.5">
           <Plus size={14} /> Quick Add Action Item
         </div>
@@ -317,7 +261,7 @@ export default function TasksPage() {
             <button
               type="submit"
               disabled={isCreating || !newTitle.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 rounded bg-[var(--primary)] text-white text-xs font-bold font-mono hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-md"
+              className="flex items-center gap-1.5 px-4 py-2 rounded bg-[var(--primary)] text-white text-xs font-bold font-mono hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-sm"
             >
               {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
               <span>{isCreating ? "Adding..." : "+ ADD TASK TO BOARD"}</span>
@@ -327,33 +271,33 @@ export default function TasksPage() {
       </div>
 
       {/* SLA Metric Cards Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
         <div className="ops-panel p-3.5 border border-[var(--border)] bg-[var(--panel)] space-y-1">
-          <div className="font-mono text-[10px] uppercase text-[var(--text-dim)] flex items-center justify-between">
+          <div className="text-[10px] uppercase text-[var(--text-dim)] flex items-center justify-between">
             <span>TOTAL ITEMS</span>
             <Layers size={12} className="text-[var(--text-dim)]" />
           </div>
           <div className="font-display text-xl font-bold text-[var(--text)]">{totalCount}</div>
         </div>
 
-        <div className="ops-panel p-3.5 border border-[var(--red)]/40 bg-[var(--red-dim)] space-y-1">
-          <div className="font-mono text-[10px] uppercase text-[var(--red)] flex items-center justify-between font-bold">
+        <div className="ops-panel p-3.5 border border-[var(--red)]/30 bg-[var(--red)]/10 space-y-1">
+          <div className="text-[10px] uppercase text-[var(--red)] flex items-center justify-between font-bold">
             <span>OVERDUE BREACHES</span>
             <AlertTriangle size={12} className="text-[var(--red)]" />
           </div>
           <div className="font-display text-xl font-bold text-[var(--red)]">{overdueCount}</div>
         </div>
 
-        <div className="ops-panel p-3.5 border border-[var(--amber)]/40 bg-[var(--amber)]/10 space-y-1">
-          <div className="font-mono text-[10px] uppercase text-[var(--amber)] flex items-center justify-between font-bold">
+        <div className="ops-panel p-3.5 border border-[var(--amber)]/30 bg-[var(--amber)]/10 space-y-1">
+          <div className="text-[10px] uppercase text-[var(--amber)] flex items-center justify-between font-bold">
             <span>PENDING TASKS</span>
             <Clock size={12} className="text-[var(--amber)]" />
           </div>
           <div className="font-display text-xl font-bold text-[var(--amber)]">{pendingCount}</div>
         </div>
 
-        <div className="ops-panel p-3.5 border border-[var(--teal)]/40 bg-[var(--teal)]/10 space-y-1">
-          <div className="font-mono text-[10px] uppercase text-[var(--teal)] flex items-center justify-between font-bold">
+        <div className="ops-panel p-3.5 border border-[var(--teal)]/30 bg-[var(--teal)]/10 space-y-1">
+          <div className="text-[10px] uppercase text-[var(--teal)] flex items-center justify-between font-bold">
             <span>RESOLVED</span>
             <CheckCircle2 size={12} className="text-[var(--teal)]" />
           </div>
@@ -387,7 +331,7 @@ export default function TasksPage() {
           onClick={() => setActiveFilter("pending")}
           className={`px-3 py-1.5 rounded transition-all ${
             activeFilter === "pending"
-              ? "bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 font-bold"
+              ? "bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/40 font-bold"
               : "text-[var(--text-dim)] hover:text-[var(--text)] bg-[var(--panel-alt)]"
           }`}
         >
@@ -397,7 +341,7 @@ export default function TasksPage() {
           onClick={() => setActiveFilter("completed")}
           className={`px-3 py-1.5 rounded transition-all ${
             activeFilter === "completed"
-              ? "bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30 font-bold"
+              ? "bg-[var(--teal)]/20 text-[var(--teal)] border border-[var(--teal)]/40 font-bold"
               : "text-[var(--text-dim)] hover:text-[var(--text)] bg-[var(--panel-alt)]"
           }`}
         >
@@ -427,14 +371,14 @@ export default function TasksPage() {
                   isDone
                     ? "border-[var(--border)] opacity-75"
                     : d !== null && d < 0
-                    ? "border-[var(--red)]/50 bg-[var(--red-dim)]"
+                    ? "border-[var(--red)]/40 bg-[var(--red)]/10"
                     : "border-[var(--border)] hover:border-[var(--primary)]/40"
                 }`}
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   <button
                     onClick={() => toggleTaskStatus(t.id, t.status)}
-                    className="mt-0.5 text-[var(--text-faint)] hover:text-[var(--primary)] transition-colors shrink-0"
+                    className="mt-0.5 text-[var(--text-faint)] hover:text-[var(--teal)] transition-colors shrink-0"
                     title={isDone ? "Mark Pending" : "Mark Resolved"}
                   >
                     {isDone ? (
@@ -450,59 +394,73 @@ export default function TasksPage() {
                         isDone ? "line-through text-[var(--text-faint)]" : "text-[var(--text)]"
                       }`}
                     >
-                      {t.title}
+                      {t.task}
                     </div>
 
-                    <div className="flex items-center gap-3 flex-wrap font-mono text-[11px]">
-                      {userRole === "organizer" ? (
-                        <div className="flex items-center gap-1">
-                          <User size={11} className="text-[var(--text-dim)]" />
-                          <select
-                            className="cyberpunk-select py-0.5 text-[10px]"
-                            value={t.assigneeId || ""}
-                            onChange={(e) => handleAssignTask(t.id, e.target.value)}
-                            aria-label={`Assign task ${t.title}`}
-                          >
-                            <option value="">Unassigned</option>
-                            {users.map((user) => (
-                              <option key={user.id} value={user.id}>
-                                {user.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <span className="ops-badge border-[var(--border)] text-[var(--text-dim)]">
-                          {t.ownerName || "Unassigned"}
+                    <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
+                      <span className="flex items-center gap-1 bg-[var(--panel-alt)] px-2 py-0.5 rounded border border-[var(--border)]">
+                        <User size={10} className="text-[var(--primary)]" />
+                        {t.assignee}
+                      </span>
+
+                      {t.priority && (
+                        <span
+                          className={`px-2 py-0.5 rounded border font-bold uppercase ${
+                            t.priority === "High"
+                              ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
+                              : t.priority === "Medium"
+                              ? "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
+                              : "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+                          }`}
+                        >
+                          {t.priority}
                         </span>
                       )}
 
-                      {getSlaBadge(d, isDone)}
+                      {t.deadline && (
+                        <span
+                          className={`flex items-center gap-1 font-bold ${
+                            isDone
+                              ? "text-[var(--text-faint)]"
+                              : d !== null && d < 0
+                              ? "text-[var(--red)]"
+                              : d !== null && d <= 2
+                              ? "text-[var(--amber)]"
+                              : "text-[var(--teal)]"
+                          }`}
+                        >
+                          <Clock size={10} />
+                          {isDone
+                            ? "Done"
+                            : d !== null && d < 0
+                            ? `Overdue ${Math.abs(d)}d`
+                            : d === 0
+                            ? "Due today"
+                            : `Due in ${d}d`}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isDone && (
-                    <button
-                      onClick={() => sendReminder(t.ownerName)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded border border-[var(--border)] bg-[var(--panel)] text-[11px] font-mono text-[var(--primary)] hover:border-[var(--primary)] transition-colors"
-                      title="Send SLA Nudge"
-                    >
-                      <Zap size={12} />
-                      <span>NUDGE SLA</span>
-                    </button>
-                  )}
-
-                  {/* 🗑️ REMOVE TASK BUTTON */}
+                {/* Inline Re-assign Control */}
+                <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Re-assign..."
+                    value={reassignMap[t.id] || ""}
+                    onChange={(e) =>
+                      setReassignMap((prev) => ({ ...prev, [t.id]: e.target.value }))
+                    }
+                    className="ops-input px-2 py-1 text-[11px] w-28 font-mono placeholder-[var(--text-faint)] text-[var(--text)]"
+                  />
                   <button
-                    onClick={() => handleDeleteTask(t.id, t.title)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded border border-[var(--red)]/35 bg-[var(--red-dim)] text-[var(--red)] hover:bg-[var(--red)]/25 transition-colors"
-                    title="Remove Task"
-                    aria-label={`Remove task ${t.title}`}
+                    onClick={() => handleReassign(t.id)}
+                    disabled={!reassignMap[t.id]?.trim()}
+                    className="p-1 rounded border border-[var(--border)] bg-[var(--panel-alt)] text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-40 transition-colors"
+                    title="Assign to owner"
                   >
-                    <Trash2 size={13} />
-                    <span className="hidden sm:inline">REMOVE</span>
+                    <Send size={12} />
                   </button>
                 </div>
               </div>

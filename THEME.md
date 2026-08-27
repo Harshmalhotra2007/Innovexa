@@ -1,33 +1,27 @@
-# Innovexa Enterprise Theme Guidelines
+# Innovexa Theme Guidelines
 
-## Color Palette: Deep Indigo / Navy + Teal Accent (Professional Enterprise Neutral)
+## Color Palette: Indigo & Slate Light Theme
 
-- **Primary (brand/accent)**: `#1D4ED8` / `#2A3EB1` (Deep Indigo / Industry Standard Productivity Blue)
-- **Secondary Accent**: `#0F9D8C` (Teal / Emerald - Reserved for Success & Completed Signals)
-- **Semantic Status Colors**:
-  - Green: `#22C55E` $\rightarrow$ On-Time / Completed
-  - Amber: `#F59E0B` $\rightarrow$ Approaching Deadline / Pending
-  - Red: `#EF4444` $\rightarrow$ Overdue / Escalated
-- **Neutrals**:
-  - Text Primary: `#0F172A` (Slate Dark - `#0F172A`)
-  - Text Secondary: `#64748B` (Slate Muted - `#64748B`)
-  - Text Faint: `#94A3B8` (Slate Faint - `#94A3B8`)
-  - Main Canvas Background: `#F8FAFC` (Off-white / Slate-50)
-  - Card & Panel Background: `#FFFFFF` (Pure White Card / Panel)
-  - Secondary Panel Surface: `#F1F5F9` (Slate-100)
-  - Borders: `#E2E8F0` (Slate-200)
+- Primary Canvas Background: `#F8FAFC` (Off-White Canvas / Slate-50)
+- Panel & Container Background: `#FFFFFF` (Pure White Card / Panel)
+- Primary Accent: `#1D4ED8` (Deep Indigo)
+- Success / Positive: `#0F9D8C` (Teal)
+- Warnings / Alert: `#EF4444` (Red)
+- Text Primary: `#0F172A` (Slate Dark / Slate-900)
+- Text Secondary: `#64748B` (Slate Muted / Slate-500)
+- Text Faint: `#94A3B8` (Slate Faint / Slate-400)
 
 ## Component Mapping (Dynamic CSS Variables)
 
-- **Cards & Panels**: `bg-[var(--panel)] border border-[var(--border)] text-[var(--text)] shadow-sm`
-- **Primary Buttons**: `bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white`
-- **Secondary / Alt Buttons**: `bg-[var(--panel-alt)] text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)]`
-- **Success Badges**: `bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30`
-- **Warning Badges**: `bg-[var(--amber)]/12 text-[var(--amber)] border border-[var(--amber)]/30`
-- **Error / Overdue Badges**: `bg-[var(--red)]/12 text-[var(--red)] border border-[var(--red)]/30`
+- Agent Cards & Panels: `bg-[var(--panel)] border-[var(--border)] text-[var(--text)]`
+- Status Indicators: `bg-[var(--teal)]` for success/resolved, `bg-[var(--amber)]` for warning/pending, `bg-[var(--red)]` for breach/overdue
+- Buttons: `bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white`
+- Alt Buttons / Tabs: `bg-[var(--panel-alt)] text-[var(--text-dim)] border-[var(--border)]`
+- Charts/Graphs (Recharts): `stroke-[var(--teal)] fill-[var(--teal)]/20`
 
 ## Typography
 
-- **Headings**: Sans-serif / Display, bold, tracking-tight, `text-[var(--text)]`
-- **Body**: `text-[var(--text-dim)]` with `leading-relaxed`
-- **Mono / System Data**: `font-mono text-xs text-[var(--primary)]` or `text-[var(--teal)]`
+- Headings: Sans-serif, bold, tracking-tight, `text-[var(--text)]`
+- Body: `text-[var(--text-dim)]` with `leading-relaxed`
+- Mono/Data: `font-mono text-[var(--primary)]` or `text-[var(--teal)]`
+

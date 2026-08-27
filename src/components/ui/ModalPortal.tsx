@@ -14,13 +14,14 @@ interface ModalPortalProps {
 export function ModalPortal({ isOpen, onClose, title, children }: ModalPortalProps) {
   const [mounted, setMounted] = useState(false);
 
+  // Lock background scrolling when modal is active
+  useScrollLock(isOpen);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useScrollLock(isOpen);
-
-  // Keyboard Escape listener
+  // Listen for Escape key press to dismiss modal
   useEffect(() => {
     if (!isOpen) return;
 
@@ -34,24 +35,22 @@ export function ModalPortal({ isOpen, onClose, title, children }: ModalPortalPro
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !mounted) return null;
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn"
       role="dialog"
       aria-modal="true"
-      aria-label={title || "Dialog Modal"}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto select-none"
+      aria-label={title || "Modal Dialog"}
       onClick={(e) => {
+        // Dismiss when clicking directly on overlay backdrop
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div
-        className="w-full max-w-2xl my-auto select-text"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>,
