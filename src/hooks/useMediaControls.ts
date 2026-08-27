@@ -274,6 +274,17 @@ export function useMediaControls({
     recordedChunksRef.current = [];
     onRecordingStartRef.current?.();
 
+    if (meetingIdRef.current) {
+      fetch("/api/livekit/room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start_recording",
+          meetingId: meetingIdRef.current,
+        }),
+      }).catch(() => {});
+    }
+
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     recordTimerRef.current = setInterval(() => {
       setRecordingDuration((prev) => {
@@ -317,6 +328,17 @@ export function useMediaControls({
   // Stop In-Meeting Audio Recording
   const stopRecording = useCallback(() => {
     setIsRecording(false);
+    if (meetingIdRef.current) {
+      fetch("/api/livekit/room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "stop_recording",
+          meetingId: meetingIdRef.current,
+        }),
+      }).catch(() => {});
+    }
+
     if (recordTimerRef.current) {
       clearInterval(recordTimerRef.current);
       recordTimerRef.current = null;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getRoomServiceClient } from "@/lib/livekit";
+import { startRoomEgress, stopEgress } from "@/lib/livekit-egress";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,71 @@ export async function GET(req: Request) {
   } catch (error: unknown) {
     console.error("[LiveKit Room GET Error]", error);
     const message = error instanceof Error ? error.message : "Failed to fetch room status";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { action, roomName, meetingId, egressId } = body;
+
+    if (!meetingId) {
+      return NextResponse.json({ error: "meetingId is required" }, { status: 400 });
+    }
+
+    const targetRoomName = roomName || `innovexa-meeting-${meetingId}`;
+
+    if (action === "start_recording") {
+      const activeEgressId = await startRoomEgress(targetRoomName, meetingId);
+
+      await db.liveKitRoom.upsert({
+        where: { meetingId },
+        update: {
+          recordingOn: true,
+          status: "active",
+        },
+        create: {
+          meetingId,
+          roomName: targetRoomName,
+          recordingOn: true,
+          status: "active",
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: "start_recording",
+        meetingId,
+        roomName: targetRoomName,
+        egressId: activeEgressId,
+        serverEgressStarted: !!activeEgressId,
+      });
+    }
+
+    if (action === "stop_recording") {
+      if (egressId) {
+        await stopEgress(egressId);
+      }
+
+      await db.liveKitRoom.update({
+        where: { meetingId },
+        data: {
+          recordingOn: false,
+        },
+      }).catch(() => {});
+
+      return NextResponse.json({
+        success: true,
+        action: "stop_recording",
+        meetingId,
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (error: unknown) {
+    console.error("[LiveKit Room POST Error]", error);
+    const message = error instanceof Error ? error.message : "Failed to process room action";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

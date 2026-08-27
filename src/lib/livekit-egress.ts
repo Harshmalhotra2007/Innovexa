@@ -1,20 +1,26 @@
-import { EgressClient, RoomServiceClient, AccessToken } from "livekit-server-sdk";
+import { EgressClient, RoomServiceClient } from "livekit-server-sdk";
 import { config } from "./config";
 import { db } from "./db";
 import { uploadToStorage } from "./storage";
-import { Readable } from "stream";
-
 import * as fs from "fs";
+
+// Convert wss:// to https:// or ws:// to http:// for REST client connection
+const getHttpUrl = (url: string) => {
+  if (!url) return "";
+  return url.replace(/^wss:\/\//i, "https://").replace(/^ws:\/\//i, "http://");
+};
+
+const httpUrl = getHttpUrl(config.livekitWsUrl);
 
 /**
  * Initialize LiveKit clients if credentials are provided
  */
-const egressClient = config.livekitApiKey && config.livekitApiSecret
-  ? new EgressClient(config.livekitWsUrl, config.livekitApiKey, config.livekitApiSecret)
+const egressClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
+  ? new EgressClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
 
-const roomServiceClient = config.livekitApiKey && config.livekitApiSecret
-  ? new RoomServiceClient(config.livekitWsUrl, config.livekitApiKey, config.livekitApiSecret)
+const roomServiceClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
+  ? new RoomServiceClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
 
 /**
@@ -26,13 +32,11 @@ export async function startRoomEgress(
   meetingId: string
 ): Promise<string | null> {
   if (!egressClient) {
-    console.warn("[LiveKit Egress] Egress client not configured");
+    console.log("[LiveKit Egress] Egress client not configured. Using client-side recording fallback.");
     return null;
   }
 
   try {
-    // Configure egress to upload to our storage via Upload endpoint
-    // We'll use a custom approach: egress to a temporary location then copy to final storage
     const fileName = `${meetingId}-${Date.now()}.mp4`;
 
     const info = await egressClient.startRoomCompositeEgress(
@@ -47,13 +51,17 @@ export async function startRoomEgress(
 
     console.log(`[LiveKit Egress] Started egress ${info.egressId} for room ${roomName}`);
 
-    // Store egress metadata for tracking
-    // In a production system, you'd want to track this in a dedicated table
-    // For now, we'll rely on webhook notifications
+    // Update room record with egress status
+    await db.liveKitRoom.update({
+      where: { meetingId },
+      data: {
+        recordingOn: true,
+      },
+    }).catch(() => {});
 
     return info.egressId;
   } catch (error) {
-    console.error("[LiveKit Egress] Failed to start room egress:", error);
+    console.warn("[LiveKit Egress] Server egress start note (will fallback to client recording):", error);
     return null;
   }
 }
@@ -63,7 +71,6 @@ export async function startRoomEgress(
  */
 export async function stopEgress(egressId: string): Promise<boolean> {
   if (!egressClient) {
-    console.warn("[LiveKit Egress] Egress client not configured");
     return false;
   }
 
@@ -72,32 +79,30 @@ export async function stopEgress(egressId: string): Promise<boolean> {
     console.log(`[LiveKit Egress] Stopped egress ${egressId}`);
     return true;
   } catch (error) {
-    console.error("[LiveKit Egress] Failed to stop egress:", error);
+    console.warn("[LiveKit Egress] Failed to stop egress:", error);
     return false;
   }
 }
 
 /**
  * Handle egress completed webhook from LiveKit
- * This would be called by your webhook handler when LiveKit POSTs to /api/webhooks/livekit/egress
  */
 export async function handleEgressCompleted(
   egressId: string,
   roomName: string,
-  filePath: string, // Path to the recorded file
+  filePath: string,
   meetingId: string
 ): Promise<string | null> {
   try {
-    // Read the recorded file
+    if (!fs.existsSync(filePath)) {
+      console.warn(`[LiveKit Egress] Egress file ${filePath} not found on local disk`);
+      return null;
+    }
+
     const fileBuffer = await fs.promises.readFile(filePath);
-
-    // Determine file type from extension or default to mp4
     const extension = filePath.split(".").pop() || "mp4";
-    const mimeType = extension === "mp4" ? "video/mp4" :
-                    extension === "webm" ? "video/webm" :
-                    "application/octet-stream";
+    const mimeType = extension === "mp4" ? "video/mp4" : extension === "webm" ? "video/webm" : "application/octet-stream";
 
-    // Upload to our storage system (S3/Supabase/local)
     const storageUrl = await uploadToStorage(
       fileBuffer,
       meetingId,
@@ -107,8 +112,7 @@ export async function handleEgressCompleted(
 
     console.log(`[LiveKit Egress] Uploaded recording to ${storageUrl}`);
 
-    // Clean up temporary file
-    await fs.promises.unlink(filePath);
+    await fs.promises.unlink(filePath).catch(() => {});
 
     return storageUrl;
   } catch (error) {
@@ -133,8 +137,13 @@ export async function updateMeetingWithRecording(
         duration: 0,
         size: 0,
         format: "video/mp4",
-      }
+      },
     });
+
+    await db.meeting.update({
+      where: { id: meetingId },
+      data: { status: "completed" },
+    }).catch(() => {});
 
     console.log(`[LiveKit Egress] Updated meeting ${meetingId} with recording URL`);
   } catch (error) {
