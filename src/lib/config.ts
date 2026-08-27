@@ -197,9 +197,9 @@ function createConfig(env: ConfigRaw): Config {
     supabaseKey: SUPABASE_KEY,
 
     // LiveKit
-    livekitApiKey: LIVEKIT_API_KEY,
-    livekitApiSecret: LIVEKIT_API_SECRET,
-    livekitWsUrl: NEXT_PUBLIC_LIVEKIT_URL ?? LIVEKIT_URL,
+    livekitApiKey: LIVEKIT_API_KEY ?? DEFAULTS.livekitApiKey,
+    livekitApiSecret: LIVEKIT_API_SECRET ?? DEFAULTS.livekitApiSecret,
+    livekitWsUrl: NEXT_PUBLIC_LIVEKIT_URL ?? LIVEKIT_URL ?? DEFAULTS.livekitWsUrl,
     isLiveKitConfigured: Boolean(LIVEKIT_API_KEY && LIVEKIT_API_SECRET && (NEXT_PUBLIC_LIVEKIT_URL ?? LIVEKIT_URL)),
 
     // AI Services
