@@ -4,6 +4,8 @@ import { db } from "./db";
 import { uploadToStorage } from "./storage";
 import { Readable } from "stream";
 
+import * as fs from "fs";
+
 /**
  * Initialize LiveKit clients if credentials are provided
  */
@@ -33,17 +35,15 @@ export async function startRoomEgress(
     // We'll use a custom approach: egress to a temporary location then copy to final storage
     const fileName = `${meetingId}-${Date.now()}.mp4`;
 
-    const info = await egressClient.startRoomCompositeEgress(roomName, {
-      // Output to a temporary location we can access
-      fileOutputs: [{
+    const info = await egressClient.startRoomCompositeEgress(
+      roomName,
+      {
         filepath: `/tmp/${fileName}`,
-        // We'll intercept this via a custom handler or use cloud storage integration
-        // For now, we'll use a webhook approach where we download and re-upload
-      }],
-      audioOnly: false,
-      // Preserve original quality
-      preset: "h264_baseline_30fps_3mbps",
-    });
+      },
+      undefined,
+      undefined,
+      false // audioOnly
+    );
 
     console.log(`[LiveKit Egress] Started egress ${info.egressId} for room ${roomName}`);
 
@@ -126,13 +126,13 @@ export async function updateMeetingWithRecording(
   egressId: string | null = null
 ): Promise<void> {
   try {
-    await db.meeting.update({
-      where: { id: meetingId },
+    await db.recording.create({
       data: {
-        recordingUrl,
-        // You could add egressId tracking if you create a dedicated field
-        // For now, we'll store it in a JSON field or use existing fields
-        // Optionally update status to indicate recording is available
+        meetingId,
+        url: recordingUrl,
+        duration: 0,
+        size: 0,
+        format: "video/mp4",
       }
     });
 
