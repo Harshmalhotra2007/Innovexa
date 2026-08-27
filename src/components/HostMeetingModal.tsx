@@ -21,6 +21,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("Engineering");
   const [agenda, setAgenda] = useState("");
+  const [participantEmails, setParticipantEmails] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,23 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
       }
 
       const data = await res.json();
+
+      // Send invitation emails if provided
+      if (participantEmails.trim()) {
+        const emails = participantEmails
+          .split(",")
+          .map((e) => e.trim())
+          .filter((e) => e.length > 0);
+
+        if (emails.length > 0) {
+          await fetch(`/api/meetings/${data.meetingId}/invite`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emails }),
+          }).catch((err) => console.warn("[HostMeetingModal] Failed to send invitations:", err));
+        }
+      }
+
       onClose();
       const targetRoom = data.roomName || `innovexa-meeting-${data.meetingId}`;
       router.push(`/meeting/${targetRoom}?meetingId=${data.meetingId}`);
@@ -137,6 +155,21 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
               onChange={(e) => setAgenda(e.target.value)}
               className="w-full px-3.5 py-2 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
             />
+          </div>
+
+          {/* Participant Emails */}
+          <div className="space-y-1">
+            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
+              PARTICIPANT EMAILS (OPTIONAL)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. john@example.com, jane@example.com"
+              value={participantEmails}
+              onChange={(e) => setParticipantEmails(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
+            />
+            <p className="text-[10px] text-[var(--text-faint)]">Separate multiple emails with commas</p>
           </div>
 
           {/* Action Buttons */}

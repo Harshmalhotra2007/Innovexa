@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ListChecks,
   CheckCircle2,
@@ -22,7 +22,7 @@ interface ActionTask {
   assignee: string;
   deadline?: string | null;
   priority?: string;
-  status: "Pending" | "Completed" | "In Progress";
+  status: "Pending" | "In Progress" | "Completed" | "Overdue" | "Escalated";
   meetingId?: string;
 }
 
@@ -39,8 +39,13 @@ export default function TasksPage() {
 
   // Re-assignee state map
   const [reassignMap, setReassignMap] = useState<Record<string, string>>({});
-  const [activeFilter, setActiveFilter] = useState<"all" | "overdue" | "pending" | "completed">("all");
   const [toast, setToast] = useState<string | null>(null);
+
+  // Drag and drop state
+  const [dragging, setDragging] = useState<{ taskId: string | null; sourceStatus: string | null }>({
+    taskId: null,
+    sourceStatus: null,
+  });
 
   useEffect(() => {
     fetchTasks();
@@ -92,26 +97,6 @@ export default function TasksPage() {
     }
   };
 
-  const toggleTaskStatus = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === "Completed" ? "Pending" : "Completed";
-    // Optimistic UI update
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: nextStatus } : t))
-    );
-
-    try {
-      await fetch(`/api/tasks/${id}/assign`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      showToast(`Task status updated to ${nextStatus}.`);
-    } catch (e) {
-      console.error("Failed to toggle status:", e);
-      fetchTasks();
-    }
-  };
-
   const handleReassign = async (id: string) => {
     const newOwnerName = reassignMap[id];
     if (!newOwnerName || !newOwnerName.trim()) return;
@@ -135,6 +120,38 @@ export default function TasksPage() {
     }
   };
 
+  const updateTaskStatus = async (id: string, newStatus: ActionTask["status"] | string) => {
+    const validStatus = newStatus as ActionTask["status"];
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, status: validStatus } : t
+      )
+    );
+
+    try {
+      await fetch(`/api/tasks/${id}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: validStatus }),
+      });
+      showToast(`Task status updated to ${validStatus}.`);
+    } catch (error) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? { ...t, status: (dragging?.sourceStatus as ActionTask["status"]) ?? t.status }
+            : t
+        )
+      );
+      showToast("Failed to update task status.");
+      console.error("Failed to update task status:", error);
+    } finally {
+      setDragging({ taskId: null, sourceStatus: null });
+    }
+  };
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
@@ -148,6 +165,15 @@ export default function TasksPage() {
     return diff;
   };
 
+  // Status order for columns
+  const statusOrder = ["Pending", "In Progress", "Completed", "Overdue", "Escalated"];
+
+  // Group tasks by status
+  const groupedTasks = statusOrder.reduce((acc, status) => {
+    acc[status] = tasks.filter((t) => t.status === status);
+    return acc;
+  }, {} as Record<string, ActionTask[]>);
+
   // Aggregates
   const totalCount = tasks.length;
   const overdueCount = tasks.filter((t) => {
@@ -156,17 +182,8 @@ export default function TasksPage() {
   }).length;
   const pendingCount = tasks.filter((t) => t.status !== "Completed").length;
   const completedCount = tasks.filter((t) => t.status === "Completed").length;
+  const escalatedCount = tasks.filter((t) => t.status === "Escalated").length;
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
-  const filteredTasks = tasks.filter((t) => {
-    const days = daysUntil(t.deadline);
-    const isDone = t.status === "Completed";
-
-    if (activeFilter === "overdue") return !isDone && days !== null && days < 0;
-    if (activeFilter === "pending") return !isDone;
-    if (activeFilter === "completed") return isDone;
-    return true;
-  });
 
   return (
     <div className="mx-auto max-w-[840px] space-y-6 py-4 font-sans text-[var(--text)]">
@@ -270,203 +287,152 @@ export default function TasksPage() {
         </form>
       </div>
 
-      {/* SLA Metric Cards Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-        <div className="ops-panel p-3.5 border border-[var(--border)] bg-[var(--panel)] space-y-1">
-          <div className="text-[10px] uppercase text-[var(--text-dim)] flex items-center justify-between">
-            <span>TOTAL ITEMS</span>
-            <Layers size={12} className="text-[var(--text-dim)]" />
-          </div>
-          <div className="font-display text-xl font-bold text-[var(--text)]">{totalCount}</div>
-        </div>
-
-        <div className="ops-panel p-3.5 border border-[var(--red)]/30 bg-[var(--red)]/10 space-y-1">
-          <div className="text-[10px] uppercase text-[var(--red)] flex items-center justify-between font-bold">
-            <span>OVERDUE BREACHES</span>
-            <AlertTriangle size={12} className="text-[var(--red)]" />
-          </div>
-          <div className="font-display text-xl font-bold text-[var(--red)]">{overdueCount}</div>
-        </div>
-
-        <div className="ops-panel p-3.5 border border-[var(--amber)]/30 bg-[var(--amber)]/10 space-y-1">
-          <div className="text-[10px] uppercase text-[var(--amber)] flex items-center justify-between font-bold">
-            <span>PENDING TASKS</span>
-            <Clock size={12} className="text-[var(--amber)]" />
-          </div>
-          <div className="font-display text-xl font-bold text-[var(--amber)]">{pendingCount}</div>
-        </div>
-
-        <div className="ops-panel p-3.5 border border-[var(--teal)]/30 bg-[var(--teal)]/10 space-y-1">
-          <div className="text-[10px] uppercase text-[var(--teal)] flex items-center justify-between font-bold">
-            <span>RESOLVED</span>
-            <CheckCircle2 size={12} className="text-[var(--teal)]" />
-          </div>
-          <div className="font-display text-xl font-bold text-[var(--teal)]">{completedCount}</div>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 font-mono text-xs flex-wrap">
-        <button
-          onClick={() => setActiveFilter("all")}
-          className={`px-3 py-1.5 rounded transition-all ${
-            activeFilter === "all"
-              ? "bg-[var(--primary)] text-white font-bold"
-              : "text-[var(--text-dim)] hover:text-[var(--text)] bg-[var(--panel-alt)]"
-          }`}
-        >
-          ALL ({totalCount})
-        </button>
-        <button
-          onClick={() => setActiveFilter("overdue")}
-          className={`px-3 py-1.5 rounded transition-all ${
-            activeFilter === "overdue"
-              ? "bg-[var(--red)] text-white font-bold"
-              : "text-[var(--text-dim)] hover:text-[var(--red)] bg-[var(--panel-alt)]"
-          }`}
-        >
-          OVERDUE BREACHES ({overdueCount})
-        </button>
-        <button
-          onClick={() => setActiveFilter("pending")}
-          className={`px-3 py-1.5 rounded transition-all ${
-            activeFilter === "pending"
-              ? "bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/40 font-bold"
-              : "text-[var(--text-dim)] hover:text-[var(--text)] bg-[var(--panel-alt)]"
-          }`}
-        >
-          PENDING ({pendingCount})
-        </button>
-        <button
-          onClick={() => setActiveFilter("completed")}
-          className={`px-3 py-1.5 rounded transition-all ${
-            activeFilter === "completed"
-              ? "bg-[var(--teal)]/20 text-[var(--teal)] border border-[var(--teal)]/40 font-bold"
-              : "text-[var(--text-dim)] hover:text-[var(--text)] bg-[var(--panel-alt)]"
-          }`}
-        >
-          RESOLVED ({completedCount})
-        </button>
-      </div>
-
-      {/* Task List */}
-      <div className="space-y-2">
-        {loading ? (
-          <div className="p-8 text-center text-xs font-mono text-[var(--text-dim)]">
-            Loading SLA Board...
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="ops-panel p-8 text-center text-xs font-mono text-[var(--text-dim)] border border-dashed border-[var(--border)]">
-            No action items match the selected filter.
-          </div>
-        ) : (
-          filteredTasks.map((t) => {
-            const d = daysUntil(t.deadline);
-            const isDone = t.status === "Completed";
-
-            return (
-              <div
-                key={t.id}
-                className={`ops-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-colors ${
-                  isDone
-                    ? "border-[var(--border)] opacity-75"
-                    : d !== null && d < 0
-                    ? "border-[var(--red)]/40 bg-[var(--red)]/10"
-                    : "border-[var(--border)] hover:border-[var(--primary)]/40"
-                }`}
-              >
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <button
-                    onClick={() => toggleTaskStatus(t.id, t.status)}
-                    className="mt-0.5 text-[var(--text-faint)] hover:text-[var(--teal)] transition-colors shrink-0"
-                    title={isDone ? "Mark Pending" : "Mark Resolved"}
+      {/* Kanban Board */}
+      <div className="grid gap-4 sm:grid-cols-5">
+        {statusOrder.map((status) => (
+          <div
+            key={status}
+            className={`border border-[var(--border)] rounded-lg bg-[var(--panel)] p-4 min-h-[200px] ${
+              dragging?.taskId &&
+              dragging.sourceStatus === status &&
+              "border-[var(--primary)]/50"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault(); // Allow drop
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              if (dragging.taskId && dragging.sourceStatus !== status) {
+                await updateTaskStatus(dragging.taskId, status);
+              }
+              setDragging({ taskId: null, sourceStatus: null });
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display text-lg font-bold text-[var(--text)]">
+                {status}
+              </h3>
+              <span className="font-mono text-xs text-[var(--text-dim)]">
+                {groupedTasks[status].length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {groupedTasks[status].length === 0 ? (
+                <div className="text-center text-xs text-[var(--text-dim)] italic">
+                  No tasks
+                </div>
+              ) : (
+                groupedTasks[status].map((task) => (
+                  <div
+                    key={task.id}
+                    className={`border border-[var(--border)] rounded-lg bg-[var(--panel-alt)] p-3 mb-2 ${
+                      dragging?.taskId === task.id ? "opacity-50" : ""
+                    }`}
+                    draggable={true}
+                    onDragStart={(e) => {
+                      e.dataTransfer?.setData("text/plain", task.id);
+                      setDragging({ taskId: task.id, sourceStatus: status });
+                    }}
+                    onDragEnd={() => {
+                      setDragging({ taskId: null, sourceStatus: null });
+                    }}
                   >
-                    {isDone ? (
-                      <CheckCircle2 size={18} className="text-[var(--teal)]" />
-                    ) : (
-                      <Circle size={18} />
-                    )}
-                  </button>
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={() => updateTaskStatus(task.id, task.status === "Completed" ? "Pending" : "Completed")}
+                        className="mt-0.5 text-[var(--text-faint)] hover:text-[var(--teal)] transition-colors shrink-0"
+                        title={task.status === "Completed" ? "Mark Pending" : "Mark Resolved"}
+                      >
+                        {task.status === "Completed" ? (
+                          <CheckCircle2 size={18} className="text-[var(--teal)]" />
+                        ) : (
+                          <Circle size={18} />
+                        )}
+                      </button>
 
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div
-                      className={`text-xs font-semibold ${
-                        isDone ? "line-through text-[var(--text-faint)]" : "text-[var(--text)]"
-                      }`}
-                    >
-                      {t.task}
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div
+                          className={`text-xs font-semibold ${
+                            task.status === "Completed"
+                              ? "line-through text-[var(--text-faint)]"
+                              : "text-[var(--text)]"
+                          }`}
+                        >
+                          {task.task}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
+                          <span className="flex items-center gap-1 bg-[var(--panel-alt)] px-2 py-0.5 rounded border border-[var(--border)]">
+                            <User size={10} className="text-[var(--primary)]" />
+                            {task.assignee}
+                          </span>
+
+                          {task.priority && (
+                            <span
+                              className={`px-2 py-0.5 rounded border font-bold uppercase ${
+                                task.priority === "High"
+                                  ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
+                                  : task.priority === "Medium"
+                                  ? "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
+                                  : "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+                              }`} >
+                              {task.priority}
+                            </span>
+                          )}
+
+                          {task.deadline && (() => {
+                            const days = daysUntil(task.deadline);
+                            return (
+                              <span
+                                className={`flex items-center gap-1 font-bold ${
+                                  task.status === "Completed"
+                                    ? "text-[var(--text-faint)]"
+                                    : days !== null && days < 0
+                                    ? "text-[var(--red)]"
+                                    : days !== null && days <= 2
+                                    ? "text-[var(--amber)]"
+                                    : "text-[var(--teal)]"
+                                }`} >
+                                  <Clock size={10} />
+                                  {task.status === "Completed"
+                                    ? "Done"
+                                    : days !== null && days < 0
+                                      ? `Overdue ${Math.abs(days)}d`
+                                      : days === 0
+                                        ? "Due today"
+                                        : `Due in ${days}d`}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
-                      <span className="flex items-center gap-1 bg-[var(--panel-alt)] px-2 py-0.5 rounded border border-[var(--border)]">
-                        <User size={10} className="text-[var(--primary)]" />
-                        {t.assignee}
-                      </span>
-
-                      {t.priority && (
-                        <span
-                          className={`px-2 py-0.5 rounded border font-bold uppercase ${
-                            t.priority === "High"
-                              ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
-                              : t.priority === "Medium"
-                              ? "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
-                              : "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
-                          }`}
-                        >
-                          {t.priority}
-                        </span>
-                      )}
-
-                      {t.deadline && (
-                        <span
-                          className={`flex items-center gap-1 font-bold ${
-                            isDone
-                              ? "text-[var(--text-faint)]"
-                              : d !== null && d < 0
-                              ? "text-[var(--red)]"
-                              : d !== null && d <= 2
-                              ? "text-[var(--amber)]"
-                              : "text-[var(--teal)]"
-                          }`}
-                        >
-                          <Clock size={10} />
-                          {isDone
-                            ? "Done"
-                            : d !== null && d < 0
-                            ? `Overdue ${Math.abs(d)}d`
-                            : d === 0
-                            ? "Due today"
-                            : `Due in ${d}d`}
-                        </span>
-                      )}
+                    {/* Inline Re-assign Control */}
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+                      <input
+                        type="text"
+                        placeholder="Re-assign..."
+                        value={reassignMap[task.id] || ""}
+                        onChange={(e) =>
+                          setReassignMap((prev) => ({ ...prev, [task.id]: e.target.value }))}
+                        className="ops-input px-2 py-1 text-[11px] w-28 font-mono placeholder-[var(--text-faint)] text-[var(--text)]"
+                      />
+                      <button
+                        onClick={() => handleReassign(task.id)}
+                        disabled={!reassignMap[task.id]?.trim()}
+                        className="p-1 rounded border border-[var(--border)] bg-[var(--panel-alt)] text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-40 transition-colors"
+                        title="Assign to owner"
+                      >
+                        <Send size={12} />
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Inline Re-assign Control */}
-                <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
-                  <input
-                    type="text"
-                    placeholder="Re-assign..."
-                    value={reassignMap[t.id] || ""}
-                    onChange={(e) =>
-                      setReassignMap((prev) => ({ ...prev, [t.id]: e.target.value }))
-                    }
-                    className="ops-input px-2 py-1 text-[11px] w-28 font-mono placeholder-[var(--text-faint)] text-[var(--text)]"
-                  />
-                  <button
-                    onClick={() => handleReassign(t.id)}
-                    disabled={!reassignMap[t.id]?.trim()}
-                    className="p-1 rounded border border-[var(--border)] bg-[var(--panel-alt)] text-[var(--primary)] hover:border-[var(--primary)] disabled:opacity-40 transition-colors"
-                    title="Assign to owner"
-                  >
-                    <Send size={12} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
+                ))
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
