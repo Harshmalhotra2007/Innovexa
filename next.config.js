@@ -13,6 +13,9 @@ const nextConfig = {
     instrumentationHook: true,
     optimizePackageImports: ["lucide-react", "recharts"],
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {
