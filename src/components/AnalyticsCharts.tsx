@@ -22,11 +22,12 @@ import { TrendingUp, Clock, AlertCircle, PieChart as PieIcon } from "lucide-reac
 interface AnalyticsChartsProps {
   trendData: any[];
   deptStats: any[];
+  colors?: string[];
 }
 
-const COLORS = ["#49B9AE", "#E8A33D", "#E2666A", "#1D4ED8", "#94A3B8"];
+const DEFAULT_COLORS = ["#49B9AE", "#E8A33D", "#E2666A", "#1D4ED8", "#94A3B8"];
 
-export function AnalyticsCharts({ trendData, deptStats }: AnalyticsChartsProps) {
+export function AnalyticsCharts({ trendData, deptStats, colors = DEFAULT_COLORS }: AnalyticsChartsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Monthly Task Closure Trend (Line Chart) */}
