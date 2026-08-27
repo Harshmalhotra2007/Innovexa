@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { generateGoogleMeetLink, startMeetingSchedulerWorker } from "@/lib/meeting-scheduler";
+import { enqueuePreMeetingReminder } from "@/lib/notification-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -64,11 +65,27 @@ export async function POST(req: Request) {
     // Start background worker to ensure auto-launch at scheduled time
     startMeetingSchedulerWorker();
 
+    // Auto-enqueue 15-minute pre-meeting email reminder
+    const firstParticipant = participants.split(",")[0]?.trim() || "team@innovexa.com";
+    const reminderJob = await enqueuePreMeetingReminder(
+      {
+        meetingId: meeting.id,
+        meetingTitle: meeting.title,
+        scheduledDate: targetDateTime,
+        googleMeetLink,
+        recipientEmail: firstParticipant,
+        agenda: meeting.agenda || undefined,
+        department,
+      },
+      15
+    );
+
     return NextResponse.json({
       status: "success",
       message: "Meeting scheduled successfully",
       meeting,
       googleMeetLink,
+      reminderJob,
     });
   } catch (err: any) {
     console.error("[Schedule Meeting API Error]", err);

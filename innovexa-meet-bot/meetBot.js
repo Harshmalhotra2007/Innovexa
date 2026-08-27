@@ -156,7 +156,7 @@ class MeetBot {
             );
           });
           if (btn) {
-            (btn as any).click();
+            btn.click();
             return true;
           }
           return false;
@@ -200,7 +200,6 @@ class MeetBot {
       logger.info("Sent in-chat consent message");
 
       // Start audio capture with retry mechanism & MediaRecorder fallback
-      const meetingId = meetingUrl.split("/").pop() || "session";
       try {
         audioFile = await pulseAudio.startRecording(meetingId);
         logger.info("Started primary PulseAudio sink recording", { audioFile });
@@ -215,21 +214,21 @@ class MeetBot {
           logger.warn("PulseAudio retry failed. Activating browser MediaRecorder API fallback...", { error: retryErr.message });
           await page.evaluate(() => {
             try {
-              (window as any)._mediaChunks = [];
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              window._mediaChunks = [];
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
               const dest = ctx.createMediaStreamDestination();
               const els = document.querySelectorAll('audio, video');
               els.forEach(el => {
                 try {
-                  const src = ctx.createMediaElementSource(el as HTMLMediaElement);
+                  const src = ctx.createMediaElementSource(el);
                   src.connect(dest);
                   src.connect(ctx.destination);
                 } catch (e) {}
               });
               const recorder = new MediaRecorder(dest.stream);
-              recorder.ondataavailable = (e) => { if (e.data.size > 0) (window as any)._mediaChunks.push(e.data); };
+              recorder.ondataavailable = (e) => { if (e.data.size > 0) window._mediaChunks.push(e.data); };
               recorder.start(1000);
-              (window as any)._mediaRecorder = recorder;
+              window._mediaRecorder = recorder;
             } catch (e) { console.error('MediaRecorder fallback error:', e); }
           }).catch(() => {});
           audioFile = pulseAudio.createFailsafeRecording(meetingId);
@@ -473,7 +472,7 @@ class MeetBot {
               return txt.includes("leave") || aria.includes("leave") || jsname === "CQYiBc";
             });
             if (leaveBtn) {
-              (leaveBtn as any).click();
+              leaveBtn.click();
               return true;
             }
             return false;
