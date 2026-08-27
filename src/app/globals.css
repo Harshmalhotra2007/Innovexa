@@ -3,30 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0D1416;
-  --bg-raised: #141C1F;
-  --panel: #141C1F;
-  --panel-alt: #182124;
-  --border: #212B2E;
-  --border-soft: #2B383C;
-  --text: #E7EEEF;
-  --text-dim: #9A99A0;
-  --text-faint: #5B6A6E;
+  --bg: #F8FAFC;
+  --bg-raised: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-alt: #F1F5F9;
+  --border: #E2E8F0;
+  --border-soft: #F1F5F9;
+  --text: #0F172A;
+  --text-dim: #64748B;
+  --text-faint: #94A3B8;
   
   --primary: #1D4ED8;
-  --primary-hover: #2557E0;
+  --primary-hover: #2A3EB1;
   
-  --teal: #49B9AE;
-  --teal-dim: rgba(73, 185, 174, 0.15);
+  --teal: #0F9D8C;
+  --teal-dim: rgba(15, 157, 140, 0.12);
   
   --green: #22C55E;
-  --green-dim: rgba(34, 197, 94, 0.15);
+  --green-dim: rgba(34, 197, 94, 0.12);
   
-  --amber: #E8A33D;
-  --amber-dim: rgba(232, 163, 61, 0.15);
+  --amber: #F59E0B;
+  --amber-dim: rgba(245, 158, 11, 0.12);
   
-  --red: #E2666A;
-  --red-dim: rgba(226, 102, 106, 0.15);
+  --red: #EF4444;
+  --red-dim: rgba(239, 68, 68, 0.12);
 
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-display: var(--font-display), 'Segoe UI', sans-serif;
@@ -52,6 +52,7 @@ code, pre, .font-mono, .badge-mono {
   background-color: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
 .ops-panel-alt {
@@ -63,7 +64,7 @@ code, pre, .font-mono, .badge-mono {
 .ops-input {
   background-color: var(--bg-raised);
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   color: var(--text);
   font-family: var(--font-body);
   outline: none;
@@ -71,7 +72,7 @@ code, pre, .font-mono, .badge-mono {
 }
 
 .ops-input:focus {
-  border-color: var(--amber);
+  border-color: var(--primary);
 }
 
 .ops-badge {
@@ -79,7 +80,7 @@ code, pre, .font-mono, .badge-mono {
   font-size: 11px;
   letter-spacing: 0.4px;
   padding: 2px 8px;
-  border-radius: 3px;
+  border-radius: 4px;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -109,46 +110,46 @@ code, pre, .font-mono, .badge-mono {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid var(--primary);
-  background: transparent;
-  color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
   transition: all 0.2s ease;
   cursor: pointer;
   outline: none;
 }
 
 .cyberpunk-btn:hover, .cyberpunk-btn:focus {
-  background: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(29, 78, 216, 0.3);
+  background: var(--primary-hover);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
 }
 
 .cyberpunk-btn.delete-btn {
   border: 1px solid var(--red);
+  background: transparent;
   color: var(--red);
 }
 
 .cyberpunk-btn.delete-btn:hover, .cyberpunk-btn.delete-btn:focus {
   background: var(--red);
   color: #ffffff;
-  box-shadow: 0 0 12px rgba(226, 102, 106, 0.3);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .cyberpunk-select {
   background: var(--bg-raised);
-  border: 1px solid var(--teal);
-  color: var(--teal);
+  border: 1px solid var(--border);
+  color: var(--text);
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   outline: none;
   cursor: pointer;
 }
 
 .cyberpunk-select:hover, .cyberpunk-select:focus {
-  box-shadow: 0 0 8px rgba(73, 185, 174, 0.3);
+  border-color: var(--primary);
 }
 
 .cyberpunk-select option {

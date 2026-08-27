@@ -91,11 +91,11 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   return (
     <div className="space-y-6 text-[var(--text)] font-sans">
       {/* CARD 1: Unified Meeting Controls & Status Timeline */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl space-y-5">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-5">
         {/* Card Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber)]/10 border border-[var(--amber)]/30 text-[var(--amber)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)]">
               <Bot className="w-5 h-5" />
             </div>
             <div>
@@ -103,7 +103,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                 INNOVEXA AI MEETING ENGINE
               </h3>
               <p className="font-mono text-[11px] text-[var(--text-dim)] mt-0.5">
-                Meeting ID: <span className="text-[var(--teal)]">{meetingId}</span>
+                Meeting ID: <span className="text-[var(--primary)] font-bold">{meetingId}</span>
               </p>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             <button
               onClick={handleEndMeeting}
               disabled={loading}
-              className="px-4 py-2 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--red)] text-white hover:bg-[var(--red)]/80 transition-all flex items-center gap-2 shadow-lg shadow-[var(--red)]/20"
+              className="px-4 py-2 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--red)] text-white hover:bg-[var(--red)]/90 transition-all flex items-center gap-2 shadow-sm"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4 fill-current" />}
               <span>END MEETING</span>
@@ -123,7 +123,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         {/* Vertical Chronological Status Timeline */}
         <div className="p-4 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] space-y-3">
           <div className="font-mono text-xs text-[var(--text-dim)] uppercase font-bold flex items-center gap-1.5 border-b border-[var(--border)] pb-2">
-            <Clock className="w-4 h-4 text-[var(--amber)]" />
+            <Clock className="w-4 h-4 text-[var(--primary)]" />
             <span>SESSION CHRONOLOGICAL STATUS TIMELINE</span>
           </div>
 
@@ -138,10 +138,10 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                   key={step.key}
                   className={`p-2.5 rounded-lg border font-mono text-xs space-y-1 transition-all ${
                     isCurrent
-                      ? "bg-[var(--teal)]/20 border-[var(--teal)] text-white shadow-md shadow-[var(--teal)]/20 animate-pulse"
+                      ? "bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] shadow-sm font-bold animate-pulse"
                       : isPast
-                      ? "bg-[var(--panel)] border-[var(--teal)]/40 text-[var(--teal)]"
-                      : "bg-[var(--panel)] border-[var(--border-soft)] text-[var(--text-faint)]"
+                      ? "bg-[var(--panel)] border-[var(--teal)]/40 text-[var(--teal)] font-bold"
+                      : "bg-[var(--panel)] border-[var(--border)] text-[var(--text-faint)]"
                   }`}
                 >
                   <div className="flex items-center justify-between text-[10px]">
@@ -159,12 +159,12 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         {/* Streamlined Primary Action Flow */}
         <div className="space-y-3 p-4 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
           <div className="flex items-center justify-between">
-            <div className="font-mono text-xs text-[var(--amber)] font-bold uppercase flex items-center gap-1.5">
+            <div className="font-mono text-xs text-[var(--primary)] font-bold uppercase flex items-center gap-1.5">
               <Cpu className="w-4 h-4" /> PRIMARY BOT ACTION FLOW
             </div>
             <button
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="text-xs font-mono text-[var(--text-dim)] hover:text-[var(--teal)] transition-colors flex items-center gap-1"
+              className="text-xs font-mono text-[var(--text-dim)] hover:text-[var(--primary)] transition-colors flex items-center gap-1"
             >
               <span>ADVANCED OPTIONS</span>
               {showAdvancedOptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -177,12 +177,12 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
               placeholder="Enter Google Meet URL (e.g. https://meet.google.com/qfz-imot-oic)"
               value={customMeetUrl}
               onChange={(e) => setCustomMeetUrl(e.target.value)}
-              className="flex-1 w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel)] border border-[var(--border-soft)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--amber)]"
+              className="flex-1 w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
             />
             <button
               onClick={handleManagedBotJoin}
               disabled={agent.status !== "idle" && agent.status !== "completed" || loading || userRole !== "organizer"}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--amber)] text-[#1a1f2d] hover:bg-[var(--amber)]/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[var(--amber)]/20"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
               <span>LAUNCH AI MEETING ENGINE</span>
@@ -200,7 +200,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                 {isTabRecording ? (
                   <button
                     onClick={stopTabAudioCapture}
-                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold bg-[var(--red)] text-white hover:bg-[var(--red)]/80 transition-all flex items-center justify-center gap-2 animate-pulse shadow-md"
+                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold bg-[var(--red)] text-white hover:bg-[var(--red)]/80 transition-all flex items-center justify-center gap-2 animate-pulse shadow-xs"
                   >
                     <Square className="w-3.5 h-3.5 fill-current" /> STOP TAB RECORDING ({tabRecordSeconds}s)
                   </button>
@@ -208,7 +208,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                   <button
                     onClick={startTabAudioCapture}
                     disabled={agent.status !== "idle" && agent.status !== "completed"}
-                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[var(--teal)] text-[#0D1A18] hover:bg-[var(--teal)]/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-md shadow-[var(--teal)]/20"
+                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[var(--teal)] text-white hover:bg-[var(--teal)]/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Mic className="w-4 h-4" /> START TAB AUDIO RECORDING
                   </button>
@@ -227,8 +227,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                       onClick={() => setAudioQuality(q)}
                       className={`flex-1 py-1.5 rounded font-mono text-[11px] font-bold uppercase transition-all ${
                         audioQuality === q
-                          ? "bg-[var(--teal)] text-[#0D1A18] border border-[var(--teal)] font-bold shadow-sm"
-                          : "bg-[var(--panel-alt)] text-[var(--text-dim)] border border-[var(--border-soft)] hover:text-[var(--text)]"
+                          ? "bg-[var(--primary)] text-white border border-[var(--primary)] font-bold shadow-xs"
+                          : "bg-[var(--panel-alt)] text-[var(--text-dim)] border border-[var(--border)] hover:text-[var(--text)]"
                       }`}
                     >
                       {q === "high" ? "High (128k)" : q === "medium" ? "Med (64k)" : "Low (32k)"}
@@ -242,7 +242,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
         {/* Host Admission Required Banner */}
         {(agent.status === "joining" || agent.status === "recording") && (
-          <div className="rounded-lg bg-[var(--amber)]/10 border border-[var(--amber)]/40 p-3 text-[var(--amber)] text-xs flex items-center gap-2 font-mono">
+          <div className="rounded-lg bg-[var(--amber)]/12 border border-[var(--amber)]/40 p-3 text-[var(--amber)] text-xs flex items-center gap-2 font-mono">
             <Bot className="w-4 h-4 flex-shrink-0 animate-bounce" />
             <span>
               <strong>📢 HOST ADMISSION REQUIRED:</strong> Innovexa Notetaker has been dispatched to your Google Meet room! Switch to your Google Meet tab and click <strong>"Admit"</strong> when the host popup appears.
@@ -252,9 +252,9 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
       </div>
 
       {/* CARD 2: Synced Live Transcript & Audio Waveform Player */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl space-y-4">
-        <div className="font-mono text-xs uppercase tracking-wider text-[var(--teal)] flex items-center gap-2 font-semibold">
-          <Mic className="w-4 h-4" /> LIVE DIARIZED CAPTION STREAM & AUDIO PLAYER
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-4">
+        <div className="font-mono text-xs uppercase tracking-wider text-[var(--primary)] flex items-center gap-2 font-semibold">
+          <Mic className="w-4 h-4 text-[var(--teal)]" /> LIVE DIARIZED CAPTION STREAM & AUDIO PLAYER
         </div>
 
         {/* Audio Waveform Player with Click-to-Seek */}
@@ -270,17 +270,17 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                 key={i}
                 onClick={() => handleTranscriptClick(seg.timestamp, i)}
                 aria-label={`Seek audio to timestamp ${seg.timestamp} for speaker ${seg.speaker}`}
-                className={`w-full text-left flex items-start gap-2 border-b border-[var(--border-soft)] pb-2 last:border-0 last:pb-0 p-2 rounded transition-all hover:bg-[var(--teal)]/10 ${
-                  highlightedChunkIndex === i ? "bg-[var(--teal)]/20 border-[var(--teal)] text-[var(--text)] font-bold" : ""
+                className={`w-full text-left flex items-start gap-2 border-b border-[var(--border)] pb-2 last:border-0 last:pb-0 p-2 rounded transition-all hover:bg-[var(--primary)]/10 ${
+                  highlightedChunkIndex === i ? "bg-[var(--primary)]/15 border-[var(--primary)] text-[var(--text)] font-bold" : ""
                 }`}
               >
-                <span className="text-[var(--amber)] font-bold flex-shrink-0">[{seg.timestamp}] {seg.speaker}:</span>
+                <span className="text-[var(--primary)] font-bold flex-shrink-0">[{seg.timestamp}] {seg.speaker}:</span>
                 <span className="text-[var(--text)]">{seg.text}</span>
               </button>
             ))}
           </div>
         ) : (
-          <div className="text-center py-6 border border-dashed border-[var(--border-soft)] rounded-lg text-xs font-mono text-[var(--text-faint)]">
+          <div className="text-center py-6 border border-dashed border-[var(--border)] rounded-lg text-xs font-mono text-[var(--text-faint)]">
             No live transcript segments available. Launch bot or start tab recording to stream captions.
           </div>
         )}
@@ -288,9 +288,9 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       {/* CARD 3: Executive AI Summary & Rationale */}
       {agent.summary && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl space-y-3">
-          <div className="font-mono text-xs uppercase tracking-wider text-[var(--amber)] flex items-center gap-2 font-semibold border-b border-[var(--border)] pb-3">
-            <Sparkles className="w-4 h-4" /> EXECUTIVE AI SYNTHESIS & RATIONALE
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-3">
+          <div className="font-mono text-xs uppercase tracking-wider text-[var(--primary)] flex items-center gap-2 font-semibold border-b border-[var(--border)] pb-3">
+            <Sparkles className="w-4 h-4 text-[var(--amber)]" /> EXECUTIVE AI SYNTHESIS & RATIONALE
           </div>
           <p className="text-sm text-[var(--text-dim)] leading-relaxed font-sans">{agent.summary}</p>
         </div>
@@ -298,16 +298,16 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       {/* CARD 4: Automated Action Items & Task Assignments */}
       {actionItems.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl space-y-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-4">
           <div className="font-mono text-xs uppercase tracking-wider text-[var(--teal)] flex items-center gap-2 font-semibold border-b border-[var(--border)] pb-3">
-            <CheckCircle2 className="w-4 h-4" /> AUTOMATED ACTION ITEMS & TASK ASSIGNMENTS
+            <CheckCircle2 className="w-4 h-4 text-[var(--teal)]" /> AUTOMATED ACTION ITEMS & TASK ASSIGNMENTS
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {actionItems.map((item, idx) => (
-              <div key={idx} className="rounded-lg border border-[var(--border-soft)] bg-[var(--panel-alt)] p-3 space-y-1.5 font-mono text-xs">
-                <div className="flex items-center justify-between text-[var(--amber)]">
+              <div key={idx} className="rounded-lg border border-[var(--border)] bg-[var(--panel-alt)] p-3 space-y-1.5 font-mono text-xs">
+                <div className="flex items-center justify-between text-[var(--primary)]">
                   <span className="font-bold">{item.ownerName || item.assignee}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/30">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30 font-bold">
                     {item.priority || "Medium"}
                   </span>
                 </div>
@@ -320,7 +320,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
       {/* Actionable Error Banner */}
       {errorMsg && (
-        <div className="rounded-lg bg-[var(--red)]/10 border border-[var(--red)]/40 p-4 text-[var(--red)] text-xs flex items-center gap-3 font-mono">
+        <div className="rounded-lg bg-[var(--red)]/12 border border-[var(--red)]/40 p-4 text-[var(--red)] text-xs flex items-center gap-3 font-mono">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{errorMsg}</span>
         </div>

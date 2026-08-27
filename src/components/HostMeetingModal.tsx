@@ -91,7 +91,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3 rounded-lg bg-[var(--red)]/10 border border-[var(--red)]/40 text-[var(--red)] font-mono text-xs flex items-center gap-2">
+          <div className="p-3 rounded-lg bg-[var(--red)]/12 border border-[var(--red)]/40 text-[var(--red)] font-mono text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -170,7 +170,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 shadow-lg shadow-[var(--primary)]/20"
+              className="px-6 py-2.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 shadow-sm"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
               <span>START & LAUNCH AI BOT</span>

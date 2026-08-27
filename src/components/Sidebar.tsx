@@ -44,19 +44,19 @@ export function Sidebar({ onHostClick }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
+    <aside className="w-64 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col justify-between h-screen sticky top-0 z-40 select-none shadow-sm">
       <div>
         {/* Brand Header */}
         <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--amber)]/10 border border-[var(--amber)]/40 text-[var(--amber)] group-hover:scale-105 transition-transform">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)] group-hover:scale-105 transition-transform">
               <Bot className="w-5 h-5" />
             </div>
             <div>
               <span className="font-display font-bold text-sm tracking-wider text-[var(--text)] uppercase block">
                 INNOVEXA
               </span>
-              <span className="font-mono text-[10px] text-[var(--teal)] tracking-widest block uppercase">
+              <span className="font-mono text-[10px] text-[var(--primary)] tracking-widest block uppercase font-bold">
                 OPS CONSOLE v2.0
               </span>
             </div>
@@ -66,14 +66,14 @@ export function Sidebar({ onHostClick }: SidebarProps) {
         {/* Role Mode Banner */}
         <div className="p-3 mx-3 my-3 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
           <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-[var(--text-dim)] uppercase">CURRENT VIEW:</span>
+            <span className="text-[var(--text-dim)] uppercase text-[11px] font-bold">CURRENT VIEW:</span>
             <button
               onClick={toggleUserRole}
               aria-label="Toggle user role view mode"
-              className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded font-bold uppercase text-[10px] tracking-wider transition-all flex items-center gap-1.5 shadow-xs ${
                 userRole === "organizer"
-                  ? "bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]/40 hover:bg-[var(--amber)]/30"
-                  : "bg-[var(--teal)]/20 text-[var(--teal)] border border-[var(--teal)]/40 hover:bg-[var(--teal)]/30"
+                  ? "bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 hover:bg-[var(--primary)]/20"
+                  : "bg-[var(--teal)]/10 text-[var(--teal)] border border-[var(--teal)]/30 hover:bg-[var(--teal)]/20"
               }`}
             >
               <UserCheck className="w-3 h-3" />
@@ -84,10 +84,10 @@ export function Sidebar({ onHostClick }: SidebarProps) {
 
         {/* Quick Host Button in Sidebar */}
         {onHostClick && (
-          <div className="px-3 mb-2">
+          <div className="px-3 mb-3">
             <button
               onClick={onHostClick}
-              className="w-full py-2 px-3 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-md flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-3 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-sm flex items-center justify-center gap-2"
             >
               <Radio className="w-4 h-4 animate-pulse" />
               <span>HOST INSTANT MEETING</span>
@@ -96,7 +96,7 @@ export function Sidebar({ onHostClick }: SidebarProps) {
         )}
 
         {/* Navigation Items */}
-        <nav className="px-3 space-y-1 mt-1">
+        <nav className="px-3 space-y-1 mt-1 font-sans">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -104,17 +104,17 @@ export function Sidebar({ onHostClick }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-mono transition-all ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? "bg-[var(--teal)]/10 text-[var(--teal)] border border-[var(--teal)]/30 font-bold"
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/30 shadow-xs"
                     : "text-[var(--text-dim)] hover:bg-[var(--panel-alt)] hover:text-[var(--text)]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[var(--teal)]" : "text-[var(--text-dim)]"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-[var(--primary)]" : "text-[var(--text-dim)]"}`} />
                   <span>{item.name}</span>
                 </div>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-[var(--teal)]" />}
+                {isActive && <ChevronRight className="w-3.5 h-3.5 text-[var(--primary)]" />}
               </Link>
             );
           })}
@@ -122,7 +122,7 @@ export function Sidebar({ onHostClick }: SidebarProps) {
       </div>
 
       {/* Footer System Status */}
-      <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)] text-xs font-mono space-y-2">
+      <div className="p-4 border-t border-[var(--border)] bg-[var(--panel-alt)] text-xs font-mono space-y-2">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-[var(--text-dim)]">PLAYWRIGHT BOT:</span>
           <span className="text-[var(--teal)] font-bold flex items-center gap-1">
@@ -130,7 +130,7 @@ export function Sidebar({ onHostClick }: SidebarProps) {
           </span>
         </div>
         <div className="text-[10px] text-[var(--text-faint)] truncate">
-          Branch: <span className="text-[var(--amber)]">main</span>
+          Branch: <span className="text-[var(--primary)] font-bold">main</span>
         </div>
       </div>
     </aside>

@@ -36,7 +36,8 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
   
   const [title, setTitle] = useState("");
   const [scheduledDate, setScheduledDate] = useState(todayStr);
-  const [scheduledTime, setScheduledTime] = useState("09:00");
+  const [availableSlots, setAvailableSlots] = useState<string[]>(STANDARD_SLOTS);
+  const [selectedSlot, setSelectedSlot] = useState(STANDARD_SLOTS[0]);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [department, setDepartment] = useState("Engineering");
   const [agenda, setAgenda] = useState("");
@@ -44,8 +45,39 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
   const [participants, setParticipants] = useState("");
   const [customMeetLink, setCustomMeetLink] = useState("");
 
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch available slots whenever scheduledDate changes
+  useEffect(() => {
+    if (!isOpen || !scheduledDate) return;
+    async function fetchSlots() {
+      setLoadingSlots(true);
+      try {
+        const res = await fetch(`/api/meetings/available-slots?date=${scheduledDate}`);
+        if (res.ok) {
+          const data = await res.json();
+          const slots = data.availableSlots && data.availableSlots.length > 0
+            ? data.availableSlots
+            : STANDARD_SLOTS;
+          setAvailableSlots(slots);
+          setSelectedSlot(slots[0]);
+        } else {
+          setAvailableSlots(STANDARD_SLOTS);
+          setSelectedSlot(STANDARD_SLOTS[0]);
+        }
+      } catch (err) {
+        console.warn("Error fetching available slots:", err);
+        setAvailableSlots(STANDARD_SLOTS);
+        setSelectedSlot(STANDARD_SLOTS[0]);
+      } finally {
+        setLoadingSlots(false);
+      }
+    }
+
+    fetchSlots();
+  }, [isOpen, scheduledDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,16 +89,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
     setError(null);
     setSubmitting(true);
 
-    // Format HH:MM 24h into HH:MM AM/PM expected by the backend
-    const [hours, mins] = scheduledTime.split(":").map((n) => parseInt(n, 10));
-    let period = "AM";
-    let displayHours = hours;
-    if (hours >= 12) {
-      period = "PM";
-      if (hours > 12) displayHours -= 12;
-    }
-    if (hours === 0) displayHours = 12;
-    const formattedSlot = `${displayHours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${period}`;
+    const slotToUse = selectedSlot || STANDARD_SLOTS[0];
 
     try {
       const res = await fetch("/api/meetings/schedule", {
@@ -75,7 +98,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
         body: JSON.stringify({
           title,
           scheduledDate,
-          timeSlot: formattedSlot,
+          timeSlot: slotToUse,
           durationMinutes,
           department,
           agenda,
@@ -105,7 +128,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--amber)]/10 border border-[var(--amber)]/30 text-[var(--amber)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)]">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
@@ -128,7 +151,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3 rounded-lg bg-[var(--red)]/10 border border-[var(--red)]/40 text-[var(--red)] font-mono text-xs flex items-center gap-2">
+          <div className="p-3 rounded-lg bg-[var(--red)]/12 border border-[var(--red)]/40 text-[var(--red)] font-mono text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -150,7 +173,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
             />
           </div>
 
-          {/* Date & Time Grid */}
+          {/* Date & Duration Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Scheduled Date */}
             <div className="space-y-1">
@@ -167,23 +190,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
               />
             </div>
 
-            {/* Scheduled Time */}
-            <div className="space-y-1">
-              <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
-                MEETING TIME <span className="text-[var(--red)]">*</span>
-              </label>
-              <input
-                type="time"
-                required
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
-              />
-            </div>
-          </div>
-
-          {/* Duration & Department Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Duration Selector */}
             <div className="space-y-1">
               <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
@@ -197,7 +203,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                     onClick={() => setDurationMinutes(dur)}
                     className={`flex-1 py-2 rounded font-bold uppercase transition-all ${
                       durationMinutes === dur
-                        ? "bg-[var(--amber)] text-[#1a1f2d] border border-[var(--amber)] font-bold shadow-md shadow-[var(--amber)]/20"
+                        ? "bg-[var(--primary)] text-white border border-[var(--primary)] shadow-sm"
                         : "bg-[var(--panel-alt)] text-[var(--text-dim)] border border-[var(--border)] hover:text-[var(--text)]"
                     }`}
                   >
@@ -206,8 +212,34 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Department */}
+          {/* Time Slot Selection */}
+          <div className="space-y-1.5 p-3 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
+            <label className="text-[var(--primary)] font-bold uppercase tracking-wider flex items-center justify-between">
+              <span>AVAILABLE TIME SLOTS ({scheduledDate})</span>
+              {loadingSlots && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />}
+            </label>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {availableSlots.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setSelectedSlot(slot)}
+                  className={`px-3 py-1.5 rounded font-bold transition-all ${
+                    selectedSlot === slot
+                      ? "bg-[var(--primary)] text-white border border-[var(--primary)] shadow-sm"
+                      : "bg-[var(--panel)] text-[var(--text-dim)] border border-[var(--border)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {slot}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Department & Participants */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
                 DEPARTMENT / TEAM
@@ -224,20 +256,19 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 <option value="Sales">Sales</option>
               </select>
             </div>
-          </div>
 
-          {/* Participant Emails */}
-          <div className="space-y-1">
-            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
-              PARTICIPANT EMAILS
-            </label>
-            <input
-              type="text"
-              placeholder="alice@innovexa.com, bob@innovexa.com"
-              value={participants}
-              onChange={(e) => setParticipants(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
-            />
+            <div className="space-y-1">
+              <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
+                PARTICIPANT EMAILS
+              </label>
+              <input
+                type="text"
+                placeholder="alice@innovexa.com, bob@innovexa.com"
+                value={participants}
+                onChange={(e) => setParticipants(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
+              />
+            </div>
           </div>
 
           {/* Optional Google Meet Link Input */}
@@ -280,7 +311,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 shadow-lg shadow-[var(--primary)]/20"
+              className="px-6 py-2 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 shadow-sm"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               <span>SCHEDULE MEETING</span>

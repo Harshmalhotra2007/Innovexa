@@ -1,33 +1,33 @@
-# Innovexa Ops Console Theme Specification (Tactical Steel Dark Slate)
+# Innovexa Enterprise Theme Guidelines
 
-## Color Palette Tokens
+## Color Palette: Deep Indigo / Navy + Teal Accent (Professional Enterprise Neutral)
 
-- **Primary Canvas Background (`--bg`)**: `#0D1416` (Deep Obsidian Charcoal)
-- **Raised Panel Background (`--bg-raised` / `--panel`)**: `#141C1F` (Tactical Steel Panel)
-- **Secondary Panel Background (`--panel-alt`)**: `#182124` (Subtle Card Surface)
-- **Primary Borders (`--border`)**: `#212B2E` (Steel Grid Border)
-- **Soft Borders (`--border-soft`)**: `#2B383C` (Subtle Dividers)
-- **Primary Accent (`--primary`)**: `#1D4ED8` (Royal Blue / Primary Action)
-- **Primary Hover (`--primary-hover`)**: `#2557E0` (Interactive Hover Accent)
-- **Teal / Resolved (`--teal`)**: `#49B9AE` (Active Indicators & Success)
-- **Amber / Warning (`--amber`)**: `#E8A33D` (Attention Badges & Timers)
-- **Red / Breach (`--red`)**: `#E2666A` (Alert Badges & Errors)
-- **Text Primary (`--text`)**: `#E7EEEF` (Bright Crisp Text)
-- **Text Muted (`--text-dim`)**: `#9A99A0` (Secondary Information)
-- **Text Faint (`--text-faint`)**: `#5B6A6E` (Faint Metadata)
+- **Primary (brand/accent)**: `#1D4ED8` / `#2A3EB1` (Deep Indigo / Industry Standard Productivity Blue)
+- **Secondary Accent**: `#0F9D8C` (Teal / Emerald - Reserved for Success & Completed Signals)
+- **Semantic Status Colors**:
+  - Green: `#22C55E` $\rightarrow$ On-Time / Completed
+  - Amber: `#F59E0B` $\rightarrow$ Approaching Deadline / Pending
+  - Red: `#EF4444` $\rightarrow$ Overdue / Escalated
+- **Neutrals**:
+  - Text Primary: `#0F172A` (Slate Dark - `#0F172A`)
+  - Text Secondary: `#64748B` (Slate Muted - `#64748B`)
+  - Text Faint: `#94A3B8` (Slate Faint - `#94A3B8`)
+  - Main Canvas Background: `#F8FAFC` (Off-white / Slate-50)
+  - Card & Panel Background: `#FFFFFF` (Pure White Card / Panel)
+  - Secondary Panel Surface: `#F1F5F9` (Slate-100)
+  - Borders: `#E2E8F0` (Slate-200)
 
-## Component Mapping Rules
+## Component Mapping (Dynamic CSS Variables)
 
-- **Console Panels & Containers**: `bg-[var(--panel)] border border-[var(--border)] text-[var(--text)]`
-- **Sub-panels & Controls**: `bg-[var(--panel-alt)] border border-[var(--border-soft)]`
+- **Cards & Panels**: `bg-[var(--panel)] border border-[var(--border)] text-[var(--text)] shadow-sm`
 - **Primary Buttons**: `bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white`
-- **Secondary Buttons**: `bg-[var(--panel-alt)] text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)]`
-- **Success / Status Pills**: `bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30`
-- **Warning Pills**: `bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/30`
-- **Alert Pills**: `bg-[var(--red)]/15 text-[var(--red)] border border-[var(--red)]/30`
+- **Secondary / Alt Buttons**: `bg-[var(--panel-alt)] text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)]`
+- **Success Badges**: `bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30`
+- **Warning Badges**: `bg-[var(--amber)]/12 text-[var(--amber)] border border-[var(--amber)]/30`
+- **Error / Overdue Badges**: `bg-[var(--red)]/12 text-[var(--red)] border border-[var(--red)]/30`
 
-## Typography Guidelines
+## Typography
 
-- **Display & Headings**: `font-display text-[var(--text)] uppercase tracking-wider`
-- **Body & Content**: `font-sans text-[var(--text-dim)] leading-relaxed`
-- **Monospace / System Data**: `font-mono text-xs text-[var(--teal)]` or `text-[var(--amber)]`
+- **Headings**: Sans-serif / Display, bold, tracking-tight, `text-[var(--text)]`
+- **Body**: `text-[var(--text-dim)]` with `leading-relaxed`
+- **Mono / System Data**: `font-mono text-xs text-[var(--primary)]` or `text-[var(--teal)]`
