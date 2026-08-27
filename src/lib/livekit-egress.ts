@@ -39,7 +39,7 @@ export async function startRoomEgress(
       roomName,
       {
         filepath: `/tmp/${fileName}`,
-      },
+      } as any,
       undefined,
       undefined,
       false // audioOnly
