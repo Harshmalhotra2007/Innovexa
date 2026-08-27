@@ -44,16 +44,16 @@ export function Sidebar({ onHostClick }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[#141C1F] border-r border-[#212B2E] flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
+    <aside className="w-64 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col justify-between h-screen sticky top-0 z-40 select-none">
       <div>
         {/* Brand Header */}
-        <div className="p-5 border-b border-[#212B2E] flex items-center justify-between">
+        <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--amber)]/10 border border-[var(--amber)]/40 text-[var(--amber)] group-hover:scale-105 transition-transform">
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-display font-bold text-sm tracking-wider text-[#e8e1d5] uppercase block">
+              <span className="font-display font-bold text-sm tracking-wider text-[var(--text)] uppercase block">
                 INNOVEXA
               </span>
               <span className="font-mono text-[10px] text-[var(--teal)] tracking-widest block uppercase">
@@ -64,9 +64,9 @@ export function Sidebar({ onHostClick }: SidebarProps) {
         </div>
 
         {/* Role Mode Banner */}
-        <div className="p-3 mx-3 my-3 rounded-lg bg-[#182124] border border-[#212B2E]">
+        <div className="p-3 mx-3 my-3 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
           <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-[#9a99a0] uppercase">CURRENT VIEW:</span>
+            <span className="text-[var(--text-dim)] uppercase">CURRENT VIEW:</span>
             <button
               onClick={toggleUserRole}
               aria-label="Toggle user role view mode"
@@ -107,11 +107,11 @@ export function Sidebar({ onHostClick }: SidebarProps) {
                 className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-mono transition-all ${
                   isActive
                     ? "bg-[var(--teal)]/10 text-[var(--teal)] border border-[var(--teal)]/30 font-bold"
-                    : "text-[#9a99a0] hover:bg-[#182124] hover:text-[#e8e1d5]"
+                    : "text-[var(--text-dim)] hover:bg-[var(--panel-alt)] hover:text-[var(--text)]"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[var(--teal)]" : "text-[#9a99a0]"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-[var(--teal)]" : "text-[var(--text-dim)]"}`} />
                   <span>{item.name}</span>
                 </div>
                 {isActive && <ChevronRight className="w-3.5 h-3.5 text-[var(--teal)]" />}
@@ -122,14 +122,14 @@ export function Sidebar({ onHostClick }: SidebarProps) {
       </div>
 
       {/* Footer System Status */}
-      <div className="p-4 border-t border-[#212B2E] bg-[#101719] text-xs font-mono space-y-2">
+      <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)] text-xs font-mono space-y-2">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-[#9a99a0]">PLAYWRIGHT BOT:</span>
+          <span className="text-[var(--text-dim)]">PLAYWRIGHT BOT:</span>
           <span className="text-[var(--teal)] font-bold flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-[var(--teal)] animate-ping" /> ONLINE
           </span>
         </div>
-        <div className="text-[10px] text-[#5B6A6E] truncate">
+        <div className="text-[10px] text-[var(--text-faint)] truncate">
           Branch: <span className="text-[var(--amber)]">main</span>
         </div>
       </div>

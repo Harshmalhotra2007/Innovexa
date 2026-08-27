@@ -1,48 +1,91 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, Download, Mic, AlertCircle, Radio } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { Play, Pause, Volume2, VolumeX, Mic, Radio, AlertCircle } from "lucide-react";
 
 interface AudioPlayerProps {
-  src: string;
+  src?: string | null;
   title?: string;
   seekTime?: number | null;
   isRecording?: boolean;
 }
 
-function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return "00:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
-}
-
-export function AudioPlayer({ src, title = "MEETING AUDIO RECORDING PLAYBACK", seekTime, isRecording = false }: AudioPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const [playbackSrc, setPlaybackSrc] = useState(src);
+export function AudioPlayer({
+  src,
+  title = "AUDIO PLAYBACK & LIVE WAVEFORM",
+  seekTime,
+  isRecording = false,
+}: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  // Sync incoming props
   useEffect(() => {
-    setPlaybackSrc(src);
-    setAudioError(null);
-    setIsPlaying(false);
-    setCurrentTime(0);
+    if (src) {
+      setPlaybackSrc(src);
+      setAudioError(null);
+    } else {
+      setPlaybackSrc(null);
+    }
   }, [src]);
 
-  // Handle Seek Trigger from Transcript Clicks
+  // Handle external seek requests
   useEffect(() => {
-    if (typeof seekTime === "number" && audioRef.current && !isNaN(seekTime)) {
+    if (seekTime !== undefined && seekTime !== null && audioRef.current) {
       audioRef.current.currentTime = seekTime;
       setCurrentTime(seekTime);
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      if (!isPlaying) {
+        audioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
     }
   }, [seekTime]);
 
-  // Audio Waveform Animation Rendering
+  // Audio Event Listeners
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime || 0);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    const handleError = () => {
+      console.warn("Audio playback error occurred");
+      setAudioError("Audio stream unavailable or buffer unreadable");
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+    };
+  }, [playbackSrc]);
+
+  // Waveform Canvas Visualizer Simulation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -50,81 +93,61 @@ export function AudioPlayer({ src, title = "MEETING AUDIO RECORDING PLAYBACK", s
     if (!ctx) return;
 
     let animId: number;
-    const bars = 40;
 
-    const renderWaveform = () => {
+    const drawWaveform = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const width = canvas.width;
-      const height = canvas.height;
-      const barWidth = width / bars - 2;
+      const bars = 32;
+      const barWidth = 4;
+      const gap = 3;
 
       for (let i = 0; i < bars; i++) {
-        let barHeight = 8;
+        let height = 6;
         if (isPlaying || isRecording) {
-          barHeight = Math.sin(Date.now() * 0.005 + i * 0.3) * (height / 2.5) + height / 2.5;
+          height = Math.sin((i + Date.now() / 150) * 0.4) * 12 + 14;
+        } else {
+          height = Math.sin(i * 0.5) * 4 + 8;
         }
 
-        const progress = duration > 0 ? currentTime / duration : 0;
-        const barProgress = i / bars;
-        const color = isRecording
-          ? "#E2666A"
-          : barProgress <= progress
-          ? "#49B9AE"
-          : "#2B383C";
+        const x = i * (barWidth + gap) + 12;
+        const y = (canvas.height - height) / 2;
 
-        ctx.fillStyle = color;
-        ctx.fillRect(i * (barWidth + 2), (height - barHeight) / 2, barWidth, barHeight);
+        const progressRatio = duration > 0 ? currentTime / duration : 0;
+        const barRatio = i / bars;
+
+        if (barRatio <= progressRatio || isRecording) {
+          ctx.fillStyle = "#49B9AE";
+        } else {
+          ctx.fillStyle = "#2B383C";
+        }
+
+        ctx.fillRect(x, y, barWidth, height);
       }
 
-      animId = requestAnimationFrame(renderWaveform);
+      animId = requestAnimationFrame(drawWaveform);
     };
 
-    renderWaveform();
+    drawWaveform();
+
     return () => cancelAnimationFrame(animId);
   }, [isPlaying, isRecording, currentTime, duration]);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => {
-      if (!isNaN(audio.duration)) setDuration(audio.duration);
-    };
-    const handleEnded = () => setIsPlaying(false);
-    const handleError = () => {
-      if (playbackSrc.endsWith(".wav")) {
-        setPlaybackSrc(playbackSrc.replace(".wav", ".mp3"));
-      } else {
-        setAudioError("Unable to play audio. Download recording to listen offline.");
-      }
-    };
-
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("error", handleError);
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("error", handleError);
-    };
-  }, [playbackSrc]);
-
   const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
+    if (!audioRef.current || !playbackSrc) return;
     if (isPlaying) {
-      audio.pause();
+      audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audio.play().then(() => setIsPlaying(true)).catch((err) => {
-        console.warn("Audio play error:", err);
+      audioRef.current.play().catch((err) => {
+        setAudioError("Failed to initiate audio playback.");
       });
+      setIsPlaying(true);
     }
+  };
+
+  const toggleMute = () => {
+    if (!audioRef.current) return;
+    audioRef.current.muted = !isMuted;
+    setIsMuted(!isMuted);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,23 +158,30 @@ export function AudioPlayer({ src, title = "MEETING AUDIO RECORDING PLAYBACK", s
     }
   };
 
+  const formatTime = (secs: number) => {
+    if (isNaN(secs)) return "00:00";
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div className="rounded-xl border border-[#2B383C] bg-[#141C1F] p-4 shadow-xl text-[#e8e1d5] space-y-3 font-mono">
-      <audio ref={audioRef} src={playbackSrc} preload="metadata" />
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-alt)] p-4 shadow-xl text-[var(--text)] space-y-3 font-mono">
+      <audio ref={audioRef} src={playbackSrc || undefined} preload="metadata" />
 
       {/* Header Title */}
-      <div className="flex items-center justify-between border-b border-[#212B2E] pb-2 text-xs">
-        <div className="flex items-center gap-2 text-[#49B9AE]">
-          {isRecording ? <Radio className="w-4 h-4 text-[#E2666A] animate-ping" /> : <Mic className="w-4 h-4" />}
+      <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 text-xs">
+        <div className="flex items-center gap-2 text-[var(--teal)]">
+          {isRecording ? <Radio className="w-4 h-4 text-[var(--red)] animate-ping" /> : <Mic className="w-4 h-4" />}
           <span className="font-bold tracking-wider uppercase">{title}</span>
         </div>
-        <span className="text-[10px] text-[#9a99a0]">
+        <span className="text-[10px] text-[var(--text-dim)]">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
       </div>
 
       {/* Audio Waveform Canvas Visualizer */}
-      <div className="h-10 bg-[#0D1315] rounded border border-[#212B2E] p-1 flex items-center justify-center">
+      <div className="h-10 bg-[var(--bg)] rounded border border-[var(--border)] p-1 flex items-center justify-center">
         <canvas ref={canvasRef} width={380} height={36} className="w-full h-full" />
       </div>
 
@@ -161,7 +191,7 @@ export function AudioPlayer({ src, title = "MEETING AUDIO RECORDING PLAYBACK", s
           onClick={togglePlay}
           disabled={!playbackSrc || !!audioError}
           aria-label={isPlaying ? "Pause audio playback" : "Play audio playback"}
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#49B9AE] text-[#0D1A18] hover:bg-[#3ca298] transition-all disabled:opacity-40 shadow-md"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--teal)] text-[#0D1A18] hover:bg-[var(--teal)]/80 transition-all disabled:opacity-40 shadow-md"
         >
           {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
         </button>
@@ -170,26 +200,27 @@ export function AudioPlayer({ src, title = "MEETING AUDIO RECORDING PLAYBACK", s
           type="range"
           min={0}
           max={duration || 100}
-          step={0.1}
           value={currentTime}
           onChange={handleSeek}
-          aria-label="Audio playback seek position"
-          className="flex-1 accent-[#49B9AE] bg-[#182124] h-2 rounded cursor-pointer"
+          disabled={!playbackSrc}
+          className="flex-1 h-1.5 bg-[var(--bg)] rounded-lg appearance-none cursor-pointer accent-[var(--teal)]"
         />
 
-        <a
-          href={playbackSrc}
-          download="meeting_recording.wav"
-          aria-label="Download audio recording file"
-          className="p-2 rounded bg-[#182124] border border-[#2B383C] text-[#9a99a0] hover:text-[#49B9AE] transition-all"
+        <button
+          onClick={toggleMute}
+          disabled={!playbackSrc}
+          aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+          className="p-2 text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
         >
-          <Download className="w-4 h-4" />
-        </a>
+          {isMuted ? <VolumeX className="w-4 h-4 text-[var(--red)]" /> : <Volume2 className="w-4 h-4" />}
+        </button>
       </div>
 
+      {/* Audio Warning Alert */}
       {audioError && (
-        <div className="text-[11px] text-[#E2666A] flex items-center gap-1.5 pt-1">
-          <AlertCircle className="w-3.5 h-3.5" /> {audioError}
+        <div className="p-2 rounded bg-[var(--red)]/10 border border-[var(--red)]/40 text-[var(--red)] text-[10px] flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>{audioError}</span>
         </div>
       )}
     </div>

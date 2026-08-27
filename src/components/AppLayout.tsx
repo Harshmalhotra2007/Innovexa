@@ -19,7 +19,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main App Content Viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-[var(--border)] bg-[#141C1F]/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-14 border-b border-[var(--border)] bg-[var(--panel)]/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
             <span className="text-[var(--amber)] font-bold">PREVIEW ENVIRONMENT</span>
             <span>/</span>

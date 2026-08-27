@@ -1,54 +1,51 @@
 "use client";
 
-import React from "react";
-import { CircleCheck, Clock, AlertCircle, Building2 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   AreaChart,
   Area,
   PieChart,
   Pie,
   Cell,
-  Legend,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
+import { TrendingUp, Clock, AlertCircle, PieChart as PieIcon } from "lucide-react";
 
 interface AnalyticsChartsProps {
   trendData: any[];
   deptStats: any[];
-  colors: string[];
 }
 
-export default function AnalyticsCharts({
-  trendData,
-  deptStats,
-  colors,
-}: AnalyticsChartsProps) {
+const COLORS = ["#49B9AE", "#E8A33D", "#E2666A", "#1D4ED8", "#94A3B8"];
+
+export function AnalyticsCharts({ trendData, deptStats }: AnalyticsChartsProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Task Closure Rate (Line Chart) */}
-      <div className="ops-panel p-5 space-y-4">
-        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <CircleCheck size={14} className="text-[#49B9AE]" />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Monthly Task Closure Trend (Line Chart) */}
+      <div className="ops-panel p-5 space-y-4 bg-[var(--panel)] border border-[var(--border)] rounded-xl">
+        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[var(--text)]">
+          <TrendingUp size={14} className="text-[var(--teal)]" />
           <span>Task Closure Rate</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
-              <XAxis dataKey="month" stroke="#8FA0A4" fontSize={10} />
-              <YAxis stroke="#8FA0A4" fontSize={10} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="month" stroke="var(--text-dim)" fontSize={10} />
+              <YAxis stroke="var(--text-dim)" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#182124",
-                  borderColor: "#2A363A",
+                  backgroundColor: "var(--panel-alt)",
+                  borderColor: "var(--border-soft)",
+                  color: "var(--text)",
                   borderRadius: "6px",
                 }}
               />
@@ -57,7 +54,7 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="tasksCreated"
                 name="Created"
-                stroke="#E8A33D"
+                stroke="var(--amber)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
@@ -65,7 +62,7 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="completedTasks"
                 name="Completed"
-                stroke="#49B9AE"
+                stroke="var(--teal)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
@@ -75,33 +72,34 @@ export default function AnalyticsCharts({
       </div>
 
       {/* Decision-to-action lag (Bar Chart) */}
-      <div className="ops-panel p-5 space-y-4">
-        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <Clock size={14} className="text-[#E8A33D]" />
+      <div className="ops-panel p-5 space-y-4 bg-[var(--panel)] border border-[var(--border)] rounded-xl">
+        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[var(--text)]">
+          <Clock size={14} className="text-[var(--amber)]" />
           <span>Decision-to-Action Lag (Days)</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={deptStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="department"
-                stroke="#8FA0A4"
+                stroke="var(--text-dim)"
                 fontSize={10}
                 tickFormatter={(v) => v.split(" ")[0]}
               />
-              <YAxis stroke="#8FA0A4" fontSize={10} />
+              <YAxis stroke="var(--text-dim)" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#182124",
-                  borderColor: "#2A363A",
+                  backgroundColor: "var(--panel-alt)",
+                  borderColor: "var(--border-soft)",
+                  color: "var(--text)",
                   borderRadius: "6px",
                 }}
               />
               <Bar
                 dataKey="avgLag"
                 name="Avg Lag Days"
-                fill="#E8A33D"
+                fill="var(--amber)"
                 radius={[3, 3, 0, 0]}
               />
             </BarChart>
@@ -110,21 +108,22 @@ export default function AnalyticsCharts({
       </div>
 
       {/* Overdue Trend (Area Chart) */}
-      <div className="ops-panel p-5 space-y-4">
-        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <AlertCircle size={14} className="text-[#E2666A]" />
+      <div className="ops-panel p-5 space-y-4 bg-[var(--panel)] border border-[var(--border)] rounded-xl">
+        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[var(--text)]">
+          <AlertCircle size={14} className="text-[var(--red)]" />
           <span>Overdue Task Trend</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#212B2E" />
-              <XAxis dataKey="month" stroke="#8FA0A4" fontSize={10} />
-              <YAxis stroke="#8FA0A4" fontSize={10} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="month" stroke="var(--text-dim)" fontSize={10} />
+              <YAxis stroke="var(--text-dim)" fontSize={10} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#182124",
-                  borderColor: "#2A363A",
+                  backgroundColor: "var(--panel-alt)",
+                  borderColor: "var(--border-soft)",
+                  color: "var(--text)",
                   borderRadius: "6px",
                 }}
               />
@@ -132,50 +131,52 @@ export default function AnalyticsCharts({
                 type="monotone"
                 dataKey="overdueTasks"
                 name="Overdue"
-                stroke="#E2666A"
-                fill="#E2666A"
-                fillOpacity={0.2}
+                stroke="var(--red)"
+                fill="rgba(226, 102, 106, 0.2)"
+                strokeWidth={2}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Meetings per Department (Pie Chart) */}
-      <div className="ops-panel p-5 space-y-4">
-        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[#E7EEEF]">
-          <Building2 size={14} className="text-[#8FA0A4]" />
-          <span>Meetings by Department</span>
+      {/* Task Distribution by Dept (Pie Chart) */}
+      <div className="ops-panel p-5 space-y-4 bg-[var(--panel)] border border-[var(--border)] rounded-xl">
+        <div className="flex items-center gap-2 font-body text-xs font-semibold text-[var(--text)]">
+          <PieIcon size={14} className="text-[var(--teal)]" />
+          <span>Task Volume by Department</span>
         </div>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={deptStats}
-                dataKey="meetings"
+                dataKey="totalTasks"
                 nameKey="department"
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                paddingAngle={2}
+                outerRadius={80}
+                fill="#8884d8"
+                label={({ name, percent }) =>
+                  `${name.split(" ")[0]} (${(percent * 100).toFixed(0)}%)`
+                }
+                labelLine={false}
               >
-                {deptStats.map((entry: any, index: number) => (
+                {deptStats.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={colors[index % colors.length]}
+                    fill={COLORS[index % COLORS.length]}
                   />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#182124",
-                  borderColor: "#2A363A",
+                  backgroundColor: "var(--panel-alt)",
+                  borderColor: "var(--border-soft)",
+                  color: "var(--text)",
                   borderRadius: "6px",
-                  fontSize: "11px",
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: "10px" }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -183,4 +184,3 @@ export default function AnalyticsCharts({
     </div>
   );
 }
-

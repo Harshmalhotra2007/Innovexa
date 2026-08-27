@@ -20,6 +20,8 @@ const filesToUpload = {
   "ScheduleMeetingModal.tsx": path.join(__dirname, "../src/components/ScheduleMeetingModal.tsx"),
   "UpcomingMeetingsView.tsx": path.join(__dirname, "../src/components/UpcomingMeetingsView.tsx"),
   "meeting-scheduler.ts": path.join(__dirname, "../src/lib/meeting-scheduler.ts"),
+  "HostMeetingModal.tsx": path.join(__dirname, "../src/components/HostMeetingModal.tsx"),
+  "host-route.ts": path.join(__dirname, "../src/app/api/meetings/host/route.ts"),
   "ModalPortal.tsx": path.join(__dirname, "../src/components/ui/ModalPortal.tsx"),
   "useScrollLock.ts": path.join(__dirname, "../src/hooks/useScrollLock.ts"),
 };

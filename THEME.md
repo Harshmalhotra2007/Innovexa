@@ -1,27 +1,33 @@
-# Innovexa Theme Guidelines
+# Innovexa Ops Console Theme Specification (Tactical Steel Dark Slate)
 
-## Color Palette: Indigo & Slate Light Theme
+## Color Palette Tokens
 
-- Primary Canvas Background: `#F8FAFC` (Off-White Canvas / Slate-50)
-- Panel & Container Background: `#FFFFFF` (Pure White Card / Panel)
-- Primary Accent: `#1D4ED8` (Deep Indigo)
-- Success / Positive: `#0F9D8C` (Teal)
-- Warnings / Alert: `#EF4444` (Red)
-- Text Primary: `#0F172A` (Slate Dark / Slate-900)
-- Text Secondary: `#64748B` (Slate Muted / Slate-500)
-- Text Faint: `#94A3B8` (Slate Faint / Slate-400)
+- **Primary Canvas Background (`--bg`)**: `#0D1416` (Deep Obsidian Charcoal)
+- **Raised Panel Background (`--bg-raised` / `--panel`)**: `#141C1F` (Tactical Steel Panel)
+- **Secondary Panel Background (`--panel-alt`)**: `#182124` (Subtle Card Surface)
+- **Primary Borders (`--border`)**: `#212B2E` (Steel Grid Border)
+- **Soft Borders (`--border-soft`)**: `#2B383C` (Subtle Dividers)
+- **Primary Accent (`--primary`)**: `#1D4ED8` (Royal Blue / Primary Action)
+- **Primary Hover (`--primary-hover`)**: `#2557E0` (Interactive Hover Accent)
+- **Teal / Resolved (`--teal`)**: `#49B9AE` (Active Indicators & Success)
+- **Amber / Warning (`--amber`)**: `#E8A33D` (Attention Badges & Timers)
+- **Red / Breach (`--red`)**: `#E2666A` (Alert Badges & Errors)
+- **Text Primary (`--text`)**: `#E7EEEF` (Bright Crisp Text)
+- **Text Muted (`--text-dim`)**: `#9A99A0` (Secondary Information)
+- **Text Faint (`--text-faint`)**: `#5B6A6E` (Faint Metadata)
 
-## Component Mapping (Dynamic CSS Variables)
+## Component Mapping Rules
 
-- Agent Cards & Panels: `bg-[var(--panel)] border-[var(--border)] text-[var(--text)]`
-- Status Indicators: `bg-[var(--teal)]` for success/resolved, `bg-[var(--amber)]` for warning/pending, `bg-[var(--red)]` for breach/overdue
-- Buttons: `bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white`
-- Alt Buttons / Tabs: `bg-[var(--panel-alt)] text-[var(--text-dim)] border-[var(--border)]`
-- Charts/Graphs (Recharts): `stroke-[var(--teal)] fill-[var(--teal)]/20`
+- **Console Panels & Containers**: `bg-[var(--panel)] border border-[var(--border)] text-[var(--text)]`
+- **Sub-panels & Controls**: `bg-[var(--panel-alt)] border border-[var(--border-soft)]`
+- **Primary Buttons**: `bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white`
+- **Secondary Buttons**: `bg-[var(--panel-alt)] text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)]`
+- **Success / Status Pills**: `bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30`
+- **Warning Pills**: `bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/30`
+- **Alert Pills**: `bg-[var(--red)]/15 text-[var(--red)] border border-[var(--red)]/30`
 
-## Typography
+## Typography Guidelines
 
-- Headings: Sans-serif, bold, tracking-tight, `text-[var(--text)]`
-- Body: `text-[var(--text-dim)]` with `leading-relaxed`
-- Mono/Data: `font-mono text-[var(--primary)]` or `text-[var(--teal)]`
-
+- **Display & Headings**: `font-display text-[var(--text)] uppercase tracking-wider`
+- **Body & Content**: `font-sans text-[var(--text-dim)] leading-relaxed`
+- **Monospace / System Data**: `font-mono text-xs text-[var(--teal)]` or `text-[var(--amber)]`
