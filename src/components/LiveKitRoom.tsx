@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLiveKitRoom } from "@/hooks/useLiveKitRoom";
 import { useMediaControls } from "@/hooks/useMediaControls";
 import { useWhisperPipeline } from "@/hooks/useWhisperPipeline";
@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Maximize2,
   Minimize2,
+  Loader2,
 } from "lucide-react";
 
 export interface LiveKitRoomProps {
@@ -27,6 +28,7 @@ export interface LiveKitRoomProps {
 export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session", onClose }: LiveKitRoomProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [userName, setUserName] = useState("Operations Lead");
+  const hasAutoStartedRef = useRef<boolean>(false);
 
   useEffect(() => {
     const storedRole = sessionStorage.getItem("userRole");
@@ -51,7 +53,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     participantName: userName,
   });
 
-  // 2. Media Controls State Manager Hook (Owns camera, mic, screen share, and audio analyzer)
+  // 2. Media Controls State Manager Hook (Owns camera, mic, screen share, audio analyzer, and session recording)
   const {
     isMicEnabled,
     isCameraEnabled,
@@ -59,6 +61,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     screenMediaStream,
     recordingDuration,
     isRecording,
+    isUploadingRecording,
     micLevel,
     connectionQuality,
     localMediaStream,
@@ -69,6 +72,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     stopRecording,
   } = useMediaControls({
     room,
+    meetingId,
   });
 
   // 3. Whisper Real-time Transcription Pipeline Hook (Consumes localMediaStream)
@@ -85,6 +89,15 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     mediaStream: localMediaStream,
     speakerHint: userName,
   });
+
+  // Auto start recording & Whisper transcription when joining the meeting
+  useEffect(() => {
+    if (localMediaStream && !hasAutoStartedRef.current) {
+      hasAutoStartedRef.current = true;
+      startRecording();
+      startPipeline();
+    }
+  }, [localMediaStream, startRecording, startPipeline]);
 
   const handleLeaveAndClose = useCallback(async () => {
     stopRecording();
@@ -125,6 +138,18 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30">
                 {isConnected ? "WEBRTC CONNECTED" : isConnecting ? "CONNECTING..." : "STANDBY"}
               </span>
+
+              {isRecording && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[var(--red)]/15 text-[var(--red)] border border-[var(--red)]/30 flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)]" /> AUTO-RECORDING
+                </span>
+              )}
+
+              {isUploadingRecording && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[var(--amber)]/15 text-[var(--amber)] border border-[var(--amber)]/30 flex items-center gap-1">
+                  <Loader2 size={10} className="animate-spin" /> SAVING...
+                </span>
+              )}
             </div>
             <p className="font-mono text-xs text-[var(--text-dim)] mt-0.5">
               Room: <span className="text-[var(--primary)] font-bold">{roomName || `innovexa-meeting-${meetingId}`}</span> • LiveKit SFU WebRTC Engine

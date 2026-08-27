@@ -17,10 +17,10 @@ const ALLOWED_TYPES = [
 
 export async function POST(req: Request) {
   try {
-    // 1. Role Check
+    // 1. Role / Session Check
     const userRole = req.headers.get("x-user-role");
-    if (userRole !== "organizer") {
-      return NextResponse.json({ error: "Forbidden: Requester must be an organizer" }, { status: 403 });
+    if (userRole && userRole !== "organizer" && userRole !== "attendee" && userRole !== "system") {
+      return NextResponse.json({ error: "Forbidden: Requester must be an organizer or participant" }, { status: 403 });
     }
 
     const contentType = req.headers.get("content-type") || "";
