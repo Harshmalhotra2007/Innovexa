@@ -4,11 +4,6 @@ import { useState, useEffect } from "react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
   Calendar,
-  Clock,
-  Video,
-  Users,
-  Building2,
-  FileText,
   X,
   Sparkles,
   Loader2,
@@ -33,7 +28,7 @@ const STANDARD_SLOTS = [
 
 export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMeetingModalProps) {
   const todayStr = new Date().toISOString().split("T")[0];
-  
+
   const [title, setTitle] = useState("");
   const [scheduledDate, setScheduledDate] = useState(todayStr);
   const [availableSlots, setAvailableSlots] = useState<string[]>(STANDARD_SLOTS);
@@ -43,7 +38,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
   const [agenda, setAgenda] = useState("");
   const [objectives, setObjectives] = useState("");
   const [participants, setParticipants] = useState("");
-  const [customMeetLink, setCustomMeetLink] = useState("");
 
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -104,7 +98,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
           agenda,
           objectives,
           participants,
-          googleMeetLink: customMeetLink.trim() || undefined,
         }),
       });
 
@@ -269,20 +262,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
               />
             </div>
-          </div>
-
-          {/* Optional Google Meet Link Input */}
-          <div className="space-y-1">
-            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
-              GOOGLE MEET LINK (OPTIONAL)
-            </label>
-            <input
-              type="url"
-              placeholder="e.g. https://meet.google.com/qfz-imot-oic"
-              value={customMeetLink}
-              onChange={(e) => setCustomMeetLink(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
-            />
           </div>
 
           {/* Agenda & Objectives */}

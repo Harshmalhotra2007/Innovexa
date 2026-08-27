@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import { config } from "@/lib/config";
 import { revalidateTag } from "next/cache";
 
-const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
-
 function extractMeetCode(url: string | null): string | null {
   if (!url) return null;
   const match = url.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);

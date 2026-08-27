@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { generateGoogleMeetLink, startMeetingSchedulerWorker } from "@/lib/meeting-scheduler";
+import { startMeetingSchedulerWorker } from "@/lib/meeting-scheduler";
 import { enqueuePreMeetingReminder } from "@/lib/notification-queue";
 
 export const dynamic = "force-dynamic";

@@ -96,11 +96,11 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)]">
-              <Bot className="w-5 h-5" />
+              <Users className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-display font-bold text-sm tracking-wider text-[var(--text)] uppercase">
-                INNOVEXA AI MEETING ENGINE
+                INNOVEXA NATIVE MEETING
               </h3>
               <p className="font-mono text-[11px] text-[var(--text-dim)] mt-0.5">
                 Meeting ID: <span className="text-[var(--primary)] font-bold">{meetingId}</span>
@@ -160,7 +160,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         <div className="space-y-3 p-4 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
           <div className="flex items-center justify-between">
             <div className="font-mono text-xs text-[var(--primary)] font-bold uppercase flex items-center gap-1.5">
-              <Cpu className="w-4 h-4" /> PRIMARY BOT ACTION FLOW
+              <Cpu className="w-4 h-4" /> PRIMARY MEETING CONTROLS
             </div>
             <button
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
@@ -174,7 +174,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <input
               type="text"
-              placeholder="Enter Google Meet URL (e.g. https://meet.google.com/qfz-imot-oic)"
+              placeholder="Enter custom parameters (optional)"
               value={customMeetUrl}
               onChange={(e) => setCustomMeetUrl(e.target.value)}
               className="flex-1 w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
@@ -185,24 +185,24 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
               className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-              <span>LAUNCH AI MEETING ENGINE</span>
+              <span>MANAGE MEETING SETTINGS</span>
             </button>
           </div>
 
           {/* Expandable Advanced Options Drawer */}
           {showAdvancedOptions && (
             <div className="mt-4 pt-4 border-t border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn">
-              {/* Option 1 Fallback */}
+              {/* Option 1: Local Recording Fallback */}
               <div className="p-3 rounded-lg bg-[var(--panel)] border border-[var(--border)] space-y-2">
                 <div className="font-mono text-[10px] font-bold uppercase text-[var(--teal)] flex items-center gap-1">
-                  <Radio size={12} /> TAB AUDIO RECORDING FALLBACK
+                  <Radio size={12} /> LOCAL AUDIO RECORDING FALLBACK
                 </div>
                 {isTabRecording ? (
                   <button
                     onClick={stopTabAudioCapture}
                     className="w-full py-2 px-3 rounded font-mono text-xs font-bold bg-[var(--red)] text-white hover:bg-[var(--red)]/80 transition-all flex items-center justify-center gap-2 animate-pulse shadow-xs"
                   >
-                    <Square className="w-3.5 h-3.5 fill-current" /> STOP TAB RECORDING ({tabRecordSeconds}s)
+                    <Square className="w-3.5 h-3.5 fill-current" /> STOP LOCAL RECORDING ({tabRecordSeconds}s)
                   </button>
                 ) : (
                   <button
@@ -210,12 +210,12 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                     disabled={agent.status !== "idle" && agent.status !== "completed"}
                     className="w-full py-2 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[var(--teal)] text-white hover:bg-[var(--teal)]/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-xs"
                   >
-                    <Mic className="w-4 h-4" /> START TAB AUDIO RECORDING
+                    <Mic className="w-4 h-4" /> START LOCAL AUDIO RECORDING
                   </button>
                 )}
               </div>
 
-              {/* Quality Profile Selector */}
+              {/* Audio Quality Selector */}
               <div className="p-3 rounded-lg bg-[var(--panel)] border border-[var(--border)] space-y-2">
                 <div className="font-mono text-[10px] font-bold uppercase text-[var(--text-dim)] flex items-center gap-1">
                   <RadioTower size={12} /> SELECT AUDIO QUALITY PROFILE
@@ -243,9 +243,9 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
         {/* Host Admission Required Banner */}
         {(agent.status === "joining" || agent.status === "recording") && (
           <div className="rounded-lg bg-[var(--amber)]/12 border border-[var(--amber)]/40 p-3 text-[var(--amber)] text-xs flex items-center gap-2 font-mono">
-            <Bot className="w-4 h-4 flex-shrink-0 animate-bounce" />
+            <Users className="w-4 h-4" />
             <span>
-              <strong>📢 HOST ADMISSION REQUIRED:</strong> Innovexa Notetaker has been dispatched to your Google Meet room! Switch to your Google Meet tab and click <strong>"Admit"</strong> when the host popup appears.
+              <strong>📢 MEETING ACTIVE:</strong> Your native LiveKit meeting is now active. Participants can join using the meeting details.
             </span>
           </div>
         )}

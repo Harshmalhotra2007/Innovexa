@@ -6,7 +6,7 @@
 import { config } from "@/lib/config";
 
 export async function register() {
-  if (config.nextRuntime === "nodejs" || process.env.NEXT_RUNTIME === "nodejs") {
+  if (config.nextRuntime === "nodejs") {
     const { ensureSeedData } = await import("./lib/seed-data");
     await ensureSeedData();
   }

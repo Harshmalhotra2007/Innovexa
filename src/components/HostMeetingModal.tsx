@@ -2,16 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ModalPortal } from "@/components/ui/ModalPortal";
+import { ModalPortal } from "./ui/ModalPortal";
 import {
   Radio,
-  Video,
-  Sparkles,
   Loader2,
   X,
   AlertCircle,
-  Building2,
-  FileText,
 } from "lucide-react";
 
 interface HostMeetingModalProps {
@@ -24,7 +20,6 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
 
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("Engineering");
-  const [googleMeetLink, setGoogleMeetLink] = useState("");
   const [agenda, setAgenda] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +37,6 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
         body: JSON.stringify({
           title: title.trim() || undefined,
           department,
-          googleMeetLink: googleMeetLink.trim() || undefined,
           agenda: agenda.trim() || undefined,
         }),
       });
@@ -53,9 +47,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
       }
 
       const data = await res.json();
-      setSubmitting(false);
       onClose();
-      // Redirect directly to the live meeting room
       router.push(`/meetings/${data.meetingId}`);
     } catch (err: any) {
       setError(err.message || "Failed to host instant meeting.");
@@ -78,7 +70,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
                 HOST INSTANT AI MEETING
               </h2>
               <p className="font-mono text-[11px] text-[var(--text-dim)]">
-                Starts meeting immediately & dispatches AI Notetaker bot.
+                Starts meeting immediately with native LiveKit video & audio.
               </p>
             </div>
           </div>
@@ -132,20 +124,6 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
             </select>
           </div>
 
-          {/* Google Meet Link */}
-          <div className="space-y-1">
-            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
-              GOOGLE MEET URL (OPTIONAL)
-            </label>
-            <input
-              type="url"
-              placeholder="e.g. https://meet.google.com/qfz-imot-oic"
-              value={googleMeetLink}
-              onChange={(e) => setGoogleMeetLink(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
-            />
-          </div>
-
           {/* Agenda */}
           <div className="space-y-1">
             <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
@@ -175,7 +153,7 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
               className="px-6 py-2.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex items-center gap-2 shadow-sm"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
-              <span>START & LAUNCH AI BOT</span>
+              <span>START & JOIN NATIVE MEETING</span>
             </button>
           </div>
         </form>
