@@ -166,19 +166,19 @@ export default function DecisionsPage() {
     <div className="mx-auto max-w-[860px] space-y-6 py-4">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded bg-[#182124] border border-[#49B9AE] px-4 py-2 text-xs text-[#E7EEEF] shadow-2xl font-mono">
-          <Sparkles size={14} className="text-[#49B9AE]" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded bg-[var(--panel)] border border-[var(--teal)] px-4 py-2 text-xs text-[var(--text)] shadow-2xl font-mono">
+          <Sparkles size={14} className="text-[var(--teal)]" />
           <span>{toast}</span>
         </div>
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#212B2E] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
         <div>
-          <h1 className="font-display text-xl font-bold text-[#E7EEEF] flex items-center gap-2">
-            <GitCommit className="text-[#E8A33D] w-5 h-5" /> Decision History & Audit Trail
+          <h1 className="font-display text-xl font-bold text-[var(--text)] flex items-center gap-2">
+            <GitCommit className="text-[var(--primary)] w-5 h-5" /> Decision History & Audit Trail
           </h1>
-          <p className="text-xs text-[#8FA0A4] mt-0.5">
+          <p className="text-xs text-[var(--text-dim)] mt-0.5">
             Immutable timeline of formal organization decisions, contexts, and engineering rationales.
           </p>
         </div>
@@ -186,7 +186,7 @@ export default function DecisionsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={exportMarkdownLog}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#182124] border border-[#2B383C] text-xs font-mono text-[#8FA0A4] hover:text-[#E7EEEF] hover:border-[#49B9AE] transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--primary)] transition-all"
             title="Export Markdown Log"
           >
             <Download size={13} />
@@ -195,7 +195,7 @@ export default function DecisionsPage() {
 
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-[#E8A33D] text-[#1A1305] text-xs font-bold font-mono hover:bg-[#d8932d] transition-all shadow-md"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-[var(--primary)] text-white text-xs font-bold font-mono hover:bg-[var(--primary-hover)] transition-all shadow-md"
           >
             <Plus size={14} />
             <span>{showAddForm ? "CLOSE FORM" : "LOG DECISION"}</span>
@@ -205,15 +205,15 @@ export default function DecisionsPage() {
 
       {/* Add New Decision Inline Form */}
       {showAddForm && (
-        <div className="ops-panel p-4 space-y-3 border border-[#E8A33D]/40 bg-[#1D272B]">
-          <div className="font-mono text-xs font-bold text-[#E8A33D] uppercase flex items-center gap-1.5">
+        <div className="ops-panel p-4 space-y-3 border border-[var(--primary)]/40 bg-[var(--panel-alt)]">
+          <div className="font-mono text-xs font-bold text-[var(--primary)] uppercase flex items-center gap-1.5">
             <Plus size={14} /> Record Formal Decision
           </div>
 
           <form onSubmit={handleCreateDecision} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1 font-bold">
+                <label className="font-mono text-[10px] text-[var(--text-dim)] uppercase block mb-1 font-bold">
                   DECISION TITLE *
                 </label>
                 <input
@@ -221,12 +221,12 @@ export default function DecisionsPage() {
                   placeholder="e.g. Standardize PostgreSQL Pool Size to 20 Connections"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="ops-input w-full p-2 text-xs text-[#E7EEEF]"
+                  className="ops-input w-full p-2 text-xs text-[var(--text)]"
                 />
               </div>
 
               <div>
-                <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1 font-bold">
+                <label className="font-mono text-[10px] text-[var(--text-dim)] uppercase block mb-1 font-bold">
                   DEPARTMENT
                 </label>
                 <select
@@ -244,7 +244,7 @@ export default function DecisionsPage() {
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+              <label className="font-mono text-[10px] text-[var(--text-dim)] uppercase block mb-1">
                 BACKGROUND CONTEXT
               </label>
               <textarea
@@ -252,12 +252,12 @@ export default function DecisionsPage() {
                 placeholder="Describe the context or problem statement driving this decision..."
                 value={newContext}
                 onChange={(e) => setNewContext(e.target.value)}
-                className="ops-input w-full p-2 text-xs text-[#E7EEEF]"
+                className="ops-input w-full p-2 text-xs text-[var(--text)]"
               />
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-[#8FA0A4] uppercase block mb-1">
+              <label className="font-mono text-[10px] text-[var(--text-dim)] uppercase block mb-1">
                 ENGINEERING RATIONALE
               </label>
               <textarea
@@ -265,7 +265,7 @@ export default function DecisionsPage() {
                 placeholder="Technical justification, benchmark findings, or architectural tradeoff rationale..."
                 value={newRationale}
                 onChange={(e) => setNewRationale(e.target.value)}
-                className="ops-input w-full p-2 text-xs text-[#E7EEEF]"
+                className="ops-input w-full p-2 text-xs text-[var(--text)]"
               />
             </div>
 
@@ -273,7 +273,7 @@ export default function DecisionsPage() {
               <button
                 type="submit"
                 disabled={isSaving || !newTitle.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded bg-[#E8A33D] text-[#1A1305] text-xs font-bold font-mono hover:bg-[#d8932d] disabled:opacity-50 shadow-md"
+                className="flex items-center gap-1.5 px-4 py-2 rounded bg-[var(--primary)] text-white text-xs font-bold font-mono hover:bg-[var(--primary-hover)] disabled:opacity-50 shadow-md"
               >
                 {isSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                 <span>{isSaving ? "Saving..." : "LOG FORMAL DECISION"}</span>
@@ -284,19 +284,19 @@ export default function DecisionsPage() {
       )}
 
       {/* Controls Bar: Search & Department Filter */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-lg bg-[#141C1F] border border-[#212B2E]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
         <div className="sm:col-span-2 relative">
-          <Search size={14} className="absolute left-3 top-2.5 text-[#8FA0A4]" />
+          <Search size={14} className="absolute left-3 top-2.5 text-[var(--text-dim)]" />
           <input
             placeholder="Search decisions, contexts, or rationales..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="ops-input w-full pl-9 pr-3 py-1.5 text-xs text-[#E7EEEF]"
+            className="ops-input w-full pl-9 pr-3 py-1.5 text-xs text-[var(--text)]"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={14} className="text-[#8FA0A4] shrink-0" />
+          <Filter size={14} className="text-[var(--text-dim)] shrink-0" />
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
@@ -313,30 +313,30 @@ export default function DecisionsPage() {
 
       {/* Decision Timeline List */}
       {loading ? (
-        <div className="text-center text-xs text-[#5B6A6E] py-12 font-mono">
+        <div className="text-center text-xs text-[var(--text-faint)] py-12 font-mono">
           Loading decision audit trail...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="ops-panel p-8 text-center text-xs font-mono text-[#8FA0A4] border border-dashed border-[#2B383C]">
+        <div className="ops-panel p-8 text-center text-xs font-mono text-[var(--text-dim)] border border-dashed border-[var(--border)]">
           No recorded decisions match your query.
         </div>
       ) : (
-        <div className="relative border-l border-[#212B2E] ml-3.5 pl-6 space-y-6">
+        <div className="relative border-l border-[var(--border)] ml-3.5 pl-6 space-y-6">
           {filtered.map((dec) => (
             <div key={dec.id} className="relative group">
               {/* Timeline dot */}
-              <div className="absolute -left-[31px] top-4 h-3 w-3 rounded-full border-2 border-[#E8A33D] bg-[#141C1F] group-hover:bg-[#E8A33D] transition-colors" />
+              <div className="absolute -left-[31px] top-4 h-3 w-3 rounded-full border-2 border-[var(--primary)] bg-[var(--bg-raised)] group-hover:bg-[var(--primary)] transition-colors" />
 
-              <div className="ops-panel p-4 space-y-3 border border-[#2B383C] hover:border-[#49B9AE]/50 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-[#212B2E] pb-2.5">
+              <div className="ops-panel p-4 space-y-3 border border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-[var(--border)] pb-2.5">
                   <div>
-                    <h3 className="font-bold text-sm text-[#E7EEEF]">{dec.title}</h3>
+                    <h3 className="font-bold text-sm text-[var(--text)]">{dec.title}</h3>
                     <div className="flex items-center gap-2.5 mt-1 font-mono text-[11px]">
-                      <span className="text-[#49B9AE] flex items-center gap-1">
+                      <span className="text-[var(--teal)] flex items-center gap-1">
                         <Calendar size={11} /> {new Date(dec.createdAt).toLocaleDateString()}
                       </span>
                       <span>•</span>
-                      <span className="text-[#E8A33D] font-semibold">{dec.department}</span>
+                      <span className="text-[var(--primary)] font-semibold">{dec.department}</span>
                     </div>
                   </div>
 
@@ -344,7 +344,7 @@ export default function DecisionsPage() {
                     {dec.meeting && (
                       <Link
                         href={`/meetings/${dec.meeting.id || dec.meetingId}`}
-                        className="text-[#8FA0A4] hover:text-[#E7EEEF] border border-[#2A363A] bg-[#182124] rounded px-2.5 py-1 text-[10px] font-mono flex items-center gap-1 transition-all"
+                        className="text-[var(--text-dim)] hover:text-[var(--text)] border border-[var(--border)] bg-[var(--panel)] rounded px-2.5 py-1 text-[10px] font-mono flex items-center gap-1 transition-all"
                       >
                         <GitCommit size={11} /> Context Meeting
                       </Link>
@@ -352,7 +352,7 @@ export default function DecisionsPage() {
 
                     <button
                       onClick={() => handleDeleteDecision(dec.id, dec.title)}
-                      className="p-1 rounded text-[#8FA0A4] hover:text-[#E2666A] hover:bg-[#2A181A] transition-colors"
+                      className="p-1 rounded text-[var(--text-dim)] hover:text-[var(--red)] hover:bg-[var(--red-dim)] transition-colors"
                       title="Delete Decision"
                       aria-label={`Delete decision ${dec.title}`}
                     >
@@ -361,10 +361,10 @@ export default function DecisionsPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#141C1F] p-3 rounded border border-[#212B2E] space-y-2 text-xs font-sans">
+                <div className="bg-[var(--panel-alt)] p-3 rounded border border-[var(--border)] space-y-2 text-xs font-sans">
                   {dec.context && (
-                    <div className="text-[#C5D0D3] leading-relaxed">
-                      <span className="font-mono text-[10px] uppercase font-bold text-[#8FA0A4] block mb-0.5">
+                    <div className="text-[var(--text-dim)] leading-relaxed">
+                      <span className="font-mono text-[10px] uppercase font-bold text-[var(--text-dim)] block mb-0.5">
                         Context
                       </span>
                       {dec.context}
@@ -372,8 +372,8 @@ export default function DecisionsPage() {
                   )}
 
                   {dec.rationale && (
-                    <div className="text-[#E7EEEF] pt-2 border-t border-[#212B2E] leading-relaxed">
-                      <span className="font-mono text-[10px] uppercase font-bold text-[#E8A33D] block mb-0.5">
+                    <div className="text-[var(--text)] pt-2 border-t border-[var(--border)] leading-relaxed">
+                      <span className="font-mono text-[10px] uppercase font-bold text-[var(--primary)] block mb-0.5">
                         Engineering Rationale
                       </span>
                       {dec.rationale}

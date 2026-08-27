@@ -36,7 +36,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} min-h-screen bg-[#0D1315] text-[#E7EEEF] antialiased selection:bg-[#E8A33D] selection:text-[#1A1305]`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased selection:bg-[var(--primary)] selection:text-white`}>
         <AuthGuard>
           <AppLayout>{children}</AppLayout>
         </AuthGuard>

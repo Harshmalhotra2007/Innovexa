@@ -110,8 +110,8 @@ export default function MeetingDetailPage() {
 
   if (loading) {
     return (
-      <div className="py-20 text-center text-xs font-mono text-[#8FA0A4]">
-        <Loader2 size={18} className="animate-spin text-[#E8A33D] mx-auto mb-2" />
+      <div className="py-20 text-center text-xs font-mono text-[var(--text-dim)]">
+        <Loader2 size={18} className="animate-spin text-[var(--primary)] mx-auto mb-2" />
         Loading meeting workspace...
       </div>
     );
@@ -119,10 +119,10 @@ export default function MeetingDetailPage() {
 
   if (!meeting || meeting.error) {
     return (
-      <div className="py-20 text-center space-y-3 text-xs font-mono text-[#8FA0A4]">
-        <AlertTriangle size={18} className="text-[#E2666A] mx-auto" />
+      <div className="py-20 text-center space-y-3 text-xs font-mono text-[var(--text-dim)]">
+        <AlertTriangle size={18} className="text-[var(--red)] mx-auto" />
         <p>Meeting record not found.</p>
-        <Link href="/meetings" className="text-[#E8A33D] underline">
+        <Link href="/meetings" className="text-[var(--primary)] underline">
           Return to meetings
         </Link>
       </div>
@@ -134,24 +134,24 @@ export default function MeetingDetailPage() {
   return (
     <div className="mx-auto max-w-[840px] space-y-5 py-4">
       {/* Navigation & Header */}
-      <div className="space-y-2 border-b border-[#212B2E] pb-4">
+      <div className="space-y-2 border-b border-[var(--border)] pb-4">
         <Link
           href="/meetings"
-          className="inline-flex items-center gap-1 text-xs font-mono text-[#8FA0A4] hover:text-[#E7EEEF] transition-colors"
+          className="inline-flex items-center gap-1 text-xs font-mono text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
         >
           <ChevronLeft size={14} /> Back to meetings
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <div>
-            <h1 className="font-display text-2xl font-bold text-[#E7EEEF]">{meeting.title}</h1>
-            <div className="flex items-center gap-3 mt-1 font-mono text-xs text-[#8FA0A4] flex-wrap">
+            <h1 className="font-display text-2xl font-bold text-[var(--text)]">{meeting.title}</h1>
+            <div className="flex items-center gap-3 mt-1 font-mono text-xs text-[var(--text-dim)] flex-wrap">
               <span className="flex items-center gap-1">
                 <Clock size={12} />
                 {new Date(meeting.date).toLocaleDateString()}
               </span>
               {meetUrl && (
-                <span className="flex items-center gap-1 text-[#E8A33D] bg-[#231B10] px-2 py-0.5 rounded border border-[#E8A33D]/30">
+                <span className="flex items-center gap-1 text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded border border-[var(--primary)]/30">
                   <Video size={11} /> {meetUrl}
                 </span>
               )}
@@ -161,7 +161,7 @@ export default function MeetingDetailPage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={exportSummary}
-              className="flex items-center gap-1.5 rounded border border-[#2B383C] bg-[#182124] px-3 py-1.5 text-xs font-mono text-[#49B9AE] hover:border-[#49B9AE] transition-colors"
+              className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-mono text-[var(--teal)] hover:border-[var(--teal)] transition-colors"
             >
               <FileText size={13} />
               <span>EXPORT MD</span>
@@ -170,7 +170,7 @@ export default function MeetingDetailPage() {
             {userRole === "organizer" && (
               <button
                 onClick={handleDeleteMeeting}
-                className="p-1.5 rounded border border-[#3A2224] bg-[#221517] text-[#E2666A] hover:bg-[#3A2224] transition-colors"
+                className="p-1.5 rounded border border-[var(--red)]/30 bg-[var(--red-dim)] text-[var(--red)] hover:bg-[var(--red)]/25 transition-colors"
                 title="Delete Meeting"
                 aria-label="Delete meeting"
               >

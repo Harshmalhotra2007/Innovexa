@@ -88,26 +88,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1315] text-[#E7EEEF] flex items-center justify-center p-4 font-body">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex items-center justify-center p-4 font-body">
       <div className="w-full max-w-[420px] space-y-6">
         {/* Brand Title Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#4A3A1E] border border-[#E8A33D] shadow-lg shadow-[#E8A33D]/20 mb-1">
-            <ListChecks size={24} className="text-[#E8A33D]" />
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)] shadow-lg shadow-[var(--primary)]/20 mb-1">
+            <ListChecks size={24} className="text-[var(--primary)]" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-[#E7EEEF] tracking-tight">
-            Inno<span className="text-[#E8A33D]">vexa</span> Ops Console
+          <h1 className="font-display text-2xl font-bold text-[var(--text)] tracking-tight">
+            Inno<span className="text-[var(--primary)]">vexa</span> Ops Console
           </h1>
-          <p className="text-xs text-[#8FA0A4]">
+          <p className="text-xs text-[var(--text-dim)]">
             Meeting Intelligence & Action Tracking System
           </p>
         </div>
 
         {/* Login Panel */}
-        <div className="ops-panel p-6 sm:p-8 space-y-6 shadow-2xl border-[#2A363A]">
+        <div className="ops-panel p-6 sm:p-8 space-y-6 shadow-2xl border-[var(--border)]">
           {/* Role Selection */}
           <div className="space-y-2">
-            <label className="font-mono text-[11px] uppercase tracking-wider text-[#5B6A6E] block">
+            <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-faint)] block">
               SELECT ACCESS ROLE
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -116,13 +116,13 @@ export default function LoginPage() {
                 onClick={() => fillCredentials("organizer")}
                 className={`p-3 text-left rounded-md border transition-all ${
                   role === "organizer"
-                    ? "bg-[#1D272B] border-[#E8A33D] text-[#E7EEEF]"
-                    : "bg-[#141C1F] border-[#2A363A] text-[#8FA0A4] hover:border-[#5B6A6E]"
+                    ? "bg-[var(--panel-alt)] border-[var(--primary)] text-[var(--text)]"
+                    : "bg-[var(--panel)] border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--text-faint)]"
                 }`}
               >
-                <ShieldCheck size={18} className={role === "organizer" ? "text-[#E8A33D]" : "text-[#5B6A6E]"} />
+                <ShieldCheck size={18} className={role === "organizer" ? "text-[var(--primary)]" : "text-[var(--text-faint)]"} />
                 <div className="text-xs font-semibold mt-1.5">Organizer</div>
-                <div className="text-[10px] text-[#5B6A6E] mt-0.5">Full Edit & SLA Access</div>
+                <div className="text-[10px] text-[var(--text-faint)] mt-0.5">Full Edit & SLA Access</div>
               </button>
 
               <button
@@ -130,13 +130,13 @@ export default function LoginPage() {
                 onClick={() => fillCredentials("participant")}
                 className={`p-3 text-left rounded-md border transition-all ${
                   role === "participant"
-                    ? "bg-[#1D272B] border-[#49B9AE] text-[#E7EEEF]"
-                    : "bg-[#141C1F] border-[#2A363A] text-[#8FA0A4] hover:border-[#5B6A6E]"
+                    ? "bg-[var(--panel-alt)] border-[var(--teal)] text-[var(--text)]"
+                    : "bg-[var(--panel)] border-[var(--border)] text-[var(--text-dim)] hover:border-[var(--text-faint)]"
                 }`}
               >
-                <User size={18} className={role === "participant" ? "text-[#49B9AE]" : "text-[#5B6A6E]"} />
+                <User size={18} className={role === "participant" ? "text-[var(--teal)]" : "text-[var(--text-faint)]"} />
                 <div className="text-xs font-semibold mt-1.5">Participant</div>
-                <div className="text-[10px] text-[#5B6A6E] mt-0.5">Read-Only View</div>
+                <div className="text-[10px] text-[var(--text-faint)] mt-0.5">Read-Only View</div>
               </button>
             </div>
           </div>
@@ -144,11 +144,11 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="font-mono text-[11px] uppercase tracking-wider text-[#5B6A6E] block mb-1.5">
+              <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-faint)] block mb-1.5">
                 USERNAME
               </label>
               <div className="relative">
-                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA0A4]" />
+                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" />
                 <input
                   id="username"
                   type="text"
@@ -162,11 +162,11 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="font-mono text-[11px] uppercase tracking-wider text-[#5B6A6E] block mb-1.5">
+              <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-faint)] block mb-1.5">
                 PASSWORD
               </label>
               <div className="relative">
-                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA0A4]" />
+                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" />
                 <input
                   id="password"
                   type="password"
@@ -180,7 +180,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-[#3A2224] border border-[#E2666A] p-3 text-xs text-[#E2666A] flex items-center gap-2">
+              <div className="rounded-md bg-[var(--red-dim)] border border-[var(--red)] p-3 text-xs text-[var(--red)] flex items-center gap-2">
                 <AlertCircle size={14} className="flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -190,21 +190,21 @@ export default function LoginPage() {
               id="login-btn"
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 rounded-md bg-[#E8A33D] text-[#1A1305] font-display text-xs font-bold uppercase tracking-wider hover:bg-[#d8932d] transition-all disabled:opacity-50 shadow-md shadow-[#E8A33D]/20"
+              className="w-full py-2.5 rounded-md bg-[var(--primary)] text-white font-display text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all disabled:opacity-50 shadow-md shadow-[var(--primary)]/20"
             >
               {isLoading ? "AUTHENTICATING..." : "ENTER CONSOLE"}
             </button>
           </form>
 
           {/* Preset Info Footer */}
-          <div className="rounded-md bg-[#141C1F] border border-[#212B2E] p-3 text-[11px] font-mono text-[#5B6A6E] space-y-1">
-            <div className="text-[#8FA0A4] font-semibold">Demo Credentials:</div>
-            <div>Organizer: <span className="text-[#E8A33D]">organizer</span> / <span className="text-[#E8A33D]">admin123</span></div>
-            <div>Participant: <span className="text-[#49B9AE]">participant</span> / <span className="text-[#49B9AE]">user123</span></div>
+          <div className="rounded-md bg-[var(--panel-alt)] border border-[var(--border)] p-3 text-[11px] font-mono text-[var(--text-faint)] space-y-1">
+            <div className="text-[var(--text-dim)] font-semibold">Demo Credentials:</div>
+            <div>Organizer: <span className="text-[var(--primary)]">organizer</span> / <span className="text-[var(--primary)]">admin123</span></div>
+            <div>Participant: <span className="text-[var(--teal)]">participant</span> / <span className="text-[var(--teal)]">user123</span></div>
           </div>
         </div>
 
-        <div className="text-center font-mono text-[10px] text-[#5B6A6E]">
+        <div className="text-center font-mono text-[10px] text-[var(--text-faint)]">
           PU PS 6 — Intelligent Meeting, Decision & Action System
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
   Calendar,
   Clock,
@@ -79,8 +80,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
     fetchSlots();
   }, [isOpen, scheduledDate]);
 
-  if (!isOpen) return null;
-
   const handleCopyLink = () => {
     if (googleMeetLink) {
       navigator.clipboard.writeText(googleMeetLink);
@@ -135,8 +134,8 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
   };
 
   return (
-    <div className="fixed inset-[#000] bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#141C1F] border border-[#212B2E] rounded-xl max-w-2xl w-full p-6 space-y-5 shadow-2xl text-[#e8e1d5] font-sans my-8">
+    <ModalPortal isOpen={isOpen} onClose={onClose} title="Schedule a New Meeting">
+      <div className="bg-[#141C1F] border border-[#212B2E] rounded-xl w-full p-6 space-y-5 shadow-2xl text-[#e8e1d5] font-sans">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#212B2E] pb-4">
           <div className="flex items-center gap-3">
@@ -342,6 +341,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
           </div>
         </form>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

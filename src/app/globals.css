@@ -3,21 +3,31 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0D1315;
-  --bg-raised: #141C1F;
-  --panel: #182124;
-  --panel-alt: #1D272B;
-  --border: #2A363A;
-  --border-soft: #212B2E;
-  --text: #E7EEEF;
-  --text-dim: #8FA0A4;
-  --text-faint: #5B6A6E;
-  --amber: #E8A33D;
-  --amber-dim: #4A3A1E;
-  --teal: #49B9AE;
-  --teal-dim: #1B3634;
-  --red: #E2666A;
-  --red-dim: #3A2224;
+  --bg: #F8FAFC;
+  --bg-raised: #FFFFFF;
+  --panel: #FFFFFF;
+  --panel-alt: #F1F5F9;
+  --border: #E2E8F0;
+  --border-soft: #F1F5F9;
+  --text: #0F172A;
+  --text-dim: #64748B;
+  --text-faint: #94A3B8;
+  
+  --primary: #1D4ED8;
+  --primary-hover: #2A3EB1;
+  
+  --teal: #0F9D8C;
+  --teal-dim: #E6F6F4;
+  
+  --green: #22C55E;
+  --green-dim: #DCFCE7;
+  
+  --amber: #F59E0B;
+  --amber-dim: #FEF3C7;
+  
+  --red: #EF4444;
+  --red-dim: #FEE2E2;
+
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-display: var(--font-display), 'Segoe UI', sans-serif;
   --font-body: var(--font-body), 'Segoe UI', sans-serif;
@@ -118,35 +128,35 @@ code, pre, .font-mono, .badge-mono {
   letter-spacing: 0.5px;
   padding: 6px 12px;
   border-radius: 4px;
-  border: 1px solid #ff00aa;
+  border: 1px solid var(--primary);
   background: transparent;
-  color: #ff00aa;
+  color: var(--primary);
   transition: all 0.2s ease;
   cursor: pointer;
   outline: none;
 }
 
 .cyberpunk-btn:hover, .cyberpunk-btn:focus {
-  background: #ff00aa;
+  background: var(--primary);
   color: #ffffff;
-  box-shadow: 0 0 10px #ff00aa;
+  box-shadow: 0 0 10px rgba(29, 78, 216, 0.3);
 }
 
 .cyberpunk-btn.delete-btn {
-  border: 1px solid #ff00aa;
-  color: #ff00aa;
+  border: 1px solid var(--red);
+  color: var(--red);
 }
 
 .cyberpunk-btn.delete-btn:hover, .cyberpunk-btn.delete-btn:focus {
-  background: #ff00aa;
+  background: var(--red);
   color: #ffffff;
-  box-shadow: 0 0 12px #ff00aa;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
 
 .cyberpunk-select {
-  background: #141C1F;
-  border: 1px solid #49B9AE;
-  color: #49B9AE;
+  background: var(--bg-raised);
+  border: 1px solid var(--teal);
+  color: var(--teal);
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 4px 8px;
@@ -157,11 +167,11 @@ code, pre, .font-mono, .badge-mono {
 }
 
 .cyberpunk-select:hover, .cyberpunk-select:focus {
-  box-shadow: 0 0 8px #49B9AE;
+  box-shadow: 0 0 8px rgba(15, 157, 140, 0.3);
 }
 
 .cyberpunk-select option {
-  background: #141c1f;
+  background: var(--bg-raised);
   color: var(--text);
 }
 
