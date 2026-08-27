@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const { title, department, agenda } = body;
 
-    const meetingTitle = title || `Instant AI Meeting (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+    const meetingTitle = title || `Instant AI Meeting (${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`;
     const meetingDepartment = department || "Engineering";
     const meetingAgenda = agenda || "Instant AI Notetaker session launched by user.";
 
@@ -24,38 +24,52 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2. Create LiveKit room and start recording (if LiveKit is configured)
-    let token: string | undefined;
-    let roomName: string | undefined;
+    const roomName = `innovexa-meeting-${meeting.id}`;
 
-    if (config.isLiveKitConfigured) {
-      roomName = `innovexa-meeting-${meeting.id}`;
-      token = await generateLiveKitToken({
+    // 2. Always create/upsert LiveKit room record in database
+    await db.liveKitRoom.upsert({
+      where: { meetingId: meeting.id },
+      update: {
+        status: "active",
         roomName,
-        participantName: "Lead Organizer",
-        participantIdentity: `host-${meeting.id}`,
-        isPublisher: true,
-      });
+        closedAt: null,
+      },
+      create: {
+        meetingId: meeting.id,
+        roomName,
+        status: "active",
+      },
+    });
 
-      // Upsert LiveKit room record
-      await db.liveKitRoom.upsert({
-        where: { meetingId: meeting.id },
-        update: {
-          status: "active",
-          roomName,
-          closedAt: null,
-        },
-        create: {
-          meetingId: meeting.id,
-          roomName,
-          status: "active",
-        },
-      });
+    // 3. Initialize AI Agent record for immediate transcription & insights
+    await db.aIAgent.upsert({
+      where: { meetingId: meeting.id },
+      update: { status: "recording" },
+      create: {
+        meetingId: meeting.id,
+        status: "recording",
+        transcript: [],
+      },
+    }).catch(() => {});
 
-      // Start egress recording asynchronously
-      startRoomEgress(roomName, meeting.id).catch((err) =>
-        console.warn(`[POST /api/meetings/host] Async egress start failed for ${meeting.id}:`, err)
-      );
+    // 4. Generate LiveKit token if configured
+    let token: string | undefined;
+    if (config.isLiveKitConfigured) {
+      try {
+        token = await generateLiveKitToken({
+          roomName,
+          participantName: "Lead Organizer",
+          participantIdentity: `host-${meeting.id}`,
+          isPublisher: true,
+        });
+
+        // Start egress recording asynchronously
+        startRoomEgress(roomName, meeting.id).catch((err) =>
+          console.warn(`[POST /api/meetings/host] Async egress start failed for ${meeting.id}:`, err)
+        );
+      } catch (tokenErr) {
+        console.warn("[POST /api/meetings/host] LiveKit token generation note:", tokenErr);
+      }
     }
 
     return NextResponse.json({
