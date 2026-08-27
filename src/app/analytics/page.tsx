@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 // Dynamically import heavy Recharts component with ssr: false
-const AnalyticsCharts = dynamic(() => import("@/components/AnalyticsCharts"), {
+const AnalyticsCharts = dynamic(() => import("@/components/AnalyticsCharts").then(mod => mod.AnalyticsCharts), {
   ssr: false,
   loading: () => (
     <div className="h-64 flex items-center justify-center text-xs text-[var(--text-dim)] font-mono">
