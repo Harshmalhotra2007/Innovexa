@@ -1,28 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import { Sidebar } from "./Sidebar";
+import { HostMeetingModal } from "./HostMeetingModal";
+import { Radio } from "lucide-react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const [isHostModalOpen, setIsHostModalOpen] = useState(false);
+
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans antialiased">
       {/* Persistent Left Sidebar */}
-      <Sidebar />
+      <Sidebar onHostClick={() => setIsHostModalOpen(true)} />
 
       {/* Main App Content Viewport */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-[var(--border)] bg-[var(--bg-raised)]/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-14 border-b border-[var(--border)] bg-[#141C1F]/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-2 font-mono text-xs text-[var(--text-dim)]">
-            <span className="text-[var(--primary)] font-bold">PREVIEW ENVIRONMENT</span>
+            <span className="text-[var(--amber)] font-bold">PREVIEW ENVIRONMENT</span>
             <span>/</span>
             <span className="text-[var(--text)]">Innovexa Ops Console</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="px-2.5 py-0.5 rounded font-mono text-[10px] uppercase font-bold bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30">
+            <button
+              onClick={() => setIsHostModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-md shadow-[var(--primary)]/20 flex items-center gap-1.5"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>HOST MEETING</span>
+            </button>
+
+            <span className="px-2.5 py-0.5 rounded font-mono text-[10px] uppercase font-bold bg-[var(--teal)]/15 text-[var(--teal)] border border-[var(--teal)]/30 hidden sm:inline-block">
               STAGING PREVIEW
             </span>
           </div>
@@ -32,6 +45,12 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Host Meeting Modal */}
+      <HostMeetingModal
+        isOpen={isHostModalOpen}
+        onClose={() => setIsHostModalOpen(false)}
+      />
     </div>
   );
 }
