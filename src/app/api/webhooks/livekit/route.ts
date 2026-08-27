@@ -79,13 +79,14 @@ export async function POST(request: NextRequest) {
       if (fileInfo && fileInfo.url) {
         const recordingUrl = fileInfo.url;
 
-        // Update the meeting with the recording URL
-        await db.meeting.update({
-          where: { id: meetingId },
+        // Create a Recording record for this meeting
+        await db.recording.create({
           data: {
-            recordingUrl,
-            // Optionally update status to indicate recording is ready
-            // status: "recording_available"
+            meetingId,
+            url: recordingUrl,
+            duration: fileInfo.duration || 0,
+            size: fileInfo.size || 0,
+            format: "video/mp4",
           }
         });
 
