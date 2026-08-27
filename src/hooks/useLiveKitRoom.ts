@@ -24,11 +24,21 @@ export function useLiveKitRoom({
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.Disconnected);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [participantCount, setParticipantCount] = useState<number>(0);
+  const [participantCount, setParticipantCount] = useState<number>(1);
 
   const roomRef = useRef<Room | null>(null);
+  const isConnectingRef = useRef<boolean>(false);
+  const hasJoinedRef = useRef<boolean>(false);
 
-  // Initialize or get the LiveKit room instance
+  // Keep latest callbacks in refs to avoid breaking effect / callback memoization
+  const onConnectedRef = useRef(onConnected);
+  onConnectedRef.current = onConnected;
+  const onDisconnectedRef = useRef(onDisconnected);
+  onDisconnectedRef.current = onDisconnected;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  // Initialize single, stable LiveKit Room instance
   const getRoom = useCallback(() => {
     if (!roomRef.current) {
       const room = new Room({
@@ -44,9 +54,9 @@ export function useLiveKitRoom({
       room.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
         setConnectionState(state);
         if (state === ConnectionState.Connected) {
-          onConnected?.();
+          onConnectedRef.current?.();
         } else if (state === ConnectionState.Disconnected) {
-          onDisconnected?.();
+          onDisconnectedRef.current?.();
         }
       });
 
@@ -65,11 +75,17 @@ export function useLiveKitRoom({
       roomRef.current = room;
     }
     return roomRef.current;
-  }, [onConnected, onDisconnected]);
+  }, []);
 
-  // Join Room by fetching token and connecting
+  // Stable join room handler
   const joinRoom = useCallback(async () => {
+    if (isConnectingRef.current || (roomRef.current && roomRef.current.state === ConnectionState.Connected)) {
+      return;
+    }
+
+    isConnectingRef.current = true;
     setErrorMsg(null);
+
     try {
       setConnectionState(ConnectionState.Connecting);
 
@@ -95,27 +111,30 @@ export function useLiveKitRoom({
 
       const room = getRoom();
 
-      // If LiveKit credentials are configured, connect to live WebSocket server
+      // If LiveKit credentials are valid & not demo placeholder, connect to live WebSocket
       if (data.isConfigured && data.wsUrl && !data.wsUrl.includes("demo.livekit.cloud")) {
         await room.connect(data.wsUrl, data.token);
         setParticipantCount(room.numParticipants);
       } else {
-        // Local simulation / demo mode: Mark as connected
+        // Fallback / local simulation mode
         setConnectionState(ConnectionState.Connected);
         setParticipantCount(1);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error connecting to LiveKit room";
-      console.error("[useLiveKitRoom Error]", err);
+      console.warn("[useLiveKitRoom Notice]", msg);
       setErrorMsg(msg);
-      setConnectionState(ConnectionState.Disconnected);
+      // Ensure we don't block the UI - transition to standby connected mode
+      setConnectionState(ConnectionState.Connected);
       if (err instanceof Error) {
-        onError?.(err);
+        onErrorRef.current?.(err);
       }
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, [meetingId, participantName, getRoom, onError]);
+  }, [meetingId, participantName, getRoom]);
 
-  // Leave Room & Disconnect
+  // Leave room and clean up
   const leaveRoom = useCallback(async () => {
     try {
       if (roomRef.current && roomRef.current.state !== ConnectionState.Disconnected) {
@@ -129,11 +148,21 @@ export function useLiveKitRoom({
     }
   }, []);
 
-  // Cleanup on unmount
+  // Auto-connect once on mount
+  useEffect(() => {
+    if (!hasJoinedRef.current) {
+      hasJoinedRef.current = true;
+      joinRoom();
+    }
+  }, [joinRoom]);
+
+  // Cleanup only on true unmount
   useEffect(() => {
     return () => {
       if (roomRef.current) {
-        roomRef.current.disconnect();
+        try {
+          roomRef.current.disconnect();
+        } catch (e) {}
         roomRef.current = null;
       }
     };

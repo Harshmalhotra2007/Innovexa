@@ -27,10 +27,18 @@ export function useMediaControls({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInitMediaRef = useRef<boolean>(false);
+
+  // Store callbacks in refs
+  const onRecordingStartRef = useRef(onRecordingStart);
+  onRecordingStartRef.current = onRecordingStart;
+  const onRecordingStopRef = useRef(onRecordingStop);
+  onRecordingStopRef.current = onRecordingStop;
 
   // Initialize local audio level monitoring for real-time VU meter
   const startAudioAnalyser = useCallback((stream: MediaStream) => {
     try {
+      if (typeof window === "undefined") return;
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
 
@@ -80,21 +88,44 @@ export function useMediaControls({
     setMicLevel(0);
   }, []);
 
-  // Request initial local user media for camera & mic
+  // Request initial local user media for camera & mic with fallback
   const initLocalMedia = useCallback(async () => {
     try {
-      if (navigator?.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
-        mediaStreamRef.current = stream;
-        startAudioAnalyser(stream);
-        setIsMicEnabled(true);
-        setIsCameraEnabled(true);
+      if (typeof window !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+            },
+          });
+        } catch (videoErr) {
+          console.warn("[Local Media Init] Video+Audio failed, trying audio-only:", videoErr);
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+              },
+            });
+            setIsCameraEnabled(false);
+          } catch (audioErr) {
+            console.warn("[Local Media Init] Audio-only also unavailable:", audioErr);
+            setIsMicEnabled(false);
+            setIsCameraEnabled(false);
+          }
+        }
+
+        if (stream) {
+          mediaStreamRef.current = stream;
+          startAudioAnalyser(stream);
+          setIsMicEnabled(true);
+          if (stream.getVideoTracks().length > 0) {
+            setIsCameraEnabled(true);
+          }
+        }
       }
     } catch (err) {
       console.warn("[Local Media Init Note]", err);
@@ -103,91 +134,74 @@ export function useMediaControls({
 
   // Toggle Microphone
   const toggleMic = useCallback(async () => {
-    const nextState = !isMicEnabled;
-    setIsMicEnabled(nextState);
-
-    // If connected to LiveKit room
-    if (room?.localParticipant) {
-      try {
-        await room.localParticipant.setMicrophoneEnabled(nextState);
-      } catch (err) {
-        console.warn("[LiveKit setMicrophoneEnabled Note]", err);
+    setIsMicEnabled((prev) => {
+      const nextState = !prev;
+      if (room?.localParticipant) {
+        room.localParticipant.setMicrophoneEnabled(nextState).catch(() => {});
       }
-    }
-
-    // Toggle local stream tracks
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = nextState;
-      });
-      if (!nextState) {
-        setMicLevel(0);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getAudioTracks().forEach((track) => {
+          track.enabled = nextState;
+        });
+        if (!nextState) setMicLevel(0);
       }
-    }
-  }, [isMicEnabled, room]);
+      return nextState;
+    });
+  }, [room]);
 
   // Toggle Camera
   const toggleCamera = useCallback(async () => {
-    const nextState = !isCameraEnabled;
-    setIsCameraEnabled(nextState);
-
-    // If connected to LiveKit room
-    if (room?.localParticipant) {
-      try {
-        await room.localParticipant.setCameraEnabled(nextState);
-      } catch (err) {
-        console.warn("[LiveKit setCameraEnabled Note]", err);
+    setIsCameraEnabled((prev) => {
+      const nextState = !prev;
+      if (room?.localParticipant) {
+        room.localParticipant.setCameraEnabled(nextState).catch(() => {});
       }
-    }
-
-    // Toggle local stream tracks
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getVideoTracks().forEach((track) => {
-        track.enabled = nextState;
-      });
-    }
-  }, [isCameraEnabled, room]);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getVideoTracks().forEach((track) => {
+          track.enabled = nextState;
+        });
+      }
+      return nextState;
+    });
+  }, [room]);
 
   // Toggle Screen Share
   const toggleScreenShare = useCallback(async () => {
-    const nextState = !isScreenSharing;
-
-    if (room?.localParticipant) {
-      try {
-        await room.localParticipant.setScreenShareEnabled(nextState);
-        setIsScreenSharing(nextState);
-      } catch (err) {
-        console.warn("[LiveKit setScreenShareEnabled Note]", err);
-      }
-    } else {
-      // Local fallback screen capture
-      if (nextState) {
-        try {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          screenStream.getVideoTracks()[0].onended = () => {
-            setIsScreenSharing(false);
-          };
-          setIsScreenSharing(true);
-        } catch {
-          setIsScreenSharing(false);
-        }
+    setIsScreenSharing((prev) => {
+      const nextState = !prev;
+      if (room?.localParticipant) {
+        room.localParticipant.setScreenShareEnabled(nextState).catch(() => {});
+        return nextState;
       } else {
-        setIsScreenSharing(false);
+        if (nextState && typeof navigator !== "undefined" && navigator.mediaDevices?.getDisplayMedia) {
+          navigator.mediaDevices
+            .getDisplayMedia({ video: true })
+            .then((screenStream) => {
+              screenStream.getVideoTracks()[0].onended = () => {
+                setIsScreenSharing(false);
+              };
+            })
+            .catch(() => {
+              setIsScreenSharing(false);
+            });
+          return true;
+        }
+        return false;
       }
-    }
-  }, [isScreenSharing, room]);
+    });
+  }, [room]);
 
   // Start In-Meeting Audio Recording
   const startRecording = useCallback(() => {
     setIsRecording(true);
     setRecordingDuration(0);
-    onRecordingStart?.();
+    onRecordingStartRef.current?.();
 
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
     recordTimerRef.current = setInterval(() => {
       setRecordingDuration((prev) => prev + 1);
     }, 1000);
-  }, [onRecordingStart]);
+  }, []);
 
   // Stop In-Meeting Audio Recording
   const stopRecording = useCallback(() => {
@@ -196,17 +210,22 @@ export function useMediaControls({
       clearInterval(recordTimerRef.current);
       recordTimerRef.current = null;
     }
-    onRecordingStop?.();
-  }, [onRecordingStop]);
+    onRecordingStopRef.current?.();
+  }, []);
 
-  // Auto initialize local media stream on mount
+  // Auto initialize local media stream only once on mount
   useEffect(() => {
-    initLocalMedia();
+    if (!hasInitMediaRef.current) {
+      hasInitMediaRef.current = true;
+      initLocalMedia();
+    }
 
     return () => {
       stopAudioAnalyser();
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        try {
+          mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        } catch (e) {}
         mediaStreamRef.current = null;
       }
       if (recordTimerRef.current) {

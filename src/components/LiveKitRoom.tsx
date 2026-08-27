@@ -13,7 +13,6 @@ import {
   Sparkles,
   Users,
   Shield,
-  Loader2,
   AlertCircle,
   Maximize2,
   Minimize2,
@@ -36,7 +35,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     }
   }, []);
 
-  // 1. LiveKit Room Connection Hook
+  // 1. Stable LiveKit Room Connection Hook
   const {
     room,
     token,
@@ -46,14 +45,13 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     isConfigured,
     errorMsg: roomError,
     participantCount,
-    joinRoom,
     leaveRoom,
   } = useLiveKitRoom({
     meetingId,
     participantName: userName,
   });
 
-  // 2. Tactical Media Controls State Manager Hook
+  // 2. Media Controls State Manager Hook (Owns camera, mic, screen share, and audio analyzer)
   const {
     isMicEnabled,
     isCameraEnabled,
@@ -70,15 +68,9 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     stopRecording,
   } = useMediaControls({
     room,
-    onRecordingStart: () => {
-      startPipeline();
-    },
-    onRecordingStop: () => {
-      stopPipeline();
-    },
   });
 
-  // 3. Whisper Real-time Transcription Pipeline Hook
+  // 3. Whisper Real-time Transcription Pipeline Hook (Consumes localMediaStream)
   const {
     segments,
     isTranscribing,
@@ -93,11 +85,6 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     speakerHint: userName,
   });
 
-  // Auto join room on mount
-  useEffect(() => {
-    joinRoom();
-  }, [joinRoom]);
-
   const handleLeaveAndClose = useCallback(async () => {
     stopRecording();
     stopPipeline();
@@ -105,13 +92,15 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     onClose?.();
   }, [stopRecording, stopPipeline, leaveRoom, onClose]);
 
-  const handleToggleRecording = () => {
+  const handleToggleRecording = useCallback(() => {
     if (isRecording) {
       stopRecording();
+      stopPipeline();
     } else {
       startRecording();
+      startPipeline();
     }
-  };
+  }, [isRecording, startRecording, stopRecording, startPipeline, stopPipeline]);
 
   return (
     <div

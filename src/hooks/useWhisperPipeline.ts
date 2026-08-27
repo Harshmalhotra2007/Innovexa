@@ -35,6 +35,9 @@ export function useWhisperPipeline({
   const chunkIndexRef = useRef<number>(0);
   const isPipelineActiveRef = useRef<boolean>(false);
 
+  const onSegmentReceivedRef = useRef(onSegmentReceived);
+  onSegmentReceivedRef.current = onSegmentReceived;
+
   // Send an audio blob chunk to the Whisper API route
   const sendChunkToWhisper = useCallback(
     async (blob: Blob, index: number) => {
@@ -57,7 +60,7 @@ export function useWhisperPipeline({
           if (data.segment) {
             setSegments((prev) => [...prev, data.segment]);
             setChunksTranscribed((prev) => prev + 1);
-            onSegmentReceived?.(data.segment);
+            onSegmentReceivedRef.current?.(data.segment);
           }
         } else {
           console.warn(`[Whisper Pipeline] Chunk #${index} received non-200 status`);
@@ -67,7 +70,7 @@ export function useWhisperPipeline({
         setLastError(err instanceof Error ? err.message : "Error dispatching audio chunk");
       }
     },
-    [meetingId, speakerHint, onSegmentReceived]
+    [meetingId, speakerHint]
   );
 
   // Start real-time audio chunk recording and transcription
@@ -75,7 +78,7 @@ export function useWhisperPipeline({
     if (isPipelineActiveRef.current) return;
     setLastError(null);
 
-    let stream = mediaStream;
+    const stream = mediaStream;
     if (!stream) {
       console.warn("[Whisper Pipeline] No MediaStream provided yet to record");
       return;
