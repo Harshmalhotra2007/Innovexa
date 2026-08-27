@@ -39,10 +39,10 @@ export async function POST(req: Request) {
       targetDateTime.setHours(hours, mins, 0, 0);
     }
 
-    // Generate valid Google Meet Link if not provided
+    // Use user-provided Google Meet Link or store null
     const googleMeetLink = customMeetLink && customMeetLink.includes("meet.google.com")
       ? customMeetLink
-      : generateGoogleMeetLink();
+      : null;
 
     // Create Meeting record in database
     const meeting = await db.meeting.create({
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         durationMinutes,
         googleMeetLink,
         department,
-        agenda: agenda || `Google Meet Room: ${googleMeetLink}`,
+        agenda: agenda || undefined,
         objectives,
         participants,
         recurring,

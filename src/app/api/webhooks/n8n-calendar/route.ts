@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     const googleMeetLink = meetingUrl && meetingUrl.includes("meet.google.com")
       ? meetingUrl
-      : generateGoogleMeetLink();
+      : null;
 
     const participantsList = Array.isArray(attendees)
       ? attendees.map((a: any) => (typeof a === "string" ? a : a.email)).filter(Boolean).join(", ")

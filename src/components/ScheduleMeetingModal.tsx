@@ -12,10 +12,7 @@ import {
   X,
   Sparkles,
   Loader2,
-  CheckCircle2,
   AlertCircle,
-  Copy,
-  Check,
 } from "lucide-react";
 
 interface ScheduleMeetingModalProps {
@@ -24,69 +21,31 @@ interface ScheduleMeetingModalProps {
   onSuccess?: () => void;
 }
 
+const STANDARD_SLOTS = [
+  "09:00 AM",
+  "10:00 AM",
+  "11:30 AM",
+  "01:30 PM",
+  "03:00 PM",
+  "04:30 PM",
+  "05:30 PM",
+];
+
 export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMeetingModalProps) {
   const todayStr = new Date().toISOString().split("T")[0];
   
   const [title, setTitle] = useState("");
   const [scheduledDate, setScheduledDate] = useState(todayStr);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("09:00");
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [department, setDepartment] = useState("Engineering");
   const [agenda, setAgenda] = useState("");
   const [objectives, setObjectives] = useState("");
   const [participants, setParticipants] = useState("");
-  const [googleMeetLink, setGoogleMeetLink] = useState("");
+  const [customMeetLink, setCustomMeetLink] = useState("");
 
-  const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  // Generate instant client preview Google Meet link upon modal opening
-  useEffect(() => {
-    if (isOpen && !googleMeetLink) {
-      const chars = "abcdefghijklmnopqrstuvwxyz";
-      const p1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      const p3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      setGoogleMeetLink(`https://meet.google.com/${p1}-${p2}-${p3}`);
-    }
-  }, [isOpen, googleMeetLink]);
-
-  // Fetch available slots whenever scheduledDate changes
-  useEffect(() => {
-    if (!isOpen || !scheduledDate) return;
-    async function fetchSlots() {
-      setLoadingSlots(true);
-      try {
-        const res = await fetch(`/api/meetings/available-slots?date=${scheduledDate}`);
-        if (res.ok) {
-          const data = await res.json();
-          setAvailableSlots(data.availableSlots || []);
-          if (data.availableSlots && data.availableSlots.length > 0) {
-            setSelectedSlot(data.availableSlots[0]);
-          } else {
-            setSelectedSlot("");
-          }
-        }
-      } catch (err) {
-        console.warn("Error fetching available slots:", err);
-      } finally {
-        setLoadingSlots(false);
-      }
-    }
-
-    fetchSlots();
-  }, [isOpen, scheduledDate]);
-
-  const handleCopyLink = () => {
-    if (googleMeetLink) {
-      navigator.clipboard.writeText(googleMeetLink);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,13 +53,20 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
       setError("Please enter a meeting title.");
       return;
     }
-    if (!selectedSlot) {
-      setError("Please select an available time slot.");
-      return;
-    }
 
     setError(null);
     setSubmitting(true);
+
+    // Format HH:MM 24h into HH:MM AM/PM expected by the backend
+    const [hours, mins] = scheduledTime.split(":").map((n) => parseInt(n, 10));
+    let period = "AM";
+    let displayHours = hours;
+    if (hours >= 12) {
+      period = "PM";
+      if (hours > 12) displayHours -= 12;
+    }
+    if (hours === 0) displayHours = 12;
+    const formattedSlot = `${displayHours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${period}`;
 
     try {
       const res = await fetch("/api/meetings/schedule", {
@@ -109,13 +75,13 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
         body: JSON.stringify({
           title,
           scheduledDate,
-          timeSlot: selectedSlot,
+          timeSlot: formattedSlot,
           durationMinutes,
           department,
           agenda,
           objectives,
           participants,
-          googleMeetLink,
+          googleMeetLink: customMeetLink.trim() || undefined,
         }),
       });
 
@@ -147,7 +113,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 SCHEDULE A NEW AI MEETING
               </h2>
               <p className="font-mono text-[11px] text-[var(--text-dim)]">
-                Auto-generates Google Meet URL & registers AI Notetaker for scheduled join.
+                Pick date & time slot to schedule AI Notetaker meeting slot.
               </p>
             </div>
           </div>
@@ -184,7 +150,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
             />
           </div>
 
-          {/* Date & Duration Grid */}
+          {/* Date & Time Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Scheduled Date */}
             <div className="space-y-1">
@@ -201,6 +167,23 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
               />
             </div>
 
+            {/* Scheduled Time */}
+            <div className="space-y-1">
+              <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
+                MEETING TIME <span className="text-[var(--red)]">*</span>
+              </label>
+              <input
+                type="time"
+                required
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+          </div>
+
+          {/* Duration & Department Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Duration Selector */}
             <div className="space-y-1">
               <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
@@ -223,40 +206,8 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Time Slot Selection */}
-          <div className="space-y-1.5 p-3 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
-            <label className="text-[var(--teal)] font-bold uppercase tracking-wider flex items-center justify-between">
-              <span>AVAILABLE TIME SLOTS ({scheduledDate})</span>
-              {loadingSlots && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--teal)]" />}
-            </label>
-            {availableSlots.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {availableSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`px-3 py-1.5 rounded font-bold transition-all ${
-                      selectedSlot === slot
-                        ? "bg-[var(--teal)] text-[#0D1A18] border border-[var(--teal)] shadow-md shadow-[var(--teal)]/20"
-                        : "bg-[var(--panel)] text-[var(--text-dim)] border border-[var(--border)] hover:text-[var(--text)]"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="text-[11px] text-[var(--text-faint)] py-2">
-                {loadingSlots ? "Querying available slots..." : "No available slots on this date. Select another date."}
-              </div>
-            )}
-          </div>
-
-          {/* Department & Participants */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Department */}
             <div className="space-y-1">
               <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
                 DEPARTMENT / TEAM
@@ -273,19 +224,34 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
                 <option value="Sales">Sales</option>
               </select>
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
-                PARTICIPANT EMAILS
-              </label>
-              <input
-                type="text"
-                placeholder="alice@innovexa.com, bob@innovexa.com"
-                value={participants}
-                onChange={(e) => setParticipants(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
-              />
-            </div>
+          {/* Participant Emails */}
+          <div className="space-y-1">
+            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
+              PARTICIPANT EMAILS
+            </label>
+            <input
+              type="text"
+              placeholder="alice@innovexa.com, bob@innovexa.com"
+              value={participants}
+              onChange={(e) => setParticipants(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
+            />
+          </div>
+
+          {/* Optional Google Meet Link Input */}
+          <div className="space-y-1">
+            <label className="text-[var(--text-dim)] font-bold uppercase tracking-wider block">
+              GOOGLE MEET LINK (OPTIONAL)
+            </label>
+            <input
+              type="url"
+              placeholder="e.g. https://meet.google.com/qfz-imot-oic"
+              value={customMeetLink}
+              onChange={(e) => setCustomMeetLink(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
+            />
           </div>
 
           {/* Agenda & Objectives */}
@@ -300,25 +266,6 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
               onChange={(e) => setAgenda(e.target.value)}
               className="w-full px-3.5 py-2 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
             />
-          </div>
-
-          {/* Auto-Generated Google Meet URL Preview */}
-          <div className="p-3 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] space-y-1">
-            <div className="text-[10px] text-[var(--teal)] font-bold uppercase tracking-wider flex items-center justify-between">
-              <span>AUTO-GENERATED GOOGLE MEET URL</span>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="text-xs text-[var(--text-dim)] hover:text-[var(--teal)] flex items-center gap-1"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-[var(--teal)]" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? "COPIED" : "COPY"}</span>
-              </button>
-            </div>
-            <div className="text-xs text-[var(--amber)] font-bold truncate flex items-center gap-1.5 font-mono">
-              <Video className="w-4 h-4 flex-shrink-0" />
-              <span>{googleMeetLink}</span>
-            </div>
           </div>
 
           {/* Action Buttons */}

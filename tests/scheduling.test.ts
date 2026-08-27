@@ -1,7 +1,7 @@
 import { generateGoogleMeetLink } from "../src/lib/meeting-scheduler";
 
 describe("Meeting Scheduling Feature Unit Tests", () => {
-  it("should generate a valid Google Meet URL structure", () => {
+  it("should generate a valid Google Meet URL structure if requested", () => {
     const link = generateGoogleMeetLink();
     expect(link).toMatch(/^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/);
   });
