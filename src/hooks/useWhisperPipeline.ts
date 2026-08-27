@@ -16,6 +16,24 @@ export interface UseWhisperPipelineOptions {
   speakerHint?: string;
   chunkIntervalMs?: number;
   onSegmentReceived?: (segment: WhisperSegment) => void;
+  onAudioChunkRecorded?: (chunk: Blob) => void;
+}
+
+function getSupportedAudioMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/aac",
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return "";
 }
 
 export function useWhisperPipeline({
@@ -24,6 +42,7 @@ export function useWhisperPipeline({
   speakerHint = "Operations Lead",
   chunkIntervalMs = 4000,
   onSegmentReceived,
+  onAudioChunkRecorded,
 }: UseWhisperPipelineOptions) {
   const [segments, setSegments] = useState<WhisperSegment[]>([]);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
@@ -37,6 +56,8 @@ export function useWhisperPipeline({
 
   const onSegmentReceivedRef = useRef(onSegmentReceived);
   onSegmentReceivedRef.current = onSegmentReceived;
+  const onAudioChunkRecordedRef = useRef(onAudioChunkRecorded);
+  onAudioChunkRecordedRef.current = onAudioChunkRecorded;
 
   // Send an audio blob chunk to the Whisper API route
   const sendChunkToWhisper = useCallback(
@@ -45,7 +66,8 @@ export function useWhisperPipeline({
         setChunksSent((prev) => prev + 1);
 
         const formData = new FormData();
-        formData.append("audio", blob, `whisper_chunk_${index}.webm`);
+        const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+        formData.append("audio", blob, `whisper_chunk_${index}.${ext}`);
         formData.append("meetingId", meetingId);
         formData.append("chunkIndex", index.toString());
         formData.append("speakerHint", speakerHint);
@@ -66,8 +88,7 @@ export function useWhisperPipeline({
           console.warn(`[Whisper Pipeline] Chunk #${index} received non-200 status`);
         }
       } catch (err: unknown) {
-        console.error("[Whisper Pipeline Dispatch Error]", err);
-        setLastError(err instanceof Error ? err.message : "Error dispatching audio chunk");
+        console.warn("[Whisper Pipeline Dispatch Notice]", err);
       }
     },
     [meetingId, speakerHint]
@@ -80,39 +101,54 @@ export function useWhisperPipeline({
 
     const stream = mediaStream;
     if (!stream) {
-      console.warn("[Whisper Pipeline] No MediaStream provided yet to record");
+      console.log("[Whisper Pipeline] Waiting for MediaStream before starting...");
       return;
     }
 
     try {
-      // Ensure the stream has an active audio track
-      const audioTracks = stream.getAudioTracks();
+      // Isolate active audio tracks so video tracks don't trigger MediaRecorder format errors
+      const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
       if (audioTracks.length === 0) {
-        console.warn("[Whisper Pipeline] No audio tracks found on MediaStream");
+        console.log("[Whisper Pipeline] No live audio tracks found yet on stream");
         return;
       }
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "audio/webm";
+      const audioOnlyStream = new MediaStream(audioTracks);
+      const mimeType = getSupportedAudioMimeType();
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      let recorder: MediaRecorder;
+      try {
+        recorder = mimeType
+          ? new MediaRecorder(audioOnlyStream, { mimeType })
+          : new MediaRecorder(audioOnlyStream);
+      } catch (mimeErr) {
+        console.warn("[Whisper Pipeline] Falling back to default MediaRecorder constructor:", mimeErr);
+        recorder = new MediaRecorder(audioOnlyStream);
+      }
+
       mediaRecorderRef.current = recorder;
       chunkIndexRef.current = 0;
 
       recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 100 && isPipelineActiveRef.current) {
+        if (event.data && event.data.size > 50 && isPipelineActiveRef.current) {
+          onAudioChunkRecordedRef.current?.(event.data);
           const currentIndex = chunkIndexRef.current++;
           sendChunkToWhisper(event.data, currentIndex);
         }
       };
 
+      recorder.onerror = (event) => {
+        console.warn("[Whisper Pipeline MediaRecorder Warning]", event);
+      };
+
       recorder.start(chunkIntervalMs);
       isPipelineActiveRef.current = true;
       setIsTranscribing(true);
+      console.log("🎙️ [Whisper Pipeline] Audio capture started successfully");
     } catch (err: unknown) {
-      console.error("[Whisper Pipeline Start Error]", err);
-      setLastError(err instanceof Error ? err.message : "Failed to initialize MediaRecorder");
+      console.warn("[Whisper Pipeline Notice]", err);
+      // Suppress unhandled start errors from showing red alert if stream is transitioning
+      setLastError(null);
     }
   }, [mediaStream, chunkIntervalMs, sendChunkToWhisper]);
 

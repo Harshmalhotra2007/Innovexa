@@ -10,6 +10,23 @@ export interface MediaControlsOptions {
   onRecordingStop?: (recordingUrl?: string) => void;
 }
 
+function getSupportedAudioMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/aac",
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return "";
+}
+
 export function useMediaControls({
   room,
   meetingId,
@@ -225,16 +242,17 @@ export function useMediaControls({
   // Upload the compiled audio recording to backend storage & database
   const uploadRecordingBlob = useCallback(async (blob: Blob, durationSeconds: number) => {
     const activeMeetingId = meetingIdRef.current;
-    if (!activeMeetingId || blob.size < 100) return;
+    if (!activeMeetingId || blob.size < 50) return;
 
     try {
       setIsUploadingRecording(true);
       const role = (typeof window !== "undefined" && sessionStorage.getItem("userRole")) || "organizer";
 
       const formData = new FormData();
+      const ext = blob.type.includes("mp4") ? "mp4" : "webm";
       formData.append("meetingId", activeMeetingId);
       formData.append("duration", durationSeconds.toString());
-      formData.append("audio", blob, `meeting_recording_${activeMeetingId}.webm`);
+      formData.append("audio", blob, `meeting_recording_${activeMeetingId}.${ext}`);
 
       const res = await fetch("/api/recordings/upload", {
         method: "POST",
@@ -262,12 +280,15 @@ export function useMediaControls({
     }
   }, []);
 
+  // Append chunk collected by Whisper or Media stream
+  const appendRecordedChunk = useCallback((chunk: Blob) => {
+    if (chunk && chunk.size > 0) {
+      recordedChunksRef.current.push(chunk);
+    }
+  }, []);
+
   // Start In-Meeting Audio Recording
   const startRecording = useCallback(() => {
-    if (recordingRecorderRef.current && recordingRecorderRef.current.state === "recording") {
-      return;
-    }
-
     setIsRecording(true);
     setRecordingDuration(0);
     currentDurationRef.current = 0;
@@ -294,31 +315,42 @@ export function useMediaControls({
       });
     }, 1000);
 
-    // Initialize MediaRecorder for full recording
+    // Initialize audio-only MediaRecorder with live audio tracks isolated
     const stream = mediaStreamRef.current;
     if (stream && typeof MediaRecorder !== "undefined") {
       try {
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
+        const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
+        if (audioTracks.length > 0) {
+          const audioOnlyStream = new MediaStream(audioTracks);
+          const mimeType = getSupportedAudioMimeType();
 
-        const recorder = new MediaRecorder(stream, { mimeType });
-        recordingRecorderRef.current = recorder;
-
-        recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) {
-            recordedChunksRef.current.push(e.data);
+          let recorder: MediaRecorder;
+          try {
+            recorder = mimeType
+              ? new MediaRecorder(audioOnlyStream, { mimeType })
+              : new MediaRecorder(audioOnlyStream);
+          } catch {
+            recorder = new MediaRecorder(audioOnlyStream);
           }
-        };
 
-        recorder.onstop = () => {
-          if (recordedChunksRef.current.length > 0) {
-            const finalBlob = new Blob(recordedChunksRef.current, { type: mimeType });
-            uploadRecordingBlob(finalBlob, currentDurationRef.current);
-          }
-        };
+          recordingRecorderRef.current = recorder;
 
-        recorder.start(1000); // chunk every 1 second
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              recordedChunksRef.current.push(e.data);
+            }
+          };
+
+          recorder.onstop = () => {
+            if (recordedChunksRef.current.length > 0) {
+              const finalType = mimeType || "audio/webm";
+              const finalBlob = new Blob(recordedChunksRef.current, { type: finalType });
+              uploadRecordingBlob(finalBlob, currentDurationRef.current);
+            }
+          };
+
+          recorder.start(1000); // collect chunk each second
+        }
       } catch (recErr) {
         console.warn("[MediaControls] MediaRecorder start note:", recErr);
       }
@@ -351,8 +383,13 @@ export function useMediaControls({
         console.warn("[MediaControls Stop Recording Note]", err);
       }
       recordingRecorderRef.current = null;
+    } else if (recordedChunksRef.current.length > 0) {
+      // Fallback: Upload accumulated chunks even if recorder had already stopped
+      const mimeType = getSupportedAudioMimeType() || "audio/webm";
+      const finalBlob = new Blob(recordedChunksRef.current, { type: mimeType });
+      uploadRecordingBlob(finalBlob, currentDurationRef.current);
     }
-  }, []);
+  }, [uploadRecordingBlob]);
 
   // Auto initialize local media stream only once on mount
   useEffect(() => {
@@ -402,6 +439,7 @@ export function useMediaControls({
     toggleScreenShare,
     startRecording,
     stopRecording,
+    appendRecordedChunk,
     setConnectionQuality,
   };
 }

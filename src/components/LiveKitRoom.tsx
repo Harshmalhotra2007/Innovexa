@@ -70,6 +70,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     toggleScreenShare,
     startRecording,
     stopRecording,
+    appendRecordedChunk,
   } = useMediaControls({
     room,
     meetingId,
@@ -88,6 +89,7 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     meetingId,
     mediaStream: localMediaStream,
     speakerHint: userName,
+    onAudioChunkRecorded: appendRecordedChunk,
   });
 
   // Auto start recording & Whisper transcription when joining the meeting
