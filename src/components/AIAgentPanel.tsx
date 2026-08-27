@@ -19,6 +19,7 @@ import {
   ChevronUp,
   ShieldAlert,
   Clock,
+  Users,
 } from "lucide-react";
 
 interface AIAgentPanelProps {
