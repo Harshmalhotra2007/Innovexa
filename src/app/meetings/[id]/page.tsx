@@ -12,6 +12,8 @@ import {
   Building2,
   Trash2,
   FileText,
+  Zap,
+  Loader2,
 } from "lucide-react";
 
 interface MeetingDetail {
@@ -31,6 +33,7 @@ export default function MeetingDetailPage() {
 
   const [meeting, setMeeting] = useState<MeetingDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [extracting, setExtracting] = useState(false);
   const [userRole, setUserRole] = useState<string>("organizer");
 
   useEffect(() => {
@@ -81,6 +84,25 @@ export default function MeetingDetailPage() {
       }
     } catch (err) {
       console.error("Error deleting meeting:", err);
+    }
+  };
+
+  const handleExtractActionItems = async () => {
+    setExtracting(true);
+    try {
+      const res = await fetch(`/api/meetings/${id}/extract-action-items`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Extraction complete! Created ${data.tasks?.length || 0} task(s).`);
+      } else {
+        alert(`Extraction notice: ${data.error || data.message || "Failed to extract items"}`);
+      }
+    } catch (err: any) {
+      alert(`Error extracting action items: ${err.message || "Network error"}`);
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -181,6 +203,16 @@ ${meeting.summary || "No summary available yet."}
             >
               <FileText size={13} />
               <span>EXPORT MD</span>
+            </button>
+
+            {/* Extract Action Items Button */}
+            <button
+              onClick={handleExtractActionItems}
+              disabled={extracting}
+              className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--panel-alt)] px-3 py-1.5 text-xs font-mono text-[var(--primary)] hover:border-[var(--primary)] transition-colors font-bold"
+            >
+              {extracting ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+              <span>{extracting ? "Extracting..." : "EXTRACT ACTION ITEMS"}</span>
             </button>
 
             {userRole === "organizer" && (

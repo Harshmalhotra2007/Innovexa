@@ -56,8 +56,9 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
-    isRecording,
+    screenMediaStream,
     recordingDuration,
+    isRecording,
     micLevel,
     connectionQuality,
     localMediaStream,
@@ -152,27 +153,44 @@ export function LiveKitRoom({ meetingId, meetingTitle = "Innovexa Live Session",
         {/* Left 2 Cols: Video Room Stage */}
         <div className="lg:col-span-2 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[300px]">
-            {/* Local Participant Tile */}
+            {/* Local Participant Camera Tile - Always keeps natural camera mirroring */}
             <ParticipantTile
               name={userName}
               isLocal={true}
               isMicMuted={!isMicEnabled}
               isCameraOff={!isCameraEnabled}
-              isScreenShare={isScreenSharing}
+              isScreenShare={false}
               mediaStream={localMediaStream}
               audioLevel={micLevel}
               connectionQuality={connectionQuality}
+              mirror={true}
             />
 
-            {/* Remote Simulated / LiveKit Participant Tile */}
-            <ParticipantTile
-              name="AI Notetaker & Governance Bot"
-              isLocal={false}
-              isMicMuted={!isRecording}
-              isCameraOff={true}
-              isSpeaking={isTranscribing}
-              connectionQuality="excellent"
-            />
+            {/* Screen Share Tile (When active) or AI Notetaker Tile */}
+            {isScreenSharing && screenMediaStream ? (
+              <ParticipantTile
+                name={`${userName}'s Screen`}
+                isLocal={true}
+                isMicMuted={!isMicEnabled}
+                isCameraOff={false}
+                isScreenShare={true}
+                mediaStream={screenMediaStream}
+                audioLevel={0}
+                connectionQuality={connectionQuality}
+                mirror={false}
+              />
+            ) : (
+              /* Remote Simulated / LiveKit Participant Tile */
+              <ParticipantTile
+                name="AI Notetaker & Governance Bot"
+                isLocal={false}
+                isMicMuted={!isRecording}
+                isCameraOff={true}
+                isSpeaking={isTranscribing}
+                connectionQuality="excellent"
+                mirror={false}
+              />
+            )}
           </div>
 
           {/* Tactical In-Meeting Media Control HUD */}

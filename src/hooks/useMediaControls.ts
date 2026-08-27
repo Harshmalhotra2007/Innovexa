@@ -17,6 +17,7 @@ export function useMediaControls({
   const [isMicEnabled, setIsMicEnabled] = useState<boolean>(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState<boolean>(true);
   const [isScreenSharing, setIsScreenSharing] = useState<boolean>(false);
+  const [screenMediaStream, setScreenMediaStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [micLevel, setMicLevel] = useState<number>(0);
@@ -25,6 +26,7 @@ export function useMediaControls({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasInitMediaRef = useRef<boolean>(false);
@@ -167,29 +169,48 @@ export function useMediaControls({
 
   // Toggle Screen Share
   const toggleScreenShare = useCallback(async () => {
-    setIsScreenSharing((prev) => {
-      const nextState = !prev;
+    if (isScreenSharing) {
+      // Stop screen sharing
       if (room?.localParticipant) {
-        room.localParticipant.setScreenShareEnabled(nextState).catch(() => {});
-        return nextState;
-      } else {
-        if (nextState && typeof navigator !== "undefined" && navigator.mediaDevices?.getDisplayMedia) {
-          navigator.mediaDevices
-            .getDisplayMedia({ video: true })
-            .then((screenStream) => {
-              screenStream.getVideoTracks()[0].onended = () => {
-                setIsScreenSharing(false);
-              };
-            })
-            .catch(() => {
-              setIsScreenSharing(false);
-            });
-          return true;
-        }
-        return false;
+        room.localParticipant.setScreenShareEnabled(false).catch(() => {});
       }
-    });
-  }, [room]);
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        screenStreamRef.current = null;
+      }
+      setScreenMediaStream(null);
+      setIsScreenSharing(false);
+    } else {
+      // Start screen sharing
+      if (room?.localParticipant) {
+        try {
+          await room.localParticipant.setScreenShareEnabled(true);
+          setIsScreenSharing(true);
+        } catch (err) {
+          console.warn("[LiveKit setScreenShareEnabled Note]", err);
+        }
+      } else if (typeof navigator !== "undefined" && navigator.mediaDevices?.getDisplayMedia) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          screenStreamRef.current = screenStream;
+          setScreenMediaStream(screenStream);
+          setIsScreenSharing(true);
+
+          screenStream.getVideoTracks()[0].onended = () => {
+            if (screenStreamRef.current) {
+              screenStreamRef.current.getTracks().forEach((t) => t.stop());
+              screenStreamRef.current = null;
+            }
+            setScreenMediaStream(null);
+            setIsScreenSharing(false);
+          };
+        } catch {
+          setIsScreenSharing(false);
+          setScreenMediaStream(null);
+        }
+      }
+    }
+  }, [isScreenSharing, room]);
 
   // Start In-Meeting Audio Recording
   const startRecording = useCallback(() => {
@@ -228,6 +249,12 @@ export function useMediaControls({
         } catch (e) {}
         mediaStreamRef.current = null;
       }
+      if (screenStreamRef.current) {
+        try {
+          screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        } catch (e) {}
+        screenStreamRef.current = null;
+      }
       if (recordTimerRef.current) {
         clearInterval(recordTimerRef.current);
       }
@@ -238,8 +265,9 @@ export function useMediaControls({
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
-    isRecording,
+    screenMediaStream,
     recordingDuration,
+    isRecording,
     micLevel,
     connectionQuality,
     localMediaStream: mediaStreamRef.current,

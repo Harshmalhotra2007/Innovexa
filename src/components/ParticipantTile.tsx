@@ -13,6 +13,7 @@ export interface ParticipantTileProps {
   mediaStream?: MediaStream | null;
   connectionQuality?: "excellent" | "good" | "poor";
   audioLevel?: number; // 0 to 100
+  mirror?: boolean;
 }
 
 export function ParticipantTile({
@@ -25,6 +26,7 @@ export function ParticipantTile({
   mediaStream,
   connectionQuality = "excellent",
   audioLevel = 0,
+  mirror,
 }: ParticipantTileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -50,6 +52,7 @@ export function ParticipantTile({
       : "bg-[var(--red)]";
 
   const isSpeakingNow = isSpeaking || audioLevel > 15;
+  const shouldMirror = mirror !== undefined ? mirror : (isLocal && !isScreenShare);
 
   return (
     <div
@@ -66,7 +69,7 @@ export function ParticipantTile({
           autoPlay
           playsInline
           muted={isLocal} // Avoid local audio feedback loop
-          className={`w-full h-full object-cover ${isLocal && !isScreenShare ? "scale-x-[-1]" : ""}`}
+          className={`w-full h-full object-cover ${shouldMirror ? "scale-x-[-1]" : ""}`}
         />
       ) : (
         /* Camera Off Avatar Fallback */
