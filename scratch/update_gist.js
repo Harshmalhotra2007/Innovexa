@@ -17,6 +17,9 @@ const filesToUpload = {
   "circuit-breaker.ts": path.join(__dirname, "../src/lib/circuit-breaker.ts"),
   "Sidebar.tsx": path.join(__dirname, "../src/components/Sidebar.tsx"),
   "AppLayout.tsx": path.join(__dirname, "../src/components/AppLayout.tsx"),
+  "ScheduleMeetingModal.tsx": path.join(__dirname, "../src/components/ScheduleMeetingModal.tsx"),
+  "UpcomingMeetingsView.tsx": path.join(__dirname, "../src/components/UpcomingMeetingsView.tsx"),
+  "meeting-scheduler.ts": path.join(__dirname, "../src/lib/meeting-scheduler.ts"),
 };
 
 const payloadFiles = {};
