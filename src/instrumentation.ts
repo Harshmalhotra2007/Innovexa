@@ -3,8 +3,10 @@
  * Ensures seed data is loaded exactly once, eliminating the per-request
  * COUNT(*) guard query that previously ran on every API call.
  */
+import { config } from "@/lib/config";
+
 export async function register() {
-  if (config.nextRuntime === "nodejs") {
+  if (config.nextRuntime === "nodejs" || process.env.NEXT_RUNTIME === "nodejs") {
     const { ensureSeedData } = await import("./lib/seed-data");
     await ensureSeedData();
   }

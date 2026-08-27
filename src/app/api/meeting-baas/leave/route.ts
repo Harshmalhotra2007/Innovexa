@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     console.log(`[MeetingBaas Direct Leave] Triggering instant leave for target URL: ${targetUrl || "all active"}`);
 
     // 1. Direct Render Cloud Bot Leave
-    fetch(`${RENDER_BOT_URL}/bot/leave`, {
+    fetch(`${config.meetBotUrl}/bot/leave`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meetingUrl: targetUrl }),

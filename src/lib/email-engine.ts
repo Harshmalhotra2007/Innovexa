@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { config } from "./config";
 
 export interface SendReminderEmailParams {
   meetingId: string;

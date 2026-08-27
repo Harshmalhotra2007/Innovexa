@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const storedBotId = agent?.recordingUrl?.startsWith("baas_") ? agent.recordingUrl.replace("baas_", "") : null;
 
     // 1. Signal Render Cloud Bot to leave Google Meet room immediately
-    fetch(`${RENDER_BOT_URL}/bot/leave`, {
+    fetch(`${config.meetBotUrl}/bot/leave`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meetingUrl: targetUrl, meetingId }),

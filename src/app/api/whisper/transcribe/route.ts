@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateAudioBuffer } from "@/lib/audio-validator";
+import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
