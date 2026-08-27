@@ -9,95 +9,143 @@ const MAX_AUDIO_CHUNK_SIZE = 25 * 1024 * 1024; // 25MB (Whisper limit)
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const meetingId = (formData.get("meetingId") as string) || "";
-    const chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
-    const speakerHint = (formData.get("speakerHint") as string) || "";
-    const audioFile = formData.get("audio") as File | null;
+    const contentType = req.headers.get("content-type") || "";
+    let meetingId = "";
+    let chunkIndex = 0;
+    let speakerHint = "Operations Lead";
+    let audioFile: File | null = null;
+    let rawDirectText = "";
+
+    if (contentType.includes("application/json")) {
+      const jsonBody = await req.json().catch(() => ({}));
+      meetingId = jsonBody.meetingId || "";
+      chunkIndex = jsonBody.chunkIndex || 0;
+      speakerHint = jsonBody.speakerHint || "Operations Lead";
+      rawDirectText = jsonBody.text || "";
+    } else {
+      const formData = await req.formData();
+      meetingId = (formData.get("meetingId") as string) || "";
+      chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
+      speakerHint = (formData.get("speakerHint") as string) || "Operations Lead";
+      audioFile = formData.get("audio") as File | null;
+      rawDirectText = (formData.get("directText") as string) || "";
+    }
 
     if (!meetingId) {
       return NextResponse.json({ error: "meetingId is required" }, { status: 400 });
     }
 
-    if (!audioFile) {
-      return NextResponse.json({ error: "audio file chunk is required" }, { status: 400 });
-    }
-
-    if (audioFile.size > MAX_AUDIO_CHUNK_SIZE) {
-      return NextResponse.json({ error: "Audio chunk exceeds maximum 25MB limit" }, { status: 400 });
-    }
-
-    const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-
-    // Basic audio buffer validation
-    if (audioBuffer.length > 50) {
-      const validation = validateAudioBuffer(audioBuffer, audioFile.type || "audio/webm");
-      if (!validation.valid) {
-        console.warn(`[Whisper Ingestion] Audio chunk #${chunkIndex} format note:`, validation.error);
-      }
-    }
-
-    // Determine timestamp in mm:ss format based on chunk index
-    const totalSecs = chunkIndex * 5;
+    // Calculate timestamp mm:ss
+    const totalSecs = chunkIndex * 4;
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
     const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 
-    let transcribedText = "";
-    let transcriptionSource = "simulated_intelligence";
+    let transcribedText = rawDirectText ? rawDirectText.trim() : "";
+    let transcriptionSource = rawDirectText ? "native_stt" : "none";
 
-    const apiKey = config.openaiApiKey;
+    // If audioFile is provided and no directText, run through Groq or OpenAI Whisper
+    if (!transcribedText && audioFile) {
+      if (audioFile.size > MAX_AUDIO_CHUNK_SIZE) {
+        return NextResponse.json({ error: "Audio chunk exceeds maximum 25MB limit" }, { status: 400 });
+      }
 
-    if (apiKey && apiKey.trim().length > 10 && !apiKey.includes("your-openai")) {
-      try {
-        const whisperFormData = new FormData();
-        const blob = new Blob([audioBuffer], { type: audioFile.type || "audio/webm" });
-        whisperFormData.append("file", blob, `chunk_${chunkIndex}.webm`);
-        whisperFormData.append("model", "whisper-1");
-        whisperFormData.append("language", "en");
+      const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
-        const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: whisperFormData,
-        });
+      // Only attempt Whisper API if audio contains actual data (> 500 bytes)
+      if (audioBuffer.length > 500) {
+        const groqApiKey = process.env.GROQ_API_KEY;
+        const openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
 
-        if (whisperRes.ok) {
-          const result = await whisperRes.json();
-          transcribedText = result.text ? result.text.trim() : "";
-          transcriptionSource = "whisper-1";
-        } else {
-          const errBody = await whisperRes.text();
-          console.warn("[Whisper API Non-200 Response]", errBody);
+        // 1. Try Groq Whisper (Ultra-fast real-time transcription)
+        if (groqApiKey && groqApiKey.trim().length > 10) {
+          try {
+            const groqFormData = new FormData();
+            const blob = new Blob([audioBuffer], { type: audioFile.type || "audio/webm" });
+            groqFormData.append("file", blob, `chunk_${chunkIndex}.webm`);
+            groqFormData.append("model", "whisper-large-v3-turbo");
+            groqFormData.append("language", "en");
+            groqFormData.append("response_format", "json");
+
+            const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${groqApiKey}` },
+              body: groqFormData,
+            });
+
+            if (groqRes.ok) {
+              const resJson = await groqRes.json();
+              if (resJson.text && resJson.text.trim().length > 0) {
+                transcribedText = resJson.text.trim();
+                transcriptionSource = "groq_whisper_v3";
+              }
+            }
+          } catch (groqErr) {
+            console.warn("[Groq Whisper Notice]", groqErr);
+          }
         }
-      } catch (whisperErr) {
-        console.warn("[Whisper API Request Exception]", whisperErr);
+
+        // 2. Try OpenAI Whisper (if Groq not configured or didn't return text)
+        if (!transcribedText && openaiApiKey && openaiApiKey.trim().length > 10 && !openaiApiKey.includes("your-openai")) {
+          try {
+            const whisperFormData = new FormData();
+            const blob = new Blob([audioBuffer], { type: audioFile.type || "audio/webm" });
+            whisperFormData.append("file", blob, `chunk_${chunkIndex}.webm`);
+            whisperFormData.append("model", "whisper-1");
+            whisperFormData.append("language", "en");
+
+            const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${openaiApiKey}` },
+              body: whisperFormData,
+            });
+
+            if (whisperRes.ok) {
+              const resJson = await whisperRes.json();
+              if (resJson.text && resJson.text.trim().length > 0) {
+                transcribedText = resJson.text.trim();
+                transcriptionSource = "openai_whisper";
+              }
+            }
+          } catch (whisperErr) {
+            console.warn("[OpenAI Whisper Notice]", whisperErr);
+          }
+        }
       }
     }
 
-    // Intelligent fallback caption if Whisper is not configured or returned empty text
-    if (!transcribedText) {
-      const sampleInsights = [
-        "Analyzing microservice latency metrics and distributed transaction isolation levels.",
-        "Team agreed to standardize PostgreSQL connection pooling at 20 pooled connections.",
-        "Reviewing Q3 sprint deliverables: SLA task escalation engine and vector knowledge base.",
-        "Decision approved: Deploy LiveKit SFU cluster for real-time low-latency audio streaming.",
-        "Action item: Conduct end-to-end load testing on the WebSocket caption ingestion pipeline.",
-        "Validating telemetry indicators and automated recovery circuit breakers.",
-      ];
-      transcribedText = sampleInsights[chunkIndex % sampleInsights.length];
+    // Filter out silence, background noise hallucination, or empty audio
+    const isHallucinatedSilence =
+      !transcribedText ||
+      transcribedText.toLowerCase().includes("thank you for watching") ||
+      transcribedText.toLowerCase().includes("subscribe to my channel") ||
+      transcribedText.toLowerCase().includes("subtitles by");
+
+    if (isHallucinatedSilence || transcribedText.trim().length === 0) {
+      return NextResponse.json({
+        success: true,
+        meetingId,
+        chunkIndex,
+        isSilent: true,
+        text: "",
+        segment: null,
+      });
     }
 
-    const speaker = speakerHint || (chunkIndex % 2 === 0 ? "Engineering Lead" : "Participant");
+    const speaker = speakerHint || "Participant";
+    const segmentType =
+      transcribedText.toLowerCase().includes("decision") || transcribedText.toLowerCase().includes("approve")
+        ? "decision"
+        : transcribedText.toLowerCase().includes("action item") || transcribedText.toLowerCase().includes("will do") || transcribedText.toLowerCase().includes("assigned")
+        ? "action"
+        : "discussion";
 
     const newSegment = {
       speaker,
       text: transcribedText,
       timestamp,
       order: chunkIndex + 1,
-      type: transcribedText.toLowerCase().includes("decision") ? "decision" : "discussion",
+      type: segmentType,
     };
 
     // Save segment in MeetingSegment database model

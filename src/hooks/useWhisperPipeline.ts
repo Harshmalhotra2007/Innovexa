@@ -51,6 +51,7 @@ export function useWhisperPipeline({
   const [lastError, setLastError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recognitionRef = useRef<any>(null);
   const chunkIndexRef = useRef<number>(0);
   const isPipelineActiveRef = useRef<boolean>(false);
 
@@ -79,17 +80,64 @@ export function useWhisperPipeline({
 
         if (res.ok) {
           const data = await res.json();
-          if (data.segment) {
-            setSegments((prev) => [...prev, data.segment]);
+          if (data.segment && data.segment.text) {
+            setSegments((prev) => {
+              // Avoid duplicate segments if native speech recognition already caught it
+              const exists = prev.some((s) => s.text === data.segment.text);
+              if (exists) return prev;
+              return [...prev, data.segment];
+            });
             setChunksTranscribed((prev) => prev + 1);
             onSegmentReceivedRef.current?.(data.segment);
           }
-        } else {
-          console.warn(`[Whisper Pipeline] Chunk #${index} received non-200 status`);
         }
       } catch (err: unknown) {
-        console.warn("[Whisper Pipeline Dispatch Notice]", err);
+        console.warn("[Whisper Pipeline Notice]", err);
       }
+    },
+    [meetingId, speakerHint]
+  );
+
+  // Sync real-time text recognized via SpeechRecognition
+  const handleRecognizedText = useCallback(
+    async (text: string) => {
+      if (!text || text.trim().length === 0) return;
+      const cleanText = text.trim();
+
+      const currentIndex = chunkIndexRef.current++;
+      const totalSecs = currentIndex * 4;
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+      const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+
+      const segment: WhisperSegment = {
+        speaker: speakerHint,
+        text: cleanText,
+        timestamp,
+        order: currentIndex + 1,
+        type:
+          cleanText.toLowerCase().includes("decision") || cleanText.toLowerCase().includes("approve")
+            ? "decision"
+            : cleanText.toLowerCase().includes("action item") || cleanText.toLowerCase().includes("will do")
+            ? "action"
+            : "discussion",
+      };
+
+      setSegments((prev) => [...prev, segment]);
+      setChunksTranscribed((prev) => prev + 1);
+      onSegmentReceivedRef.current?.(segment);
+
+      // Save segment in database
+      fetch("/api/whisper/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId,
+          chunkIndex: currentIndex,
+          speakerHint,
+          text: cleanText,
+        }),
+      }).catch(() => {});
     },
     [meetingId, speakerHint]
   );
@@ -101,68 +149,102 @@ export function useWhisperPipeline({
 
     const stream = mediaStream;
     if (!stream) {
-      console.log("[Whisper Pipeline] Waiting for MediaStream before starting...");
       return;
     }
 
     try {
-      // Isolate active audio tracks so video tracks don't trigger MediaRecorder format errors
-      const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
-      if (audioTracks.length === 0) {
-        console.log("[Whisper Pipeline] No live audio tracks found yet on stream");
-        return;
-      }
+      // 1. Start browser Native Speech Recognition if available
+      if (typeof window !== "undefined") {
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRec) {
+          try {
+            const recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
 
-      const audioOnlyStream = new MediaStream(audioTracks);
-      const mimeType = getSupportedAudioMimeType();
+            recognition.onresult = (event: any) => {
+              const current = event.resultIndex;
+              const transcript = event.results[current][0].transcript;
+              if (transcript && transcript.trim().length > 0) {
+                handleRecognizedText(transcript);
+              }
+            };
 
-      let recorder: MediaRecorder;
-      try {
-        recorder = mimeType
-          ? new MediaRecorder(audioOnlyStream, { mimeType })
-          : new MediaRecorder(audioOnlyStream);
-      } catch (mimeErr) {
-        console.warn("[Whisper Pipeline] Falling back to default MediaRecorder constructor:", mimeErr);
-        recorder = new MediaRecorder(audioOnlyStream);
-      }
+            recognition.onerror = (event: any) => {
+              console.warn("[SpeechRecognition Notice]", event.error);
+            };
 
-      mediaRecorderRef.current = recorder;
-      chunkIndexRef.current = 0;
+            recognition.onend = () => {
+              // Auto restart if pipeline is still active
+              if (isPipelineActiveRef.current) {
+                try {
+                  recognition.start();
+                } catch {}
+              }
+            };
 
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 50 && isPipelineActiveRef.current) {
-          onAudioChunkRecordedRef.current?.(event.data);
-          const currentIndex = chunkIndexRef.current++;
-          sendChunkToWhisper(event.data, currentIndex);
+            recognition.start();
+            recognitionRef.current = recognition;
+          } catch (recInitErr) {
+            console.warn("[SpeechRecognition Init Notice]", recInitErr);
+          }
         }
-      };
+      }
 
-      recorder.onerror = (event) => {
-        console.warn("[Whisper Pipeline MediaRecorder Warning]", event);
-      };
+      // 2. Start audio track isolation and MediaRecorder for streaming chunks & audio buffering
+      const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
+      if (audioTracks.length > 0) {
+        const audioOnlyStream = new MediaStream(audioTracks);
+        const mimeType = getSupportedAudioMimeType();
 
-      recorder.start(chunkIntervalMs);
+        let recorder: MediaRecorder;
+        try {
+          recorder = mimeType
+            ? new MediaRecorder(audioOnlyStream, { mimeType })
+            : new MediaRecorder(audioOnlyStream);
+        } catch {
+          recorder = new MediaRecorder(audioOnlyStream);
+        }
+
+        mediaRecorderRef.current = recorder;
+        chunkIndexRef.current = 0;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 50 && isPipelineActiveRef.current) {
+            onAudioChunkRecordedRef.current?.(event.data);
+            const currentIndex = chunkIndexRef.current++;
+            sendChunkToWhisper(event.data, currentIndex);
+          }
+        };
+
+        recorder.start(chunkIntervalMs);
+      }
+
       isPipelineActiveRef.current = true;
       setIsTranscribing(true);
-      console.log("🎙️ [Whisper Pipeline] Audio capture started successfully");
     } catch (err: unknown) {
       console.warn("[Whisper Pipeline Notice]", err);
-      // Suppress unhandled start errors from showing red alert if stream is transitioning
       setLastError(null);
     }
-  }, [mediaStream, chunkIntervalMs, sendChunkToWhisper]);
+  }, [mediaStream, chunkIntervalMs, sendChunkToWhisper, handleRecognizedText]);
 
   // Stop the recording pipeline
   const stopPipeline = useCallback(() => {
     isPipelineActiveRef.current = false;
     setIsTranscribing(false);
 
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try {
         mediaRecorderRef.current.stop();
-      } catch (err) {
-        console.warn("[Whisper Pipeline Stop Note]", err);
-      }
+      } catch {}
     }
     mediaRecorderRef.current = null;
   }, []);
