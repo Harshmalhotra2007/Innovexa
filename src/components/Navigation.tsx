@@ -90,6 +90,8 @@ export function Navigation() {
     { label: "Executive Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Meetings Directory", href: "/meetings", icon: CalendarDays },
     { label: "Task Board & SLA", href: "/tasks", icon: CheckSquare },
+    { label: "Decision Audit Trail", href: "/decisions", icon: FolderGit2 },
+    { label: "Knowledge Base", href: "/knowledge", icon: ListChecks },
     { label: "Analytics & Reports", href: "/analytics", icon: BarChart3 },
     { label: "Settings", href: "/settings", icon: Settings },
   ];

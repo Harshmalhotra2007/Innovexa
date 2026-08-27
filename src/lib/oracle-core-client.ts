@@ -1,5 +1,6 @@
 import { exec } from "child_process";
 import path from "path";
+import { config } from "./config";
 
 let cachedProducer: any = null;
 
@@ -7,7 +8,7 @@ async function getKafkaProducer() {
   if (cachedProducer) return cachedProducer;
   try {
     const { Kafka } = require("kafkajs");
-    const kafkaBootstrap = process.env.KAFKA_BOOTSTRAP_SERVERS || "localhost:9092";
+    const kafkaBootstrap = config.kafkaBootstrapServers;
     
     console.log(`[OracleCore] Connecting singleton Kafka producer to: ${kafkaBootstrap}`);
     const kafka = new Kafka({ 

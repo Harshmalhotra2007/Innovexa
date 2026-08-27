@@ -82,7 +82,7 @@ export function generateReminderEmailHtml(params: SendReminderEmailParams): stri
 export async function sendMeetingReminderEmail(params: SendReminderEmailParams) {
   const html = generateReminderEmailHtml(params);
   const subject = `⏰ Reminder: ${params.meetingTitle} starts in 15 mins`;
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendApiKey = config.resendApiKey;
 
   let messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   let delivered = false;
@@ -96,7 +96,7 @@ export async function sendMeetingReminderEmail(params: SendReminderEmailParams) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "notifications@innovexa.com",
+          from: config.emailFrom,
           to: [params.recipientEmail],
           subject,
           html,

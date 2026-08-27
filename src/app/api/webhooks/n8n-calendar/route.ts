@@ -5,13 +5,11 @@ import { enqueuePreMeetingReminder } from "@/lib/notification-queue";
 
 export const dynamic = "force-dynamic";
 
-const EXPECTED_WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET || "innovexa_n8n_sec_2026_key";
-
 export async function POST(req: Request) {
   try {
     // 1. Security Gate: Verify x-n8n-webhook-secret header
     const providedSecret = req.headers.get("x-n8n-webhook-secret");
-    if (!providedSecret || providedSecret !== EXPECTED_WEBHOOK_SECRET) {
+    if (!providedSecret || providedSecret !== config.n8nWebhookSecret) {
       console.warn("[n8n Webhook Security] Unauthorized webhook access attempt.");
       return NextResponse.json(
         { error: "Unauthorized: Invalid or missing x-n8n-webhook-secret header" },

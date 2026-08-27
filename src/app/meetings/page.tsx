@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { ScheduleMeetingModal } from "@/components/ScheduleMeetingModal";
+import { HostMeetingModal } from "@/components/HostMeetingModal";
 import { UpcomingMeetingsView } from "@/components/UpcomingMeetingsView";
 
 interface Meeting {
@@ -29,6 +30,7 @@ export default function MeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isHostModalOpen, setIsHostModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -64,17 +66,27 @@ export default function MeetingsPage() {
             <CalendarDays className="w-5 h-5 text-[var(--primary)]" /> MY MEETINGS & AI NOTETAKER HUB
           </h1>
           <p className="text-xs font-mono text-[var(--text-dim)] mt-1">
-            Schedule future meetings, inspect live audio streams, or review past executive AI summaries.
+            Schedule future meetings, host instant AI sessions, or review past executive AI summaries.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsScheduleModalOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-sm flex items-center justify-center gap-2 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>SCHEDULE NEW MEETING</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <button
+            onClick={() => setIsHostModalOpen(true)}
+            className="px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <Radio className="w-4 h-4 animate-pulse" />
+            <span>HOST INSTANT MEETING</span>
+          </button>
+
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="px-4 py-2.5 rounded-lg bg-[var(--panel-alt)] text-[var(--text)] border border-[var(--border)] font-mono text-xs font-bold uppercase tracking-wider hover:border-[var(--primary)] transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>SCHEDULE NEW MEETING</span>
+          </button>
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -181,6 +193,13 @@ export default function MeetingsPage() {
         onClose={() => setIsScheduleModalOpen(false)}
         onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
       />
+
+      {/* Host Instant Meeting Modal Component */}
+      <HostMeetingModal
+        isOpen={isHostModalOpen}
+        onClose={() => setIsHostModalOpen(false)}
+      />
     </div>
   );
 }
+

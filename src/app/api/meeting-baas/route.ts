@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
-
-const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
 
 /**
  * MeetingBaas v2 High-Speed Instant Bot Dispatch Endpoint
@@ -13,13 +12,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { meetingId, meetingUrl, apiKey } = body;
 
-    const baasApiKey = apiKey || process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
+    const baasApiKey = apiKey || config.meetingBaasApiKey;
 
     const meeting = meetingId ? await db.meeting.findUnique({ where: { id: meetingId } }) : null;
     const targetUrl = meetingUrl || (meeting?.agenda && meeting.agenda.includes("meet.google.com") ? meeting.agenda : "https://meet.google.com/qfz-imot-oic");
 
-    const botName = process.env.BOT_NAME || "Innovexa Notetaker";
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://innovexa-innovexapu.vercel.app"}/api/meeting-baas/webhook`;
+    const botName = config.botName;
+    const webhookUrl = `${config.appUrl}/api/meeting-baas/webhook`;
 
     console.log(`[MeetingBaas v2] High-Speed Instant Dispatching bot to ${targetUrl}...`);
 

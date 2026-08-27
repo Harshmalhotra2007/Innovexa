@@ -11,15 +11,10 @@ import {
   Settings,
   Bot,
   UserCheck,
-  Radio,
   ChevronRight,
 } from "lucide-react";
 
-interface SidebarProps {
-  onHostClick?: () => void;
-}
-
-export function Sidebar({ onHostClick }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string>("organizer");
 
@@ -82,19 +77,6 @@ export function Sidebar({ onHostClick }: SidebarProps) {
           </div>
         </div>
 
-        {/* Quick Host Button in Sidebar */}
-        {onHostClick && (
-          <div className="px-3 mb-3">
-            <button
-              onClick={onHostClick}
-              className="w-full py-2.5 px-3 rounded-lg bg-[var(--primary)] text-white font-mono text-xs font-bold uppercase tracking-wider hover:bg-[var(--primary-hover)] transition-all shadow-sm flex items-center justify-center gap-2"
-            >
-              <Radio className="w-4 h-4 animate-pulse" />
-              <span>HOST INSTANT MEETING</span>
-            </button>
-          </div>
-        )}
-
         {/* Navigation Items */}
         <nav className="px-3 space-y-1 mt-1 font-sans">
           {navItems.map((item) => {
@@ -136,3 +118,4 @@ export function Sidebar({ onHostClick }: SidebarProps) {
     </aside>
   );
 }
+

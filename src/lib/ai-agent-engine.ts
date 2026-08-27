@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { botServiceCircuitBreaker } from "./circuit-breaker";
+import { config } from "./config";
 
 export interface TranscriptSegment {
   speaker: string;
@@ -62,7 +63,7 @@ export async function triggerAIAgent(
   }
 
   // Always use the real Render Bot Service URL
-  const botServiceUrl = process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
+  const botServiceUrl = config.meetBotUrl;
   
   // Extract Google Meet URL from agenda or fallback to test room
   const googleMeetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com")
@@ -78,7 +79,7 @@ export async function triggerAIAgent(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         meetingUrl: googleMeetUrl,
-        botName: process.env.BOT_NAME || "Innovexa Notetaker",
+        botName: config.botName,
         metadata: {
           meetingId: meeting.id,
           meetingTitle: meeting.title,
@@ -90,7 +91,7 @@ export async function triggerAIAgent(
     }
     return res;
   }).catch((e) => {
-    if (process.env.NODE_ENV !== "test") {
+    if (config.nodeEnv !== "test") {
       console.error("[AIAgentEngine] Circuit breaker protected bot trigger note:", e.message);
     }
   });

@@ -1,14 +1,12 @@
 import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
+import { config } from "./config";
 
 export function isLiveKitConfigured(): boolean {
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || process.env.LIVEKIT_URL;
-  return Boolean(apiKey && apiSecret && wsUrl);
+  return config.isLiveKitConfigured;
 }
 
 export function getLiveKitWsUrl(): string {
-  return process.env.NEXT_PUBLIC_LIVEKIT_URL || process.env.LIVEKIT_URL || "wss://demo.livekit.cloud";
+  return config.livekitWsUrl;
 }
 
 export interface GenerateTokenParams {
@@ -27,8 +25,8 @@ export async function generateLiveKitToken({
   participantIdentity,
   isPublisher = true,
 }: GenerateTokenParams): Promise<string> {
-  const apiKey = process.env.LIVEKIT_API_KEY || "devkey";
-  const apiSecret = process.env.LIVEKIT_API_SECRET || "secret_for_demo_mode_dev_jwt_signing_key_32_bytes";
+  const apiKey = config.livekitApiKey;
+  const apiSecret = config.livekitApiSecret;
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,
@@ -51,8 +49,8 @@ export async function generateLiveKitToken({
  * Returns a LiveKit RoomServiceClient instance if credentials are valid.
  */
 export function getRoomServiceClient(): RoomServiceClient | null {
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
+  const apiKey = config.livekitApiKey;
+  const apiSecret = config.livekitApiSecret;
   const wsUrl = getLiveKitWsUrl();
 
   if (!apiKey || !apiSecret) {

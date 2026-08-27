@@ -54,10 +54,10 @@ export async function DELETE(
       meeting = null;
     }
 
-    const botServiceUrl = process.env.BOT_SERVICE_URL || process.env.MEET_BOT_URL || "https://innovexa-meet-bot.onrender.com";
+    const botServiceUrl = config.meetBotUrl;
     const meetingUrl = meeting?.agenda?.includes("meet.google.com") ? meeting.agenda : null;
     const meetCode = extractMeetCode(meetingUrl);
-    const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
+    const baasApiKey = config.meetingBaasApiKey;
 
     // Fire off external API bot cleanup calls asynchronously in the background to prevent route timeout hangs
     (async () => {

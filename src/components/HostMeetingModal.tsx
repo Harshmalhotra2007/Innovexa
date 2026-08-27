@@ -53,11 +53,13 @@ export function HostMeetingModal({ isOpen, onClose }: HostMeetingModalProps) {
       }
 
       const data = await res.json();
+      setSubmitting(false);
       onClose();
       // Redirect directly to the live meeting room
       router.push(`/meetings/${data.meetingId}`);
     } catch (err: any) {
       setError(err.message || "Failed to host instant meeting.");
+    } finally {
       setSubmitting(false);
     }
   };

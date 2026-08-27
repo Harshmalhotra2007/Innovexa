@@ -3,23 +3,24 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+import { config } from "./config";
 
 // Initialize S3 Client if credentials exist
-const s3Bucket = process.env.S3_BUCKET;
-const s3Region = process.env.AWS_REGION || "us-east-1";
-const s3Client = s3Bucket
+const s3Bucket = config.s3Bucket;
+const s3Region = config.s3Region;
+const s3Client = s3Bucket && config.awsAccessKeyId && config.awsSecretAccessKey
   ? new S3Client({
       region: s3Region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+        accessKeyId: config.awsAccessKeyId,
+        secretAccessKey: config.awsSecretAccessKey,
       },
     })
   : null;
 
 // Initialize Supabase Client if credentials exist
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabaseUrl = config.supabaseUrl;
+const supabaseKey = config.supabaseKey;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 /**

@@ -54,7 +54,7 @@ async function getChromaQueryVector(query: string): Promise<number[] | null> {
  * Query persistent ChromaDB vector store collection via REST API
  */
 async function queryChromaCollection(vector: number[], limit: number = 5): Promise<any[]> {
-  const chromaUrl = process.env.CHROMADB_URL || "http://localhost:8000";
+  const chromaUrl = config.chromaDbUrl;
   try {
     // 1. Fetch collection metadata to get uuid
     const getCollRes = await fetch(`${chromaUrl}/api/v1/collections/meeting_transcripts`, {

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     let transcribedText = "";
     let transcriptionSource = "simulated_intelligence";
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = config.openaiApiKey;
 
     if (apiKey && apiKey.trim().length > 10 && !apiKey.includes("your-openai")) {
       try {

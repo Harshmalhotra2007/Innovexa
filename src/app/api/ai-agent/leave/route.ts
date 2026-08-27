@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
-
-const DEFAULT_MEETINGBAAS_KEY = "mb-liEToZOkOtVPenEVEZYVQUdXhmOhEoxtwoQrdtNGLBUGTTswyYpUlOSOybMqk";
-const RENDER_BOT_URL = process.env.MEET_BOT_URL || process.env.BOT_SERVICE_URL || "https://innovexa-meet-bot.onrender.com";
 
 function extractMeetCode(url: string | null): string | null {
   if (!url) return null;
@@ -28,7 +26,7 @@ export async function POST(req: Request) {
     const targetUrl = meeting?.agenda && meeting.agenda.includes("meet.google.com") ? meeting.agenda : null;
     const agent = await db.aIAgent.findUnique({ where: { meetingId } });
 
-    const baasApiKey = process.env.MEETINGBAAS_API_KEY || DEFAULT_MEETINGBAAS_KEY;
+    const baasApiKey = config.meetingBaasApiKey;
     const meetCode = extractMeetCode(targetUrl);
     const storedBotId = agent?.recordingUrl?.startsWith("baas_") ? agent.recordingUrl.replace("baas_", "") : null;
 
