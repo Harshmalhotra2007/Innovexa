@@ -166,7 +166,7 @@ export function AnalyticsCharts({ trendData, deptStats, colors = DEFAULT_COLORS 
                 {deptStats.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
+                    fill={colors[index % colors.length]}
                   />
                 ))}
               </Pie>
