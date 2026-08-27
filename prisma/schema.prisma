@@ -75,6 +75,7 @@ model Meeting {
   aiAgent         AIAgent?
   actionItems     ActionItem[]
   citations       Citation[]
+  liveKitRoom     LiveKitRoom?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -228,5 +229,22 @@ model Citation {
   confidence        Float
   createdAt         DateTime @default(now())
 }
+
+/// Represents a LiveKit WebRTC room linked to a meeting session.
+model LiveKitRoom {
+  id          String    @id @default(uuid())
+  meetingId   String    @unique
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  roomName    String    @unique
+  roomSid     String?
+  status      String    @default("active")
+  recordingOn Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+
+  @@index([meetingId])
+  @@index([roomName])
+}
+
 
 

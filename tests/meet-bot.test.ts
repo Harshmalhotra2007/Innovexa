@@ -36,8 +36,8 @@ const { PulseAudio } = require("../innovexa-meet-bot/pulseaudio");
 const { MeetBot } = require("../innovexa-meet-bot/meetBot");
 
 describe("Operation Ghost Caller Full Stack - Meet Bot Service Tests", () => {
-  let baseUrl;
-  let testServer;
+  let baseUrl: any;
+  let testServer: any;
 
   beforeAll((done) => {
     testServer = server.listen(0, () => {
