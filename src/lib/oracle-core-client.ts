@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import path from "path";
 import { config } from "./config";
 
@@ -9,13 +9,13 @@ async function getKafkaProducer() {
   try {
     const { Kafka } = require("kafkajs");
     const kafkaBootstrap = config.kafkaBootstrapServers;
-    
+
     console.log(`[OracleCore] Connecting singleton Kafka producer to: ${kafkaBootstrap}`);
-    const kafka = new Kafka({ 
+    const kafka = new Kafka({
       brokers: [kafkaBootstrap],
-      connectionTimeout: 2000 
+      connectionTimeout: 2000
     });
-    
+
     const producer = kafka.producer();
     await producer.connect();
     cachedProducer = producer;
@@ -40,10 +40,14 @@ export async function triggerOracleCoreIndexing(meetingId: string, transcript: s
     console.log(`[OracleCore] Successfully published meeting ${meetingId} transcript to Kafka topic`);
   } catch (err: any) {
     console.warn(`[OracleCore] Kafka queue unavailable (${err.message}). Invoking Python pipeline directly...`);
-    
+
     // Fallback: Invoke the background ML pipeline script directly on host
     const scriptPath = path.join(process.cwd(), "ai-agent-service/oracle_core_worker.py");
-    exec(`python "${scriptPath}" --meeting-id "${meetingId}"`, (error, stdout, stderr) => {
+    // Validate meetingId to prevent command injection - only allow alphanumeric and hyphens
+    if (!/^[a-z0-9\-]+$/i.test(meetingId)) {
+      throw new Error(`Invalid meeting ID format: ${meetingId}`);
+    }
+    execFile("python", [scriptPath, "--meeting-id", meetingId], (error, stdout, stderr) => {
       if (error) {
         console.error(`[OracleCore] direct execution failed for meeting ${meetingId}:`, error);
         return;
