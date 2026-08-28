@@ -6,10 +6,10 @@ import { AudioPlayer } from "./AudioPlayer";
 import {
   Bot,
   Mic,
+  MicOff,
   Sparkles,
   AlertCircle,
-  Play,
-  CheckCircle2,
+  CircleCheck,
   Loader2,
   Square,
   Radio,
@@ -17,9 +17,17 @@ import {
   Cpu,
   ChevronDown,
   ChevronUp,
-  ShieldAlert,
-  Clock,
   Users,
+  Clock,
+  ListChecks,
+  FileText,
+  Settings2,
+  Play,
+  Zap,
+  User,
+  Activity,
+  WifiOff,
+  Signal,
 } from "lucide-react";
 
 interface AIAgentPanelProps {
@@ -27,303 +35,573 @@ interface AIAgentPanelProps {
   meetingTitle?: string;
 }
 
+// ── Status config ───────────────────────────────────────────
+const STATUS_META: Record<string, { label: string; color: string; ring: string; pulse: boolean }> = {
+  idle:        { label: "STANDBY",      color: "text-[var(--text-dim)]",  ring: "border-[var(--border)]",            pulse: false },
+  joining:     { label: "DISPATCHING",  color: "text-[var(--amber)]",     ring: "border-[var(--amber)]",             pulse: true  },
+  recording:   { label: "RECORDING",   color: "text-[var(--red)]",       ring: "border-[var(--red)]",               pulse: true  },
+  transcribing:{ label: "TRANSCRIBING",color: "text-[var(--primary)]",   ring: "border-[var(--primary)]",           pulse: true  },
+  summarizing: { label: "ANALYZING",   color: "text-[var(--teal)]",      ring: "border-[var(--teal)]",              pulse: true  },
+  completed:   { label: "COMPLETE",    color: "text-[var(--teal)]",      ring: "border-[var(--teal)]",              pulse: false },
+};
+
+function priorityClass(p?: string) {
+  return p === "High"
+    ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
+    : p === "Low"
+    ? "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+    : "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30";
+}
+
+// ── Pipeline steps ──────────────────────────────────────────
+const PIPELINE = [
+  { status: "joining",     label: "Dispatch",    icon: Cpu },
+  { status: "recording",   label: "Record",      icon: Radio },
+  { status: "transcribing",label: "Transcribe",  icon: FileText },
+  { status: "summarizing", label: "Analyze",     icon: Sparkles },
+  { status: "completed",   label: "Ready",       icon: CircleCheck },
+];
+
+const PIPELINE_ORDER = ["joining","recording","transcribing","summarizing","completed"];
+
+// ── Main component ──────────────────────────────────────────
 export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelProps) {
   const {
-    agent,
-    actionItems,
-    citations,
-    highlightedChunkIndex,
-    setHighlightedChunkIndex,
-    loading,
-    errorMsg,
-    userRole,
-    customMeetUrl,
-    setCustomMeetUrl,
-    audioQuality,
-    setAudioQuality,
-    isTabRecording,
-    tabRecordSeconds,
-    handleManagedBotJoin,
-    handleEndMeeting,
-    startTabAudioCapture,
-    stopTabAudioCapture,
+    agent, actionItems, highlightedChunkIndex, setHighlightedChunkIndex,
+    loading, errorMsg, userRole, customMeetUrl, setCustomMeetUrl,
+    audioQuality, setAudioQuality, isTabRecording, tabRecordSeconds,
+    handleManagedBotJoin, handleEndMeeting, startTabAudioCapture, stopTabAudioCapture,
+    fetchStatus, fetchActionItems,
   } = useAIAgent(meetingId);
 
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [activeTab, setActiveTab] = useState<"transcript" | "tasks" | "summary" | "settings">("transcript");
+  const [showSettings, setShowSettings] = useState(false);
   const [seekTimestamp, setSeekTimestamp] = useState<number | null>(null);
+  const [taskFilter, setTaskFilter] = useState<"all" | "Pending" | "In Progress" | "Completed">("all");
 
-  // Convert mm:ss or timestamp string to seconds
-  const parseTimestampToSeconds = (ts: string): number => {
+  const status = agent.status;
+  const meta  = STATUS_META[status] ?? STATUS_META.idle;
+  const pipelineIdx = PIPELINE_ORDER.indexOf(status);
+
+  const parseTs = (ts: string) => {
     const parts = ts.replace(/[\[\]]/g, "").split(":");
-    if (parts.length === 2) {
-      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    }
-    return 0;
+    return parts.length === 2 ? +parts[0] * 60 + +parts[1] : 0;
   };
 
-  const handleTranscriptClick = (timestamp: string, index: number) => {
-    setHighlightedChunkIndex(index);
-    const secs = parseTimestampToSeconds(timestamp);
-    setSeekTimestamp(secs);
-  };
+  const isActive   = ["joining","recording","transcribing","summarizing"].includes(status);
+  const isRecording = status === "recording" || isTabRecording;
+  const taskCount  = actionItems.length;
+  const filteredTasks = taskFilter === "all" ? actionItems : actionItems.filter(t => (t.status ?? "Pending") === taskFilter);
 
-  // Timeline Step Configurations
-  const timelineSteps = [
-    { key: "joining", label: "DISPATCHED", icon: Cpu, time: agent.joinedAt ? new Date(agent.joinedAt).toLocaleTimeString() : "--:--" },
-    { key: "admitted", label: "ADMITTED", icon: CheckCircle2, time: agent.joinedAt ? new Date(agent.joinedAt).toLocaleTimeString() : "--:--" },
-    { key: "recording", label: "RECORDING", icon: Radio, time: isTabRecording ? `${tabRecordSeconds}s` : "Active" },
-    { key: "transcribing", label: "TRANSCRIBING", icon: Loader2, time: "Processing" },
-    { key: "completed", label: "INSIGHTS READY", icon: Sparkles, time: "Complete" },
-  ];
+  const formatTimer = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
-  const getCurrentStepIndex = () => {
-    switch (agent.status) {
-      case "joining": return 0;
-      case "recording": return 2;
-      case "transcribing":
-      case "summarizing": return 3;
-      case "completed": return 4;
-      default: return -1;
-    }
-  };
-
-  const currentStepIdx = getCurrentStepIndex();
+  const TABS = [
+    { key: "transcript", label: "Transcript", icon: FileText,   count: agent.transcript?.length ?? 0 },
+    { key: "tasks",      label: "AI Tasks",   icon: ListChecks, count: taskCount },
+    { key: "summary",    label: "Summary",    icon: Sparkles,   count: null },
+    { key: "settings",   label: "Settings",   icon: Settings2,  count: null },
+  ] as const;
 
   return (
-    <div className="space-y-6 text-[var(--text)] font-sans">
-      {/* CARD 1: Unified Meeting Controls & Status Timeline */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-5">
-        {/* Card Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+    <div className="space-y-4 text-[var(--text)] font-sans">
+
+      {/* ══════════════════════════════════════════════════
+          CARD 1 — Command Center Header
+      ══════════════════════════════════════════════════ */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-sm overflow-hidden">
+
+        {/* Top bar — Status + Meeting ID + Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
+
+          {/* Left: Avatar + identity */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)]">
-              <Users className="w-5 h-5" />
+            {/* Animated status ring */}
+            <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl border-2 bg-[var(--panel-alt)] transition-all ${meta.ring}`}>
+              <Bot className={`w-5 h-5 transition-colors ${meta.color}`} />
+              {meta.pulse && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isRecording ? "bg-red-400" : "bg-blue-400"}`} />
+                  <span className={`relative inline-flex rounded-full h-3 w-3 ${isRecording ? "bg-red-500" : "bg-blue-500"}`} />
+                </span>
+              )}
             </div>
+
             <div>
-              <h3 className="font-display font-bold text-sm tracking-wider text-[var(--text)] uppercase">
-                INNOVEXA NATIVE MEETING
-              </h3>
+              <div className="flex items-center gap-2">
+                <span className="font-display font-bold text-sm tracking-wider text-[var(--text)] uppercase">
+                  AI Meeting Engine
+                </span>
+                <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase ${
+                  status === "completed" ? "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+                  : isActive ? "bg-[var(--primary)]/12 text-[var(--primary)] border-[var(--primary)]/30 animate-pulse"
+                  : "bg-[var(--panel-alt)] text-[var(--text-dim)] border-[var(--border)]"
+                }`}>
+                  {meta.label}
+                </span>
+              </div>
               <p className="font-mono text-[11px] text-[var(--text-dim)] mt-0.5">
-                Meeting ID: <span className="text-[var(--primary)] font-bold">{meetingId}</span>
+                ID: <span className="text-[var(--primary)] font-bold">{meetingId.slice(0, 8)}…</span>
+                {meetingTitle && <span className="ml-2 opacity-60">· {meetingTitle.slice(0, 32)}{meetingTitle.length > 32 ? "…" : ""}</span>}
               </p>
             </div>
           </div>
 
-          {(agent.status === "joining" || agent.status === "recording" || isTabRecording) && (
-            <button
-              onClick={handleEndMeeting}
-              disabled={loading}
-              className="px-4 py-2 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--red)] text-white hover:bg-[var(--red)]/90 transition-all flex items-center gap-2 shadow-sm"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4 fill-current" />}
-              <span>END MEETING</span>
-            </button>
-          )}
+          {/* Right: recording timer + end button */}
+          <div className="flex items-center gap-2">
+            {isTabRecording && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--red)]/10 border border-[var(--red)]/30 font-mono text-xs text-[var(--red)] font-bold">
+                <span className="w-2 h-2 rounded-full bg-[var(--red)] animate-pulse" />
+                {formatTimer(tabRecordSeconds)}
+              </div>
+            )}
+            {(isActive || isTabRecording) && (
+              <button
+                onClick={handleEndMeeting}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold uppercase bg-[var(--red)] text-white hover:opacity-90 transition-all disabled:opacity-50 shadow-sm"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-current" />}
+                End Session
+              </button>
+            )}
+            {!isActive && !isTabRecording && (
+              <button
+                onClick={() => { fetchStatus(); fetchActionItems(); }}
+                className="p-2 rounded-lg border border-[var(--border)] bg-[var(--panel-alt)] text-[var(--text-dim)] hover:text-[var(--text)] hover:border-[var(--primary)] transition-colors"
+                title="Refresh status"
+              >
+                <Activity size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Vertical Chronological Status Timeline */}
-        <div className="p-4 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] space-y-3">
-          <div className="font-mono text-xs text-[var(--text-dim)] uppercase font-bold flex items-center gap-1.5 border-b border-[var(--border)] pb-2">
-            <Clock className="w-4 h-4 text-[var(--primary)]" />
-            <span>SESSION CHRONOLOGICAL STATUS TIMELINE</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2">
-            {timelineSteps.map((step, idx) => {
-              const isPast = idx <= currentStepIdx;
-              const isCurrent = idx === currentStepIdx;
-              const StepIcon = step.icon;
-
+        {/* Pipeline progress strip */}
+        <div className="px-5 py-3 bg-[var(--panel-alt)] border-b border-[var(--border)]">
+          <div className="flex items-center gap-0">
+            {PIPELINE.map((step, idx) => {
+              const isDone    = pipelineIdx > idx;
+              const isCurrent = pipelineIdx === idx;
+              const Icon = step.icon;
               return (
-                <div
-                  key={step.key}
-                  className={`p-2.5 rounded-lg border font-mono text-xs space-y-1 transition-all ${
-                    isCurrent
-                      ? "bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] shadow-sm font-bold animate-pulse"
-                      : isPast
-                      ? "bg-[var(--panel)] border-[var(--teal)]/40 text-[var(--teal)] font-bold"
-                      : "bg-[var(--panel)] border-[var(--border)] text-[var(--text-faint)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="font-bold">STEP {idx + 1}</span>
-                    <StepIcon className={`w-3.5 h-3.5 ${isCurrent ? "animate-spin" : ""}`} />
+                <div key={step.status} className="flex items-center flex-1">
+                  <div className={`flex flex-col items-center gap-1 flex-1 ${idx === 0 ? "" : ""}`}>
+                    <div className={`flex items-center justify-center w-7 h-7 rounded-full border-2 transition-all ${
+                      isCurrent ? "border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--primary)]"
+                      : isDone  ? "border-[var(--teal)] bg-[var(--teal)]/15 text-[var(--teal)]"
+                      : "border-[var(--border)] bg-[var(--panel)] text-[var(--text-faint)]"
+                    }`}>
+                      <Icon size={12} className={isCurrent ? "animate-pulse" : ""} />
+                    </div>
+                    <span className={`font-mono text-[9px] uppercase font-bold ${
+                      isCurrent ? "text-[var(--primary)]"
+                      : isDone  ? "text-[var(--teal)]"
+                      : "text-[var(--text-faint)]"
+                    }`}>{step.label}</span>
                   </div>
-                  <div className="font-bold tracking-wider text-[11px]">{step.label}</div>
-                  <div className="text-[10px] opacity-75">{step.time}</div>
+                  {idx < PIPELINE.length - 1 && (
+                    <div className={`h-0.5 w-full mx-1 rounded-full transition-all ${isDone ? "bg-[var(--teal)]" : "bg-[var(--border)]"}`} />
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Streamlined Primary Action Flow */}
-        <div className="space-y-3 p-4 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)]">
-          <div className="flex items-center justify-between">
-            <div className="font-mono text-xs text-[var(--primary)] font-bold uppercase flex items-center gap-1.5">
-              <Cpu className="w-4 h-4" /> PRIMARY MEETING CONTROLS
+        {/* Audio Player (only when recording exists) */}
+        {agent.recordingUrl && (
+          <div className="px-5 py-3 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--text-dim)] uppercase mb-2">
+              <Signal size={11} className="text-[var(--teal)]" /> Audio Recording
             </div>
-            <button
-              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="text-xs font-mono text-[var(--text-dim)] hover:text-[var(--primary)] transition-colors flex items-center gap-1"
-            >
-              <span>ADVANCED OPTIONS</span>
-              {showAdvancedOptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+            <AudioPlayer src={agent.recordingUrl} seekTime={seekTimestamp} isRecording={isRecording} />
           </div>
+        )}
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <input
-              type="text"
-              placeholder="Enter custom parameters (optional)"
-              value={customMeetUrl}
-              onChange={(e) => setCustomMeetUrl(e.target.value)}
-              className="flex-1 w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)]"
-            />
+        {/* Quick actions strip */}
+        <div className="px-5 py-3 flex flex-wrap items-center gap-2">
+          {/* Dispatch AI bot */}
+          <button
+            onClick={handleManagedBotJoin}
+            disabled={(isActive && !isTabRecording) || loading || userRole !== "organizer"}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--primary)] text-white text-xs font-mono font-bold hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+          >
+            {loading ? <Loader2 size={13} className="animate-spin" /> : <Bot size={13} />}
+            {status === "completed" ? "Restart AI Agent" : "Dispatch AI Agent"}
+          </button>
+
+          {/* Local recording */}
+          {isTabRecording ? (
             <button
-              onClick={handleManagedBotJoin}
-              disabled={agent.status !== "idle" && agent.status !== "completed" || loading || userRole !== "organizer"}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+              onClick={stopTabAudioCapture}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--red)]/15 border border-[var(--red)]/40 text-[var(--red)] text-xs font-mono font-bold hover:bg-[var(--red)]/25 transition-all animate-pulse"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-              <span>MANAGE MEETING SETTINGS</span>
+              <Square size={13} className="fill-current" /> Stop Recording · {formatTimer(tabRecordSeconds)}
             </button>
-          </div>
+          ) : (
+            <button
+              onClick={startTabAudioCapture}
+              disabled={isActive && !isTabRecording}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--teal)]/40 bg-[var(--teal)]/10 text-[var(--teal)] text-xs font-mono font-bold hover:bg-[var(--teal)]/20 disabled:opacity-40 transition-all"
+            >
+              <Mic size={13} /> Local Recording
+            </button>
+          )}
 
-          {/* Expandable Advanced Options Drawer */}
-          {showAdvancedOptions && (
-            <div className="mt-4 pt-4 border-t border-[var(--border)] grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn">
-              {/* Option 1: Local Recording Fallback */}
-              <div className="p-3 rounded-lg bg-[var(--panel)] border border-[var(--border)] space-y-2">
-                <div className="font-mono text-[10px] font-bold uppercase text-[var(--teal)] flex items-center gap-1">
-                  <Radio size={12} /> LOCAL AUDIO RECORDING FALLBACK
-                </div>
-                {isTabRecording ? (
+          {userRole !== "organizer" && (
+            <span className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-faint)] ml-1">
+              <WifiOff size={11} /> Organizer role required
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          CARD 2 — Intelligence Tabs
+      ══════════════════════════════════════════════════ */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-sm overflow-hidden">
+
+        {/* Tab bar */}
+        <div className="flex border-b border-[var(--border)] overflow-x-auto">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-mono font-bold uppercase whitespace-nowrap border-b-2 transition-all ${
+                  active
+                    ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/5"
+                    : "border-transparent text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--panel-alt)]"
+                }`}
+              >
+                <Icon size={13} />
+                {tab.label}
+                {tab.count !== null && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                    active ? "bg-[var(--primary)]/15 text-[var(--primary)]" : "bg-[var(--panel-alt)] text-[var(--text-dim)]"
+                  }`}>{tab.count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── TAB: Transcript ── */}
+        {activeTab === "transcript" && (
+          <div className="p-4">
+            {agent.transcript && agent.transcript.length > 0 ? (
+              <div className="space-y-1 max-h-80 overflow-y-auto pr-1">
+                {agent.transcript.map((seg, i) => (
                   <button
-                    onClick={stopTabAudioCapture}
-                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold bg-[var(--red)] text-white hover:bg-[var(--red)]/80 transition-all flex items-center justify-center gap-2 animate-pulse shadow-xs"
+                    key={i}
+                    onClick={() => { setHighlightedChunkIndex(i); setSeekTimestamp(parseTs(seg.timestamp)); }}
+                    className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition-all group ${
+                      highlightedChunkIndex === i
+                        ? "bg-[var(--primary)]/12 border border-[var(--primary)]/30"
+                        : "hover:bg-[var(--panel-alt)] border border-transparent"
+                    }`}
                   >
-                    <Square className="w-3.5 h-3.5 fill-current" /> STOP LOCAL RECORDING ({tabRecordSeconds}s)
+                    {/* Timestamp pill */}
+                    <span className="shrink-0 mt-0.5 font-mono text-[10px] text-[var(--text-faint)] group-hover:text-[var(--primary)] transition-colors w-14 text-right">
+                      {seg.timestamp}
+                    </span>
+                    <div className="flex-1 space-y-0.5 min-w-0">
+                      <span className="block font-mono text-[10px] font-bold text-[var(--primary)]">{seg.speaker}</span>
+                      <p className="text-xs text-[var(--text)] leading-relaxed">{seg.text}</p>
+                    </div>
+                    {agent.recordingUrl && (
+                      <Play size={11} className="shrink-0 mt-1 text-[var(--text-faint)] group-hover:text-[var(--primary)] transition-colors" />
+                    )}
                   </button>
-                ) : (
+                ))}
+              </div>
+            ) : (
+              <div className="py-10 text-center space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] flex items-center justify-center">
+                  <MicOff size={22} className="text-[var(--text-faint)]" />
+                </div>
+                <p className="font-mono text-xs text-[var(--text-dim)]">No transcript captured yet.</p>
+                <p className="font-mono text-[10px] text-[var(--text-faint)]">
+                  Dispatch the AI Agent or start a Local Recording to begin live captions.
+                </p>
+                <button
+                  onClick={startTabAudioCapture}
+                  disabled={isActive}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--teal)]/15 border border-[var(--teal)]/40 text-[var(--teal)] text-xs font-mono font-bold hover:bg-[var(--teal)]/25 disabled:opacity-40 transition-all"
+                >
+                  <Mic size={13} /> Start Local Recording
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: AI Tasks ── */}
+        {activeTab === "tasks" && (
+          <div className="p-4 space-y-3">
+            {/* Filter strip */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-[10px] text-[var(--text-dim)] uppercase font-bold mr-1">Filter:</span>
+              {(["all","Pending","In Progress","Completed"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setTaskFilter(f)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase border transition-all ${
+                    taskFilter === f
+                      ? "bg-[var(--primary)]/15 border-[var(--primary)]/40 text-[var(--primary)]"
+                      : "bg-[var(--panel-alt)] border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {f === "all" ? `All (${actionItems.length})` : f}
+                </button>
+              ))}
+            </div>
+
+            {filteredTasks.length === 0 ? (
+              <div className="py-10 text-center space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] flex items-center justify-center">
+                  <ListChecks size={22} className="text-[var(--text-faint)]" />
+                </div>
+                <p className="font-mono text-xs text-[var(--text-dim)]">
+                  {taskCount === 0 ? "No action items extracted yet." : `No tasks in "${taskFilter}".`}
+                </p>
+                {taskCount === 0 && (
+                  <p className="font-mono text-[10px] text-[var(--text-faint)]">
+                    Run the AI Agent on a meeting transcript to auto-extract tasks.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {filteredTasks.map((item, idx) => {
+                  const taskStatus = item.status ?? "Pending";
+                  const isDone = taskStatus === "Completed";
+                  return (
+                    <div
+                      key={item.id ?? idx}
+                      className={`rounded-lg border p-3 space-y-2 transition-all ${
+                        isDone
+                          ? "border-[var(--border)] bg-[var(--panel-alt)] opacity-60"
+                          : "border-[var(--border)] bg-[var(--panel)] hover:border-[var(--primary)]/40 shadow-sm"
+                      }`}
+                    >
+                      {/* Row 1: check + title */}
+                      <div className="flex items-start gap-2.5">
+                        <div className={`mt-0.5 shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          isDone ? "border-[var(--teal)] bg-[var(--teal)]/20" : "border-[var(--border)]"
+                        }`}>
+                          {isDone && <CircleCheck size={10} className="text-[var(--teal)]" />}
+                        </div>
+                        <p className={`text-xs font-semibold leading-relaxed flex-1 ${isDone ? "line-through text-[var(--text-faint)]" : "text-[var(--text)]"}`}>
+                          {item.title ?? item.task ?? "Untitled action item"}
+                        </p>
+                      </div>
+
+                      {/* Row 2: badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] ml-6">
+                        {(item.ownerName ?? item.assignee) && (
+                          <span className="flex items-center gap-1 text-[var(--text-dim)] bg-[var(--panel-alt)] px-1.5 py-0.5 rounded border border-[var(--border)]">
+                            <User size={9} /> {item.ownerName ?? item.assignee}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 rounded border font-bold uppercase ${priorityClass(item.priority)}`}>
+                          {item.priority ?? "Medium"}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded border font-bold uppercase ${
+                          taskStatus === "Completed"  ? "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+                          : taskStatus === "Overdue"  ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
+                          : taskStatus === "In Progress" ? "bg-[var(--primary)]/12 text-[var(--primary)] border-[var(--primary)]/30"
+                          : "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
+                        }`}>
+                          {taskStatus}
+                        </span>
+                        {item.deadline && (
+                          <span className="flex items-center gap-0.5 text-[var(--text-dim)]">
+                            <Clock size={9} />
+                            {new Date(item.deadline).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Row 3: description if present */}
+                      {item.description && (
+                        <p className="text-[11px] text-[var(--text-dim)] ml-6 leading-relaxed font-sans border-l border-[var(--border)] pl-2">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Stat footer */}
+            {taskCount > 0 && (
+              <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between font-mono text-[10px] text-[var(--text-dim)]">
+                <span>{actionItems.filter(t => (t.status ?? "") === "Completed").length}/{taskCount} completed</span>
+                <span>
+                  {Math.round((actionItems.filter(t => (t.status ?? "") === "Completed").length / taskCount) * 100)}% done
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: Summary ── */}
+        {activeTab === "summary" && (
+          <div className="p-5">
+            {agent.summary ? (
+              <div className="space-y-4">
+                {/* Summary header */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--amber)]/15 border border-[var(--amber)]/30 flex items-center justify-center">
+                    <Sparkles size={15} className="text-[var(--amber)]" />
+                  </div>
+                  <div>
+                    <p className="font-mono text-xs font-bold text-[var(--text)] uppercase tracking-wider">AI Executive Summary</p>
+                    <p className="font-mono text-[10px] text-[var(--text-dim)]">Generated by Innovexa AI Engine</p>
+                  </div>
+                </div>
+
+                {/* Summary body */}
+                <div className="rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] p-4">
+                  <p className="text-sm text-[var(--text)] leading-relaxed">{agent.summary}</p>
+                </div>
+
+                {/* Joined at */}
+                {agent.joinedAt && (
+                  <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--text-dim)]">
+                    <Clock size={11} /> Joined: {new Date(agent.joinedAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-10 text-center space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] flex items-center justify-center">
+                  <Sparkles size={22} className="text-[var(--text-faint)]" />
+                </div>
+                <p className="font-mono text-xs text-[var(--text-dim)]">AI Summary not yet generated.</p>
+                <p className="font-mono text-[10px] text-[var(--text-faint)]">
+                  The AI Engine will automatically synthesize a summary after the recording is transcribed.
+                </p>
+                {status === "idle" && (
                   <button
-                    onClick={startTabAudioCapture}
-                    disabled={agent.status !== "idle" && agent.status !== "completed"}
-                    className="w-full py-2 px-3 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[var(--teal)] text-white hover:bg-[var(--teal)]/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-xs"
+                    onClick={handleManagedBotJoin}
+                    disabled={loading || userRole !== "organizer"}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--primary)]/15 border border-[var(--primary)]/40 text-[var(--primary)] text-xs font-mono font-bold hover:bg-[var(--primary)]/25 disabled:opacity-40 transition-all"
                   >
-                    <Mic className="w-4 h-4" /> START LOCAL AUDIO RECORDING
+                    {loading ? <Loader2 size={13} className="animate-spin" /> : <Bot size={13} />}
+                    Dispatch AI Agent
                   </button>
                 )}
               </div>
+            )}
+          </div>
+        )}
 
-              {/* Audio Quality Selector */}
-              <div className="p-3 rounded-lg bg-[var(--panel)] border border-[var(--border)] space-y-2">
-                <div className="font-mono text-[10px] font-bold uppercase text-[var(--text-dim)] flex items-center gap-1">
-                  <RadioTower size={12} /> SELECT AUDIO QUALITY PROFILE
-                </div>
-                <div className="flex items-center gap-1">
-                  {(["high", "medium", "low"] as const).map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => setAudioQuality(q)}
-                      className={`flex-1 py-1.5 rounded font-mono text-[11px] font-bold uppercase transition-all ${
-                        audioQuality === q
-                          ? "bg-[var(--primary)] text-white border border-[var(--primary)] font-bold shadow-xs"
-                          : "bg-[var(--panel-alt)] text-[var(--text-dim)] border border-[var(--border)] hover:text-[var(--text)]"
-                      }`}
-                    >
-                      {q === "high" ? "High (128k)" : q === "medium" ? "Med (64k)" : "Low (32k)"}
-                    </button>
-                  ))}
-                </div>
+        {/* ── TAB: Settings ── */}
+        {activeTab === "settings" && (
+          <div className="p-5 space-y-5">
+
+            {/* Meeting URL override */}
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] uppercase font-bold text-[var(--text-dim)] block">
+                Custom Meeting URL Override
+              </label>
+              <input
+                type="text"
+                placeholder="https://meet.google.com/xxx-xxxx-xxx (optional)"
+                value={customMeetUrl}
+                onChange={(e) => setCustomMeetUrl(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] placeholder-[var(--text-faint)] focus:outline-none focus:border-[var(--primary)] transition-colors"
+              />
+              <p className="font-mono text-[10px] text-[var(--text-faint)]">Leave blank to use the meeting's stored URL.</p>
+            </div>
+
+            {/* Audio quality */}
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] uppercase font-bold text-[var(--text-dim)] flex items-center gap-1.5">
+                <RadioTower size={11} /> Local Recording Audio Quality
+              </label>
+              <div className="flex gap-2">
+                {(["high","medium","low"] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setAudioQuality(q)}
+                    className={`flex-1 py-2 rounded-lg font-mono text-xs font-bold uppercase border transition-all ${
+                      audioQuality === q
+                        ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm"
+                        : "bg-[var(--panel-alt)] text-[var(--text-dim)] border-[var(--border)] hover:text-[var(--text)]"
+                    }`}
+                  >
+                    {q === "high" ? "High · 128k" : q === "medium" ? "Med · 64k" : "Low · 32k"}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Host Admission Required Banner */}
-        {(agent.status === "joining" || agent.status === "recording") && (
-          <div className="rounded-lg bg-[var(--amber)]/12 border border-[var(--amber)]/40 p-3 text-[var(--amber)] text-xs flex items-center gap-2 font-mono">
-            <Users className="w-4 h-4" />
-            <span>
-              <strong>📢 MEETING ACTIVE:</strong> Your native LiveKit meeting is now active. Participants can join using the meeting details.
-            </span>
+            {/* Local recording */}
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] uppercase font-bold text-[var(--text-dim)] flex items-center gap-1.5">
+                <Radio size={11} className="text-[var(--teal)]" /> Local Audio Recording
+              </label>
+              {isTabRecording ? (
+                <button
+                  onClick={stopTabAudioCapture}
+                  className="w-full py-2.5 px-4 rounded-lg font-mono text-xs font-bold bg-[var(--red)] text-white hover:opacity-90 transition-all flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <Square size={13} className="fill-current" />
+                  Stop Recording · {formatTimer(tabRecordSeconds)}
+                </button>
+              ) : (
+                <button
+                  onClick={startTabAudioCapture}
+                  disabled={isActive}
+                  className="w-full py-2.5 px-4 rounded-lg font-mono text-xs font-bold bg-[var(--teal)] text-white hover:opacity-90 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                >
+                  <Mic size={13} /> Start Local Recording
+                </button>
+              )}
+              <p className="font-mono text-[10px] text-[var(--text-faint)]">
+                Captures system/microphone audio and streams live captions via browser Speech API.
+              </p>
+            </div>
+
+            {/* Role badge */}
+            <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
+              <Users size={13} className="text-[var(--text-dim)]" />
+              <span className="font-mono text-[10px] text-[var(--text-dim)]">
+                Current role:
+              </span>
+              <span className={`font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                userRole === "organizer"
+                  ? "bg-[var(--primary)]/12 text-[var(--primary)] border-[var(--primary)]/30"
+                  : "bg-[var(--panel-alt)] text-[var(--text-dim)] border-[var(--border)]"
+              }`}>
+                {userRole}
+              </span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* CARD 2: Synced Live Transcript & Audio Waveform Player */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-4">
-        <div className="font-mono text-xs uppercase tracking-wider text-[var(--primary)] flex items-center gap-2 font-semibold">
-          <Mic className="w-4 h-4 text-[var(--teal)]" /> LIVE DIARIZED CAPTION STREAM & AUDIO PLAYER
-        </div>
-
-        {/* Audio Waveform Player with Click-to-Seek */}
-        {agent.recordingUrl && (
-          <AudioPlayer src={agent.recordingUrl} seekTime={seekTimestamp} isRecording={agent.status === "recording" || isTabRecording} />
-        )}
-
-        {/* Diarized Transcript Feed */}
-        {agent.transcript && agent.transcript.length > 0 ? (
-          <div className="rounded-lg bg-[var(--panel-alt)] border border-[var(--border)] p-3 max-h-56 overflow-y-auto space-y-2 font-mono text-xs">
-            {agent.transcript.map((seg, i) => (
-              <button
-                key={i}
-                onClick={() => handleTranscriptClick(seg.timestamp, i)}
-                aria-label={`Seek audio to timestamp ${seg.timestamp} for speaker ${seg.speaker}`}
-                className={`w-full text-left flex items-start gap-2 border-b border-[var(--border)] pb-2 last:border-0 last:pb-0 p-2 rounded transition-all hover:bg-[var(--primary)]/10 ${
-                  highlightedChunkIndex === i ? "bg-[var(--primary)]/15 border-[var(--primary)] text-[var(--text)] font-bold" : ""
-                }`}
-              >
-                <span className="text-[var(--primary)] font-bold flex-shrink-0">[{seg.timestamp}] {seg.speaker}:</span>
-                <span className="text-[var(--text)]">{seg.text}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 border border-dashed border-[var(--border)] rounded-lg text-xs font-mono text-[var(--text-faint)]">
-            No live transcript segments available. Launch bot or start tab recording to stream captions.
-          </div>
-        )}
-      </div>
-
-      {/* CARD 3: Executive AI Summary & Rationale */}
-      {agent.summary && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-3">
-          <div className="font-mono text-xs uppercase tracking-wider text-[var(--primary)] flex items-center gap-2 font-semibold border-b border-[var(--border)] pb-3">
-            <Sparkles className="w-4 h-4 text-[var(--amber)]" /> EXECUTIVE AI SYNTHESIS & RATIONALE
-          </div>
-          <p className="text-sm text-[var(--text-dim)] leading-relaxed font-sans">{agent.summary}</p>
-        </div>
-      )}
-
-      {/* CARD 4: Automated Action Items & Task Assignments */}
-      {actionItems.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-sm space-y-4">
-          <div className="font-mono text-xs uppercase tracking-wider text-[var(--teal)] flex items-center gap-2 font-semibold border-b border-[var(--border)] pb-3">
-            <CheckCircle2 className="w-4 h-4 text-[var(--teal)]" /> AUTOMATED ACTION ITEMS & TASK ASSIGNMENTS
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {actionItems.map((item, idx) => (
-              <div key={idx} className="rounded-lg border border-[var(--border)] bg-[var(--panel-alt)] p-3 space-y-1.5 font-mono text-xs">
-                <div className="flex items-center justify-between text-[var(--primary)]">
-                  <span className="font-bold">{item.ownerName || item.assignee}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30 font-bold">
-                    {item.priority || "Medium"}
-                  </span>
-                </div>
-                <div className="text-[var(--text)] font-semibold text-xs">{item.title || item.task}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Actionable Error Banner */}
+      {/* Error banner */}
       {errorMsg && (
-        <div className="rounded-lg bg-[var(--red)]/12 border border-[var(--red)]/40 p-4 text-[var(--red)] text-xs flex items-center gap-3 font-mono">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{errorMsg}</span>
+        <div className="rounded-xl bg-[var(--red)]/10 border border-[var(--red)]/40 px-4 py-3 flex items-start gap-3 font-mono text-xs text-[var(--red)]">
+          <AlertCircle size={15} className="shrink-0 mt-0.5" />
+          <span className="leading-relaxed">{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Active session banner */}
+      {isRecording && (
+        <div className="rounded-xl bg-[var(--amber)]/10 border border-[var(--amber)]/40 px-4 py-3 flex items-center gap-3 font-mono text-xs text-[var(--amber)]">
+          <Users size={14} className="shrink-0" />
+          <span>
+            <strong>MEETING ACTIVE —</strong> The AI Agent is recording. Participants can join the live room using the meeting link above.
+          </span>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma, TaskStatus, TaskPriority } from "@prisma/client";
 import { unstable_cache, revalidateTag } from "next/cache";
+import { enqueueSLADeadlineReminder } from "@/lib/notification-queue";
 
 const getCachedTasks = (
   department: string | null,
@@ -84,6 +85,18 @@ export async function POST(req: Request) {
     });
 
     revalidateTag("tasks");
+
+    // Enqueue SLA deadline reminder
+    enqueueSLADeadlineReminder({
+      taskId: newTask.id,
+      taskTitle: newTask.title,
+      ownerName: newTask.ownerName,
+      recipientEmail: `${newTask.ownerName.toLowerCase().replace(/[^a-z]/g, "")}@innovexa.com`,
+      department: newTask.department,
+      deadline: newTask.deadline,
+      priority: newTask.priority,
+    }).catch(() => {});
+
     return NextResponse.json({ success: true, task: newTask }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create task";

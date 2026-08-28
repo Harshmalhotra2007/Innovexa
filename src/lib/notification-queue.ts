@@ -94,3 +94,51 @@ export function getNotificationQueueStatus() {
     jobs: pending,
   };
 }
+
+/**
+ * Enqueues an SLA deadline alert job to fire X minutes before task deadline.
+ */
+export async function enqueueSLADeadlineReminder(
+  params: {
+    taskId: string;
+    taskTitle: string;
+    ownerName: string;
+    recipientEmail: string;
+    department: string;
+    deadline: Date | string;
+    priority?: string;
+  },
+  offsetMinutes = 120 // Default 2 hours before deadline
+) {
+  const deadlineTime = new Date(params.deadline).getTime();
+  const triggerTimeMs = deadlineTime - offsetMinutes * 60 * 1000;
+  const delayMs = Math.max(0, triggerTimeMs - Date.now());
+
+  const jobId = `sla_warning_${params.taskId}_${offsetMinutes}m`;
+  
+  // Schedule in-memory delayed queue
+  setTimeout(async () => {
+    try {
+      const { sendSLAEscalationEmail } = await import("./email-engine");
+      await sendSLAEscalationEmail({
+        taskId: params.taskId,
+        taskTitle: params.taskTitle,
+        ownerName: params.ownerName,
+        recipientEmail: params.recipientEmail,
+        department: params.department,
+        priority: params.priority,
+        type: "Warning",
+        hoursOverdue: 0,
+        deadline: params.deadline,
+      });
+    } catch (e: any) {
+      console.warn(`[SLADeadlineReminder Error ${jobId}]`, e.message);
+    }
+  }, Math.max(0, delayMs));
+
+  return {
+    enqueued: true,
+    jobId,
+    delaySeconds: Math.round(delayMs / 1000),
+  };
+}
