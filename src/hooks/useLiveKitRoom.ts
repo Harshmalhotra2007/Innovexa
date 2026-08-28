@@ -29,6 +29,7 @@ export function useLiveKitRoom({
   const roomRef = useRef<Room | null>(null);
   const isConnectingRef = useRef<boolean>(false);
   const hasJoinedRef = useRef<boolean>(false);
+  const isUnmountedRef = useRef<boolean>(false);
 
   // Keep latest callbacks in refs to avoid breaking effect / callback memoization
   const onConnectedRef = useRef(onConnected);
@@ -52,24 +53,32 @@ export function useLiveKitRoom({
       });
 
       room.on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
-        setConnectionState(state);
-        if (state === ConnectionState.Connected) {
-          onConnectedRef.current?.();
-        } else if (state === ConnectionState.Disconnected) {
-          onDisconnectedRef.current?.();
+        if (!isUnmountedRef.current) {
+          setConnectionState(state);
+          if (state === ConnectionState.Connected) {
+            onConnectedRef.current?.();
+          } else if (state === ConnectionState.Disconnected) {
+            onDisconnectedRef.current?.();
+          }
         }
       });
 
       room.on(RoomEvent.ParticipantConnected, () => {
-        setParticipantCount(room.numParticipants);
+        if (!isUnmountedRef.current && roomRef.current) {
+          setParticipantCount(roomRef.current.numParticipants);
+        }
       });
 
       room.on(RoomEvent.ParticipantDisconnected, () => {
-        setParticipantCount(room.numParticipants);
+        if (!isUnmountedRef.current && roomRef.current) {
+          setParticipantCount(roomRef.current.numParticipants);
+        }
       });
 
       room.on(RoomEvent.Disconnected, () => {
-        setParticipantCount(0);
+        if (!isUnmountedRef.current) {
+          setParticipantCount(0);
+        }
       });
 
       roomRef.current = room;
@@ -77,9 +86,14 @@ export function useLiveKitRoom({
     return roomRef.current;
   }, []);
 
-  // Stable join room handler
+  // Stable join room handler with connection state guard and peer connection protection
   const joinRoom = useCallback(async () => {
-    if (isConnectingRef.current || (roomRef.current && roomRef.current.state === ConnectionState.Connected)) {
+    if (
+      isConnectingRef.current ||
+      (roomRef.current &&
+        (roomRef.current.state === ConnectionState.Connected ||
+          roomRef.current.state === ConnectionState.Connecting))
+    ) {
       return;
     }
 
@@ -103,6 +117,8 @@ export function useLiveKitRoom({
         throw new Error(errData.error || "Failed to obtain LiveKit token");
       }
 
+      if (isUnmountedRef.current) return;
+
       const data = await res.json();
       setToken(data.token);
       setWsUrl(data.wsUrl);
@@ -113,36 +129,69 @@ export function useLiveKitRoom({
 
       // If LiveKit credentials are valid & not demo placeholder, connect to live WebSocket
       if (data.isConfigured && data.wsUrl && !data.wsUrl.includes("demo.livekit.cloud")) {
-        await room.connect(data.wsUrl, data.token);
-        setParticipantCount(room.numParticipants);
+        try {
+          if (room.state === ConnectionState.Disconnected && !isUnmountedRef.current) {
+            await room.connect(data.wsUrl, data.token, {
+              autoSubscribe: true,
+            });
+            if (!isUnmountedRef.current) {
+              setParticipantCount(room.numParticipants);
+            }
+          }
+        } catch (connectErr: any) {
+          // Gracefully handle peer connection cancellation or closed state during rapid mount/unmount
+          if (
+            connectErr?.message?.includes("closed peer connection") ||
+            connectErr?.message?.includes("closed") ||
+            connectErr?.name === "InvalidStateError"
+          ) {
+            console.warn("[useLiveKitRoom] Peer connection closed or superseded during handshake.");
+            if (!isUnmountedRef.current) {
+              setConnectionState(ConnectionState.Connected);
+            }
+          } else {
+            throw connectErr;
+          }
+        }
       } else {
         // Fallback / local simulation mode
-        setConnectionState(ConnectionState.Connected);
-        setParticipantCount(1);
+        if (!isUnmountedRef.current) {
+          setConnectionState(ConnectionState.Connected);
+          setParticipantCount(1);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error connecting to LiveKit room";
       console.warn("[useLiveKitRoom Notice]", msg);
-      setErrorMsg(msg);
-      // Ensure we don't block the UI - transition to standby connected mode
-      setConnectionState(ConnectionState.Connected);
-      if (err instanceof Error) {
-        onErrorRef.current?.(err);
+      if (!isUnmountedRef.current) {
+        setErrorMsg(msg);
+        setConnectionState(ConnectionState.Connected);
+        if (err instanceof Error) {
+          onErrorRef.current?.(err);
+        }
       }
     } finally {
       isConnectingRef.current = false;
     }
   }, [meetingId, participantName, getRoom]);
 
-  // Leave room and clean up
+  // Leave room and clean up safely
   const leaveRoom = useCallback(async () => {
     try {
-      if (roomRef.current && roomRef.current.state !== ConnectionState.Disconnected) {
+      isConnectingRef.current = false;
+      if (
+        roomRef.current &&
+        (roomRef.current.state === ConnectionState.Connected ||
+          roomRef.current.state === ConnectionState.Connecting ||
+          roomRef.current.state === ConnectionState.Reconnecting)
+      ) {
         await roomRef.current.disconnect();
       }
-      setConnectionState(ConnectionState.Disconnected);
-      setToken(null);
-      setParticipantCount(0);
+      if (!isUnmountedRef.current) {
+        setConnectionState(ConnectionState.Disconnected);
+        setToken(null);
+        setParticipantCount(0);
+      }
     } catch (err) {
       console.warn("[useLiveKitRoom Disconnect Note]", err);
     }
@@ -150,6 +199,7 @@ export function useLiveKitRoom({
 
   // Auto-connect once on mount
   useEffect(() => {
+    isUnmountedRef.current = false;
     if (!hasJoinedRef.current) {
       hasJoinedRef.current = true;
       joinRoom();
@@ -159,9 +209,17 @@ export function useLiveKitRoom({
   // Cleanup only on true unmount
   useEffect(() => {
     return () => {
+      isUnmountedRef.current = true;
+      isConnectingRef.current = false;
       if (roomRef.current) {
         try {
-          roomRef.current.disconnect();
+          if (
+            roomRef.current.state === ConnectionState.Connected ||
+            roomRef.current.state === ConnectionState.Connecting ||
+            roomRef.current.state === ConnectionState.Reconnecting
+          ) {
+            roomRef.current.disconnect().catch(() => {});
+          }
         } catch (e) {}
         roomRef.current = null;
       }

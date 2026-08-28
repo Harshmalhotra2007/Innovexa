@@ -1,7 +1,5 @@
-"use client";
-
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Room } from "livekit-client";
+import { Room, ConnectionState } from "livekit-client";
 
 export interface MediaControlsOptions {
   room?: Room | null;
@@ -165,7 +163,7 @@ export function useMediaControls({
   const toggleMic = useCallback(async () => {
     setIsMicEnabled((prev) => {
       const nextState = !prev;
-      if (room?.localParticipant) {
+      if (room && room.state === ConnectionState.Connected && room.localParticipant) {
         room.localParticipant.setMicrophoneEnabled(nextState).catch(() => {});
       }
       if (mediaStreamRef.current) {
@@ -182,7 +180,7 @@ export function useMediaControls({
   const toggleCamera = useCallback(async () => {
     setIsCameraEnabled((prev) => {
       const nextState = !prev;
-      if (room?.localParticipant) {
+      if (room && room.state === ConnectionState.Connected && room.localParticipant) {
         room.localParticipant.setCameraEnabled(nextState).catch(() => {});
       }
       if (mediaStreamRef.current) {
@@ -198,7 +196,7 @@ export function useMediaControls({
   const toggleScreenShare = useCallback(async () => {
     if (isScreenSharing) {
       // Stop screen sharing
-      if (room?.localParticipant) {
+      if (room && room.state === ConnectionState.Connected && room.localParticipant) {
         room.localParticipant.setScreenShareEnabled(false).catch(() => {});
       }
       if (screenStreamRef.current) {
@@ -209,7 +207,7 @@ export function useMediaControls({
       setIsScreenSharing(false);
     } else {
       // Start screen sharing
-      if (room?.localParticipant) {
+      if (room && room.state === ConnectionState.Connected && room.localParticipant) {
         try {
           await room.localParticipant.setScreenShareEnabled(true);
           setIsScreenSharing(true);
