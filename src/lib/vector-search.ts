@@ -1,10 +1,10 @@
 import { db } from "./db";
 import { config } from "./config";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import path from "path";
-import util from "util";
+import { promisify } from "util";
 
-const execPromise = util.promisify(exec);
+const execPromise = promisify(execFile);
 const vectorCache = new Map<string, number[]>();
 
 export interface SearchResultItem {
@@ -33,9 +33,10 @@ async function getChromaQueryVector(query: string): Promise<number[] | null> {
 
   try {
     const scriptPath = path.join(process.cwd(), "ai-agent-service/oracle_core_worker.py");
-    const cleanQuery = query.replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
-    
-    const { stdout } = await execPromise(`python "${scriptPath}" --embed "${cleanQuery}"`, { timeout: 3000 });
+    // Sanitize query input - only allow safe characters for command line argument
+    const cleanQuery = query.replace(/[^\w\s\-.,]/g, '');
+
+    const { stdout } = await execPromise("python", [scriptPath, "--embed", cleanQuery], { timeout: 3000 });
     const parsed = JSON.parse(stdout.trim());
     if (Array.isArray(parsed)) {
       vectorCache.set(cacheKey, parsed);
@@ -78,7 +79,7 @@ async function queryChromaCollection(vector: number[], limit: number = 5): Promi
     });
     if (!queryRes.ok) return [];
     const data = await queryRes.json();
-    
+
     const results = [];
     const docs = data.documents[0] || [];
     const metadatas = data.metadatas[0] || [];
@@ -130,14 +131,14 @@ function tfCosineSimilarity(text1: string, text2: string): number {
 }
 
 export async function performSemanticSearch(
-  query: string, 
-  departmentFilter?: string, 
-  startDate?: string, 
+  query: string,
+  departmentFilter?: string,
+  startDate?: string,
   endDate?: string
 ): Promise<SearchResultItem[]> {
   if (!query || query.trim().length === 0) return [];
   const results: SearchResultItem[] = [];
-  
+
   // 1. Attempt to search in ChromaDB using vector representation
   const queryVector = await getChromaQueryVector(query);
   if (queryVector) {
@@ -169,10 +170,10 @@ export async function performSemanticSearch(
   }
 
   // 2. Fetch Decisions, Tasks from PostgreSQL for hybrid search
-  const decisions = await db.decision.findMany({ 
+  const decisions = await db.decision.findMany({
     take: 200,
     orderBy: { createdAt: "desc" },
-    include: { meeting: true } 
+    include: { meeting: true }
   });
   for (const dec of decisions) {
     if (departmentFilter && departmentFilter !== "All" && dec.department !== departmentFilter) continue;
@@ -188,24 +189,24 @@ export async function performSemanticSearch(
         parsedTags = dec.tags;
       }
       results.push({
-        id: dec.id, 
-        type: "decision", 
+        id: dec.id,
+        type: "decision",
         title: dec.title,
         content: `${dec.context} — Rationale: ${dec.rationale || "N/A"}`,
         score: Math.max(score, fullText.toLowerCase().includes(query.toLowerCase()) ? 0.75 : score),
-        department: dec.department, 
-        meetingId: dec.meetingId, 
+        department: dec.department,
+        meetingId: dec.meetingId,
         meetingTitle: dec.meeting?.title,
-        date: dec.createdAt.toISOString().split("T")[0], 
+        date: dec.createdAt.toISOString().split("T")[0],
         tags: parsedTags,
       });
     }
   }
 
-  const tasks = await db.task.findMany({ 
+  const tasks = await db.task.findMany({
     take: 200,
     orderBy: { createdAt: "desc" },
-    include: { meeting: true } 
+    include: { meeting: true }
   });
   for (const t of tasks) {
     if (departmentFilter && departmentFilter !== "All" && t.department !== departmentFilter) continue;
@@ -217,15 +218,15 @@ export async function performSemanticSearch(
 
     if (score > 0.05 || fullText.toLowerCase().includes(query.toLowerCase())) {
       results.push({
-        id: t.id, 
-        type: "task", 
+        id: t.id,
+        type: "task",
         title: `Task: ${t.title}`,
         content: t.description || `Assigned to ${t.ownerName} (Status: ${t.status})`,
         score: Math.max(score, fullText.toLowerCase().includes(query.toLowerCase()) ? 0.7 : score),
-        department: t.department, 
-        meetingId: t.meetingId || undefined, 
+        department: t.department,
+        meetingId: t.meetingId || undefined,
         meetingTitle: t.meeting?.title,
-        ownerName: t.ownerName, 
+        ownerName: t.ownerName,
         status: t.status,
         date: t.createdAt.toISOString().split("T")[0],
       });
@@ -234,7 +235,7 @@ export async function performSemanticSearch(
 
   // Sort by score descending and return top 5
   results.sort((a, b) => b.score - a.score);
-  
+
   // Deduplicate results by content to keep clean lists
   const seenContent = new Set<string>();
   const uniqResults = results.filter((item) => {
