@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getRoomServiceClient } from "@/lib/livekit";
 import { startRoomEgress, stopEgress } from "@/lib/livekit-egress";
+import { EgressPipelineValidator } from "@/lib/egress-pipeline-validator";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { action, roomName, meetingId, egressId } = body;
+    const { action, roomName, meetingId, egressId, activeTrackCount = 1 } = body;
+    const requesterRole = req.headers.get("x-user-role") || "organizer";
 
     if (!meetingId) {
       return NextResponse.json({ error: "meetingId is required" }, { status: 400 });
@@ -58,17 +60,44 @@ export async function POST(req: Request) {
     const targetRoomName = roomName || `innovexa-meeting-${meetingId}`;
 
     if (action === "start_recording") {
-      const activeEgressId = await startRoomEgress(targetRoomName, meetingId);
+      // Run full pipeline validation (sanitization, role auth, rate-limit lock, track check)
+      const validation = await EgressPipelineValidator.validate({
+        roomName: targetRoomName,
+        meetingId,
+        requesterRole,
+        activeTrackCount,
+      });
+
+      if (!validation.valid) {
+        return NextResponse.json(
+          {
+            error: validation.error,
+            existingEgressId: validation.existingEgressId,
+          },
+          { status: validation.statusCode }
+        );
+      }
+
+      const activeEgressId = await startRoomEgress(
+        validation.sanitizedRoomName!,
+        validation.sanitizedMeetingId!
+      );
+
+      // Acquire active lock for Egress session
+      EgressPipelineValidator.acquireLock(
+        validation.sanitizedMeetingId!,
+        activeEgressId || undefined
+      );
 
       await db.liveKitRoom.upsert({
-        where: { meetingId },
+        where: { meetingId: validation.sanitizedMeetingId! },
         update: {
           recordingOn: true,
           status: "active",
         },
         create: {
-          meetingId,
-          roomName: targetRoomName,
+          meetingId: validation.sanitizedMeetingId!,
+          roomName: validation.sanitizedRoomName!,
           recordingOn: true,
           status: "active",
         },
@@ -77,8 +106,8 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         action: "start_recording",
-        meetingId,
-        roomName: targetRoomName,
+        meetingId: validation.sanitizedMeetingId,
+        roomName: validation.sanitizedRoomName,
         egressId: activeEgressId,
         serverEgressStarted: !!activeEgressId,
       });
@@ -88,6 +117,8 @@ export async function POST(req: Request) {
       if (egressId) {
         await stopEgress(egressId);
       }
+
+      EgressPipelineValidator.releaseLock(meetingId);
 
       await db.liveKitRoom.update({
         where: { meetingId },

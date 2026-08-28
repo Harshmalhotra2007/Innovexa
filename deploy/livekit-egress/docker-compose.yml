@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  # Redis for LiveKit Egress task queuing & worker discovery
+  redis:
+    image: redis:7-alpine
+    container_name: innovexa-egress-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # LiveKit Egress Service with Headless Chromium & GStreamer
+  livekit-egress:
+    image: livekit/egress:latest
+    container_name: innovexa-livekit-egress
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ipc: host
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress/config.yaml
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-secret_dev_key_innovexa_native}
+      - LIVEKIT_WS_URL=${LIVEKIT_WS_URL:-ws://livekit:7880}
+      - REDIS_HOST=redis
+    volumes:
+      - ./config.yaml:/etc/egress/config.yaml:ro
+      - egress-recordings:/home/egress/recordings
+    ports:
+      - "8080:8080" # Health check endpoint
+      - "9090:9090" # Prometheus metrics endpoint
+
+volumes:
+  redis-data:
+  egress-recordings:
