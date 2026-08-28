@@ -36,6 +36,35 @@ function getSupportedAudioMimeType(): string {
   return "";
 }
 
+interface ISpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [subIndex: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface ISpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognitionInstance;
+
+interface WindowWithSpeechRec extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 export function useWhisperPipeline({
   meetingId,
   mediaStream,
@@ -51,7 +80,7 @@ export function useWhisperPipeline({
   const [lastError, setLastError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
   const chunkIndexRef = useRef<number>(0);
   const isPipelineActiveRef = useRef<boolean>(false);
 
@@ -155,7 +184,8 @@ export function useWhisperPipeline({
     try {
       // 1. Start browser Native Speech Recognition if available
       if (typeof window !== "undefined") {
-        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const win = window as WindowWithSpeechRec;
+        const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
         if (SpeechRec) {
           try {
             const recognition = new SpeechRec();
@@ -163,15 +193,15 @@ export function useWhisperPipeline({
             recognition.interimResults = false;
             recognition.lang = "en-US";
 
-            recognition.onresult = (event: any) => {
+            recognition.onresult = (event: ISpeechRecognitionEvent) => {
               const current = event.resultIndex;
-              const transcript = event.results[current][0].transcript;
+              const transcript = event.results[current]?.[0]?.transcript;
               if (transcript && transcript.trim().length > 0) {
                 handleRecognizedText(transcript);
               }
             };
 
-            recognition.onerror = (event: any) => {
+            recognition.onerror = (event: { error: string }) => {
               console.warn("[SpeechRecognition Notice]", event.error);
             };
 

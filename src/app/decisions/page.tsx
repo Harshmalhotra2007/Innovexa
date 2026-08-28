@@ -17,8 +17,38 @@ import {
   Sparkles,
 } from "lucide-react";
 
+export interface DecisionItem {
+  id: string;
+  title: string;
+  department: string;
+  context: string;
+  rationale?: string | null;
+  tags?: string[];
+  createdAt: string;
+  meeting?: {
+    id: string;
+    title: string;
+    date: string;
+  } | null;
+}
+
+interface RawMeetingData {
+  id: string;
+  title: string;
+  date: string;
+  decisions?: Array<{
+    id: string;
+    title: string;
+    department: string;
+    context: string;
+    rationale?: string | null;
+    tags?: string[];
+    createdAt: string;
+  }>;
+}
+
 export default function DecisionsPage() {
-  const [decisions, setDecisions] = useState<any[]>([]);
+  const [decisions, setDecisions] = useState<DecisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deptFilter, setDeptFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,19 +70,19 @@ export default function DecisionsPage() {
     try {
       const res = await fetch("/api/decisions");
       if (res.ok) {
-        const data = await res.json();
+        const data: DecisionItem[] = await res.json();
         setDecisions(data || []);
       } else {
         const mRes = await fetch("/api/meetings");
-        const mData = await mRes.json();
-        const allDecisions = mData.flatMap((m: any) =>
-          (m.decisions || []).map((d: any) => ({
+        const mData: RawMeetingData[] = await mRes.json();
+        const allDecisions: DecisionItem[] = mData.flatMap((m) =>
+          (m.decisions || []).map((d) => ({
             ...d,
             meeting: { id: m.id, title: m.title, date: m.date },
           }))
         );
         allDecisions.sort(
-          (a: any, b: any) =>
+          (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setDecisions(allDecisions);

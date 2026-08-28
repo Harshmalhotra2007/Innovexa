@@ -1,9 +1,11 @@
+const config = require('./config');
+
 /**
  * Consent and Disclosure Announcement Handler
  * Handles visible bot naming, in-meeting chat announcement, and consent logging.
  */
 class ConsentAnnouncer {
-  constructor(page, botName = "Innovexa Notetaker") {
+  constructor(page, botName = config.botDisplayName) {
     this.page = page;
     this.botName = botName;
     this.consentStatus = "pending"; // pending, consented, objected
@@ -20,7 +22,7 @@ class ConsentAnnouncer {
       timestamp: new Date().toISOString(),
       botName: this.botName,
       action: "announced",
-      jurisdiction: process.env.COMPLIANCE_JURISDICTION || "default"
+      jurisdiction: config.complianceJurisdiction
     };
     this.consentLogs.push(logEntry);
 

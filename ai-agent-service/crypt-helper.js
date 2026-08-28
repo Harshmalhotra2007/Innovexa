@@ -1,11 +1,12 @@
 const crypto = require('crypto');
+const config = require('./config');
 
 const ALGORITHM = 'aes-256-cbc';
 // Use environment encryption key or fallback to a deterministic 32-byte key for local dev
 const DEFAULT_KEY_HEX = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 function getEncryptionKey() {
-  const keyEnv = process.env.ENCRYPTION_SECRET_KEY;
+  const keyEnv = config.encryptionSecretKey;
   if (keyEnv) {
     // Ensure key is 32 bytes (64 hex characters or hashed)
     return crypto.createHash('sha256').update(keyEnv).digest();

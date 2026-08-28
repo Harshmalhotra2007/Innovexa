@@ -18,13 +18,59 @@ export interface AIAgentData {
   summary?: string;
 }
 
+export interface ActionItemData {
+  id?: string;
+  meetingId?: string;
+  task: string;
+  assignee?: string;
+  dueDate?: string | null;
+  status?: string;
+  priority?: string;
+}
+
+export interface CitationData {
+  id?: string;
+  meetingId?: string;
+  transcriptChunkId: string;
+  confidence: number;
+  createdAt?: string;
+  snippet?: string;
+}
+
+interface ISpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [subIndex: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface ISpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognitionInstance;
+
+interface WindowWithSpeechRec extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 export function useAIAgent(meetingId: string) {
   const [agent, setAgent] = useState<AIAgentData>({
     meetingId,
     status: "idle",
   });
-  const [actionItems, setActionItems] = useState<any[]>([]);
-  const [citations, setCitations] = useState<any[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItemData[]>([]);
+  const [citations, setCitations] = useState<CitationData[]>([]);
   const [highlightedChunkIndex, setHighlightedChunkIndex] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -39,6 +85,7 @@ export function useAIAgent(meetingId: string) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -47,11 +94,11 @@ export function useAIAgent(meetingId: string) {
     try {
       const res = await fetch(`/api/ai-agent/status/${meetingId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data: AIAgentData = await res.json();
         setAgent(data);
       }
     } catch {
-      // Ignore
+      // Ignore network errors in background polling
     }
   }, [meetingId]);
 
@@ -63,7 +110,7 @@ export function useAIAgent(meetingId: string) {
         setActionItems(data.actionItems || []);
       }
     } catch {
-      // Ignore
+      // Ignore network errors in background polling
     }
   }, [meetingId]);
 
@@ -71,10 +118,10 @@ export function useAIAgent(meetingId: string) {
     try {
       const res = await fetch(`/api/citations?meetingId=${meetingId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data: CitationData[] = await res.json();
         setCitations(data);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("[useAIAgent] Mapped citations not found yet:", err);
     }
   }, [meetingId]);
@@ -91,6 +138,14 @@ export function useAIAgent(meetingId: string) {
       if (socketRef.current) socketRef.current.close();
       if (eventSourceRef.current) eventSourceRef.current.close();
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // Ignore stop errors on unmount
+        }
+        recognitionRef.current = null;
+      }
     };
   }, [meetingId, fetchStatus, fetchActionItems, fetchCitations]);
 
@@ -128,7 +183,7 @@ export function useAIAgent(meetingId: string) {
         throw new Error(err.error || "Failed to trigger AI Agent");
       }
 
-      const data = await res.json();
+      const data: AIAgentData = await res.json();
       setAgent(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error joining meeting";
@@ -161,9 +216,10 @@ export function useAIAgent(meetingId: string) {
       await fetchStatus();
       await fetchActionItems();
       await fetchCitations();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to upload audio recording.";
       console.error("Tab audio upload error:", err);
-      setErrorMsg(err.message || "Failed to upload audio recording.");
+      setErrorMsg(message);
       setAgent((prev) => ({ ...prev, status: "idle" }));
     }
   };
@@ -179,7 +235,7 @@ export function useAIAgent(meetingId: string) {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-          } as any,
+          } as MediaTrackConstraints,
         });
       } catch {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -187,16 +243,17 @@ export function useAIAgent(meetingId: string) {
 
       // Initialize Browser Native SpeechRecognition for immediate real-time live captions
       if (typeof window !== "undefined") {
-        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const win = window as WindowWithSpeechRec;
+        const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
         if (SpeechRec) {
           try {
             const recognition = new SpeechRec();
             recognition.continuous = true;
             recognition.interimResults = false;
 
-            recognition.onresult = (event: any) => {
+            recognition.onresult = (event: ISpeechRecognitionEvent) => {
               const current = event.resultIndex;
-              const text = event.results[current][0]?.transcript;
+              const text = event.results[current]?.[0]?.transcript;
               if (text && text.trim().length > 0) {
                 const cleanText = text.trim();
                 const nowSecs = tabRecordSeconds;
@@ -204,7 +261,7 @@ export function useAIAgent(meetingId: string) {
                 const secs = nowSecs % 60;
                 const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 
-                const liveSeg = {
+                const liveSeg: TranscriptSegment = {
                   speaker: "Presenter (Live)",
                   text: cleanText,
                   timestamp,
@@ -228,10 +285,10 @@ export function useAIAgent(meetingId: string) {
               }
             };
 
-            recognition.onerror = (e: any) => console.warn("[AIAgent SpeechRec Note]", e.error);
+            recognition.onerror = (e: { error: string }) => console.warn("[AIAgent SpeechRec Note]", e.error);
             recognition.start();
-            (eventSourceRef as any).currentRecognition = recognition;
-          } catch (recErr) {
+            recognitionRef.current = recognition;
+          } catch (recErr: unknown) {
             console.warn("[AIAgent SpeechRec Init Note]", recErr);
           }
         }
@@ -278,9 +335,9 @@ export function useAIAgent(meetingId: string) {
       };
 
       recorder.onstop = async () => {
-        if ((eventSourceRef as any).currentRecognition) {
-          try { (eventSourceRef as any).currentRecognition.stop(); } catch {}
-          (eventSourceRef as any).currentRecognition = null;
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch {}
+          recognitionRef.current = null;
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
@@ -300,16 +357,16 @@ export function useAIAgent(meetingId: string) {
       recordTimerRef.current = setInterval(() => {
         setTabRecordSeconds((prev) => prev + 1);
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Tab audio capture error:", err);
       setErrorMsg("Could not capture tab audio. Please grant screen/audio permissions.");
     }
   };
 
   const stopTabAudioCapture = () => {
-    if ((eventSourceRef as any).currentRecognition) {
-      try { (eventSourceRef as any).currentRecognition.stop(); } catch {}
-      (eventSourceRef as any).currentRecognition = null;
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
@@ -324,7 +381,7 @@ export function useAIAgent(meetingId: string) {
 
     setLoading(true);
     setErrorMsg(null);
-    setAgent((prev: any) => ({ ...prev, status: "completed" }));
+    setAgent((prev) => ({ ...prev, status: "completed" }));
 
     try {
       await Promise.all([
@@ -343,8 +400,9 @@ export function useAIAgent(meetingId: string) {
       await fetchStatus();
       await fetchActionItems();
       await fetchCitations();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Error ending meeting");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error ending meeting";
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }

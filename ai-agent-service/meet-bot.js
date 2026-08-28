@@ -12,18 +12,21 @@ async function runMeetBot(meetingUrl, durationMs, outputFilePath) {
 
   const browser = await chromium.launch({
     headless: false, // Run headful inside Xvfb virtual frame buffer
+    headless: options.headless !== undefined ? options.headless : false,
     args: [
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
       "--disable-dev-shm-usage", // Avoid shared memory OOM container crashes
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--mute-audio=false" // Ensure audio is rendered and outputted to PulseAudio
+      "--mute-audio=false", // Ensure audio is rendered and outputted to PulseAudio
+      "--allow-file-access-from-files",
+      "--disable-blink-features=AutomationControlled",
     ],
   });
 
   const context = await browser.newContext({
-    permissions: ["microphone"],
+    permissions: ["microphone", "camera"],
     viewport: { width: 1280, height: 720 }
   });
 
@@ -32,7 +35,7 @@ async function runMeetBot(meetingUrl, durationMs, outputFilePath) {
   let isRecording = false;
 
   // Signal cleanup function to stop recording cleanly on process termination
-  const cleanExit = () => {
+  const cleanExit = async () => {
     if (recorderProcess && isRecording) {
       console.log("[MeetBot] Signal received. Terminating recording process cleanly...");
       recorderProcess.kill("SIGTERM");
@@ -45,13 +48,13 @@ async function runMeetBot(meetingUrl, durationMs, outputFilePath) {
 
   try {
     // 1. Pre-auth configuration
-    if (process.env.GOOGLE_EMAIL && process.env.GOOGLE_PASSWORD) {
+    if (config.googleEmail && config.googlePassword) {
       console.log("[MeetBot] Performing Google account login...");
       await page.goto("https://accounts.google.com");
-      await page.fill('input[type="email"]', process.env.GOOGLE_EMAIL);
+      await page.fill('input[type="email"]', config.googleEmail);
       await page.click('button:has-text("Next")');
       await page.waitForTimeout(2000);
-      await page.fill('input[type="password"]', process.env.GOOGLE_PASSWORD);
+      await page.fill('input[type="password"]', config.googlePassword);
       await page.click('button:has-text("Next")');
       await page.waitForNavigation({ waitUntil: "networkidle" });
     }
@@ -87,7 +90,7 @@ async function runMeetBot(meetingUrl, durationMs, outputFilePath) {
     // 4. Input displayName if joining as guest
     const nameInput = page.locator('input[placeholder*="Your name"], input[placeholder*="Ask to join"]');
     if (await nameInput.isVisible()) {
-      const botName = process.env.BOT_DISPLAY_NAME || "Innovexa Notetaker";
+      const botName = config.botDisplayName || "Innovexa Notetaker";
       console.log(`[MeetBot] Entering guest display name: ${botName}`);
       await nameInput.fill(botName);
       await page.waitForTimeout(500);
@@ -113,7 +116,7 @@ async function runMeetBot(meetingUrl, durationMs, outputFilePath) {
 
     // 7. Start PulseAudio Loopback Recording via FFmpeg
     console.log("[MeetBot] Starting FFmpeg audio capture from PulseAudio MeetSink...");
-    const recordingMode = process.env.RECORDING_MODE || "batch"; // "batch" or "chunked"
+    const recordingMode = config.recordingMode || "batch"; // "batch" or "chunked"
     
     fs.mkdirSync(path.dirname(outputFilePath), { recursive: true });
 

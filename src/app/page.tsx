@@ -32,20 +32,31 @@ const DEPARTMENTS = [
   "Cybersecurity & Governance",
 ];
 
+export interface DashboardAnalytics {
+  totalMeetings?: number;
+  totalDecisions?: number;
+  openTasks?: number;
+  escalatedTasks?: number;
+  slaComplianceRate?: number;
+  decisionsByDept?: Record<string, number>;
+  tasksByStatus?: Record<string, number>;
+  [key: string]: unknown;
+}
+
 interface MeetingItem {
   id: string;
   title: string;
   date: string;
   department?: string;
   status: string;
-  tasks?: any[];
-  decisions?: any[];
+  tasks?: Array<{ id: string; title: string; status: string }>;
+  decisions?: Array<{ id: string; title: string }>;
   summary?: string;
 }
 
 export default function Home() {
   const [selectedDept, setSelectedDept] = useState("All");
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [meetings, setMeetings] = useState<MeetingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);

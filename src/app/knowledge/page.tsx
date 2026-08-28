@@ -25,6 +25,62 @@ import {
   Check,
 } from "lucide-react";
 
+export interface KnowledgeSearchResult {
+  id: string;
+  type: string;
+  department: string;
+  title: string;
+  content: string;
+  score?: number;
+  date?: string;
+  meetingTitle?: string;
+  meetingId?: string;
+  tags?: string[];
+  ownerName?: string;
+  status?: string;
+}
+
+export interface TopicClusterItem {
+  id: string;
+  keywords?: string[];
+  decisions?: Array<{
+    id: string;
+    title: string;
+  }>;
+}
+
+export interface ContradictionItem {
+  id: string;
+  confidence: number;
+  decision1?: {
+    title: string;
+    context: string;
+    meeting?: {
+      title: string;
+    } | null;
+  } | null;
+  decision2?: {
+    title: string;
+    context: string;
+    meeting?: {
+      title: string;
+    } | null;
+  } | null;
+}
+
+export interface QACitationItem {
+  citationId: number;
+  title: string;
+  score: string;
+  meetingId?: string;
+  type?: string;
+}
+
+export interface QAResponse {
+  answer: string;
+  citations: QACitationItem[];
+}
+
 function KnowledgeSearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
@@ -34,7 +90,7 @@ function KnowledgeSearchContent() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<KnowledgeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"search" | "clusters" | "qa">("search");
 
@@ -56,18 +112,15 @@ function KnowledgeSearchContent() {
   const [indexSuccess, setIndexSuccess] = useState<string | null>(null);
 
   // Topic Clusters and Contradictions states
-  const [clusters, setClusters] = useState<any[]>([]);
-  const [contradictions, setContradictions] = useState<any[]>([]);
+  const [clusters, setClusters] = useState<TopicClusterItem[]>([]);
+  const [contradictions, setContradictions] = useState<ContradictionItem[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [dismissedContradictions, setDismissedContradictions] = useState<Set<string>>(new Set());
 
   // AI QA State
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [qaQuestion, setQaQuestion] = useState("");
-  const [qaAnswer, setQaAnswer] = useState<{
-    answer: string;
-    citations: any[];
-  } | null>(null);
+  const [qaAnswer, setQaAnswer] = useState<QAResponse | null>(null);
   const [qaLoading, setQaLoading] = useState(false);
 
   const presets = [
@@ -564,7 +617,7 @@ function KnowledgeSearchContent() {
                     Verifiable Grounding Citations ({qaAnswer.citations.length})
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {qaAnswer.citations.map((c: any) => (
+                    {qaAnswer.citations.map((c: QACitationItem) => (
                       <div
                         key={c.citationId}
                         className="ops-panel p-3 border border-[var(--border)] bg-[var(--panel)] text-xs space-y-1"

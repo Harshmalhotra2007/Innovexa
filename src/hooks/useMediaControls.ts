@@ -353,7 +353,8 @@ export function useMediaControls({
         // Fallback: create silent audio destination if microphone track was blocked
         if (!audioOnlyStream) {
           try {
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            const win = window as Window & { webkitAudioContext?: typeof AudioContext };
+            const AudioCtx = win.AudioContext || win.webkitAudioContext;
             if (AudioCtx) {
               const ctx = new AudioCtx();
               const dest = ctx.createMediaStreamDestination();

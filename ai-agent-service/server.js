@@ -5,14 +5,14 @@ const { exec } = require("child_process");
 const { OpenAI } = require("openai");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const config = require("./config");
 
 const prisma = new PrismaClient();
-const PORT = process.env.AGENT_SERVICE_PORT || 8081;
+const PORT = config.port;
 const wss = new WebSocketServer({ port: PORT });
 
 // Initialize OpenAI client if API key exists
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const openai = config.openaiApiKey ? new OpenAI({ apiKey: config.openaiApiKey }) : null;
 
 console.log(`[AgentService] WebSocket Server listening on port ${PORT}`);
 

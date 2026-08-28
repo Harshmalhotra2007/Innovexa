@@ -4,9 +4,10 @@
  */
 const { exec } = require('child_process');
 const path = require('path');
+const config = require('./config');
 
-const WHISPER_BINARY = process.env.WHISPER_BINARY_PATH || 'whisper-cli';
-const WHISPER_MODEL = process.env.WHISPER_MODEL_PATH || './models/ggml-base.en.bin';
+const WHISPER_BINARY = config.whisperBinaryPath;
+const WHISPER_MODEL = config.whisperModelPath;
 
 /**
  * Transcribe audio file using local Whisper.cpp

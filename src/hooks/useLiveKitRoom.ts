@@ -138,12 +138,14 @@ export function useLiveKitRoom({
               setParticipantCount(room.numParticipants);
             }
           }
-        } catch (connectErr: any) {
+        } catch (connectErr: unknown) {
+          const errMsg = connectErr instanceof Error ? connectErr.message : String(connectErr);
+          const errName = connectErr instanceof Error ? connectErr.name : "";
           // Gracefully handle peer connection cancellation or closed state during rapid mount/unmount
           if (
-            connectErr?.message?.includes("closed peer connection") ||
-            connectErr?.message?.includes("closed") ||
-            connectErr?.name === "InvalidStateError"
+            errMsg.includes("closed peer connection") ||
+            errMsg.includes("closed") ||
+            errName === "InvalidStateError"
           ) {
             console.warn("[useLiveKitRoom] Peer connection closed or superseded during handshake.");
             if (!isUnmountedRef.current) {

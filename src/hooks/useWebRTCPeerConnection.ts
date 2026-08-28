@@ -147,7 +147,7 @@ export function useWebRTCPeerConnection({
           sdp: offer.sdp,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[useWebRTC] ICE restart offer failed:", err);
       throw err;
     }
@@ -180,9 +180,10 @@ export function useWebRTCPeerConnection({
       }
 
       return offer;
-    } catch (err: any) {
-      setError(err.message || "Failed to create offer");
-      stateGuardRef.current.transition("failed", err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create offer";
+      setError(msg);
+      stateGuardRef.current.transition("failed", msg);
       throw err;
     }
   }, [createPeerConnection, onSignalingMessage, roomId, userId]);
@@ -221,8 +222,9 @@ export function useWebRTCPeerConnection({
       }
 
       return answer;
-    } catch (err: any) {
-      setError(err.message || "Failed to handle remote offer");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to handle remote offer";
+      setError(msg);
       throw err;
     }
   }, [createPeerConnection, onSignalingMessage, roomId, userId]);
@@ -243,8 +245,9 @@ export function useWebRTCPeerConnection({
           await pcRef.current.addIceCandidate(new RTCIceCandidate(cand as RTCIceCandidateInit));
         }
       });
-    } catch (err: any) {
-      setError(err.message || "Failed to set remote answer");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to set remote answer";
+      setError(msg);
       throw err;
     }
   }, []);
@@ -252,7 +255,7 @@ export function useWebRTCPeerConnection({
   /**
    * Adds an inbound ICE candidate or buffers it if remote description is not yet set.
    */
-  const addRemoteIceCandidate = useCallback(async (candidate: any) => {
+  const addRemoteIceCandidate = useCallback(async (candidate: RTCIceCandidateInit | RTCIceCandidate) => {
     const pc = pcRef.current;
 
     await candidateBufferRef.current.addCandidate(candidate, async (sanitized) => {

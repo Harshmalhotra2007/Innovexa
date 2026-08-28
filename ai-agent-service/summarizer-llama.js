@@ -4,9 +4,10 @@
  */
 const { exec } = require('child_process');
 const path = require('path');
+const config = require('./config');
 
-const LLAMA_BINARY = process.env.LLAMA_BINARY_PATH || 'llama-cli';
-const LLAMA_MODEL = process.env.LLAMA_MODEL_PATH || './models/llama-2-7b-chat.gguf';
+const LLAMA_BINARY = config.llamaBinaryPath;
+const LLAMA_MODEL = config.llamaModelPath;
 
 /**
  * Generate meeting summary and extract action items using local Llama.cpp

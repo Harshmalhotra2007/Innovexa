@@ -281,8 +281,9 @@ export default function MeetingDetailPage() {
       } else {
         showToast(data.error || data.message || "No items found.", "error");
       }
-    } catch (err: any) {
-      showToast(err.message || "Network error", "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error";
+      showToast(msg, "error");
     } finally {
       setExtracting(false);
     }

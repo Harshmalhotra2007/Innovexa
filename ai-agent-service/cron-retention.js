@@ -5,6 +5,7 @@
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
+const config = require('./config');
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ async function runRetentionCleanup() {
   try {
     // Find meetings older than retention window
     // Default 30 days, but should check workspace retention policy
-    const defaultRetentionDays = parseInt(process.env.DEFAULT_RETENTION_DAYS) || 30;
+    const defaultRetentionDays = config.defaultRetentionDays;
     const cutoffDate = new Date(Date.now() - defaultRetentionDays * 24 * 60 * 60 * 1000);
 
     const oldMeetings = await prisma.meeting.findMany({
