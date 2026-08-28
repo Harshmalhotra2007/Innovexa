@@ -32,15 +32,35 @@ const DEPARTMENTS = [
   "Cybersecurity & Governance",
 ];
 
-export interface DashboardAnalytics {
+export interface DepartmentStat {
+  department: string;
+  totalTasks: number;
+  completedTasks: number;
+  escalatedTasks: number;
+  decisions: number;
+  meetings: number;
+  completionRate: number;
+  avgLag: number;
+}
+
+export interface AnalyticsSummary {
   totalMeetings?: number;
   totalDecisions?: number;
-  openTasks?: number;
+  totalTasks?: number;
+  completedTasks?: number;
+  pendingTasks?: number;
+  inProgressTasks?: number;
+  overdueTasks?: number;
   escalatedTasks?: number;
-  slaComplianceRate?: number;
-  decisionsByDept?: Record<string, number>;
-  tasksByStatus?: Record<string, number>;
-  [key: string]: unknown;
+  closureRate?: number;
+  overdueRate?: number;
+  avgDecisionLagDays?: number;
+}
+
+export interface DashboardAnalytics {
+  summary?: AnalyticsSummary;
+  departmentStats?: DepartmentStat[];
+  trendData?: Array<{ date: string; rate: number; count: number }>;
 }
 
 interface MeetingItem {
@@ -115,12 +135,14 @@ export default function Home() {
   };
 
   // Compute department-specific or global aggregate metrics
-  const summary = analytics?.summary || {};
-  const deptStats = analytics?.departmentStats || [];
+  const summary: AnalyticsSummary = analytics?.summary || {};
+  const deptStats: DepartmentStat[] = Array.isArray(analytics?.departmentStats)
+    ? analytics.departmentStats
+    : [];
 
   const currentDeptStat =
     selectedDept !== "All"
-      ? deptStats.find((d: any) => d.department.toLowerCase() === selectedDept.toLowerCase())
+      ? deptStats.find((d) => d.department.toLowerCase() === selectedDept.toLowerCase())
       : null;
 
   const displayMetrics = {

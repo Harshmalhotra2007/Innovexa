@@ -24,8 +24,9 @@ export async function GET() {
       count: upcomingMeetings.length,
       meetings: upcomingMeetings,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch upcoming meetings";
     console.error("[Upcoming Meetings API Error]", err);
-    return NextResponse.json({ error: err.message || "Failed to fetch upcoming meetings" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -19,9 +19,26 @@ import {
 } from "recharts";
 import { TrendingUp, Clock, AlertCircle, PieChart as PieIcon } from "lucide-react";
 
+export interface TrendDataPoint {
+  date: string;
+  rate?: number;
+  total?: number;
+  completed?: number;
+  [key: string]: unknown;
+}
+
+export interface DeptStatPoint {
+  name: string;
+  lag?: number;
+  count?: number;
+  value?: number;
+  color?: string;
+  [key: string]: unknown;
+}
+
 interface AnalyticsChartsProps {
-  trendData: any[];
-  deptStats: any[];
+  trendData: TrendDataPoint[];
+  deptStats: DeptStatPoint[];
   colors?: string[];
 }
 

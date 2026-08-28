@@ -297,3 +297,240 @@ export async function sendSLAEscalationEmail(params: SendSLAEscalationEmailParam
     delivered,
   };
 }
+
+export interface SendInvitationEmailParams {
+  meetingId: string;
+  meetingTitle: string;
+  scheduledDate: Date | string;
+  durationMinutes: number;
+  googleMeetLink: string | null;
+  recipientEmails: string[];
+  agenda?: string;
+  department?: string;
+}
+
+function formatUTCDateTime(dateInput: Date | string): string {
+  const d = new Date(dateInput);
+  const pad = (num: number) => String(num).padStart(2, "0");
+  const year = d.getUTCFullYear();
+  const month = pad(d.getUTCMonth() + 1);
+  const day = pad(d.getUTCDate());
+  const hours = pad(d.getUTCHours());
+  const minutes = pad(d.getUTCMinutes());
+  const seconds = pad(d.getUTCSeconds());
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+}
+
+export function generateICSFile(params: {
+  meetingId: string;
+  title: string;
+  description: string;
+  startDate: Date | string;
+  durationMinutes: number;
+  location: string;
+  organizerEmail: string;
+  attendees: string[];
+}): string {
+  const start = formatUTCDateTime(params.startDate);
+  const end = formatUTCDateTime(new Date(new Date(params.startDate).getTime() + params.durationMinutes * 60 * 1000));
+  const stamp = formatUTCDateTime(new Date());
+
+  const cleanString = (str: string) => str.replace(/[,;]/g, "\\$&").replace(/\n/g, "\\n");
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Innovexa//Meeting Scheduler//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:REQUEST",
+    "BEGIN:VEVENT",
+    `UID:${params.meetingId}`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${cleanString(params.title)}`,
+    `DESCRIPTION:${cleanString(params.description)}`,
+    `LOCATION:${cleanString(params.location)}`,
+    `ORGANIZER;CN=Innovexa:MAILTO:${params.organizerEmail}`,
+  ];
+
+  for (const attendee of params.attendees) {
+    if (attendee.trim()) {
+      lines.push(`ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=${attendee.trim()}:MAILTO:${attendee.trim()}`);
+    }
+  }
+
+  lines.push("END:VEVENT");
+  lines.push("END:VCALENDAR");
+
+  return lines.join("\r\n");
+}
+
+export function generateInvitationEmailHtml(params: {
+  meetingTitle: string;
+  scheduledDate: Date | string;
+  durationMinutes: number;
+  location: string;
+  agenda?: string;
+  department?: string;
+  recipientEmail: string;
+}): string {
+  const formattedDate = new Date(params.scheduledDate).toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0D1315; color: #E7EEEF; margin: 0; padding: 20px; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #141C1F; border: 1px solid #212B2E; border-radius: 12px; padding: 30px; }
+          .brand { color: #1D4ED8; font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+          .header { font-size: 20px; font-weight: bold; color: #ffffff; margin-top: 15px; }
+          .details { background-color: #182124; border: 1px solid #2B383C; border-radius: 8px; padding: 20px; margin: 20px 0; }
+          .label { font-size: 11px; color: #9a99a0; text-transform: uppercase; font-weight: bold; }
+          .value { font-size: 14px; color: #1D4ED8; font-weight: bold; margin-bottom: 12px; }
+          .button { display: inline-block; background-color: #1D4ED8; color: #ffffff; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin-top: 15px; }
+          .footer { font-size: 11px; color: #5B6A6E; margin-top: 25px; border-top: 1px solid #212B2E; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="brand">INNOVEXA OPS CONSOLE</div>
+          <div class="header">📅 Meeting Invitation: ${params.meetingTitle}</div>
+          <p>Hello,</p>
+          <p>You have been invited to an upcoming AI-assisted meeting on Innovexa.</p>
+          
+          <div class="details">
+            <div class="label">MEETING TITLE</div>
+            <div class="value" style="color: #ffffff;">${params.meetingTitle}</div>
+            
+            <div class="label">SCHEDULED DATE & TIME</div>
+            <div class="value">${formattedDate} (${params.durationMinutes} minutes)</div>
+            
+            <div class="label">DEPARTMENT</div>
+            <div class="value">${params.department || "General"}</div>
+            
+            ${params.agenda ? `<div class="label">AGENDA / OBJECTIVES</div><div class="value" style="color: #c5c0b8; font-weight: normal; margin-bottom: 12px;">${params.agenda}</div>` : ""}
+            
+            <div class="label">JOIN LINK</div>
+            <div class="value"><a href="${params.location}" style="color: #1D4ED8;">${params.location}</a></div>
+          </div>
+          
+          <a href="${params.location}" class="button">JOIN MEETING ROOM</a>
+          
+          <div class="footer">
+            An iCalendar (.ics) invite is attached to this email. You can import it into Google Calendar, Outlook, or Apple Calendar to reserve your slot.
+            <br/><br/>
+            Innovexa Notetaker will automatically join the meeting to capture live diarized transcripts & automated action items.
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+export async function sendMeetingInvitationEmails(params: SendInvitationEmailParams) {
+  const location = params.googleMeetLink || `${config.appUrl}/meeting/innovexa-meeting-${params.meetingId}`;
+  
+  const icsContent = generateICSFile({
+    meetingId: params.meetingId,
+    title: params.meetingTitle,
+    description: params.agenda || "General Alignment & Task Distribution",
+    startDate: params.scheduledDate,
+    durationMinutes: params.durationMinutes,
+    location,
+    organizerEmail: config.emailFrom,
+    attendees: params.recipientEmails,
+  });
+
+  const base64Ics = Buffer.from(icsContent).toString("base64");
+  const subject = `📅 Invitation: ${params.meetingTitle}`;
+  const resendApiKey = config.resendApiKey;
+
+  const results = [];
+
+  for (const email of params.recipientEmails) {
+    const html = generateInvitationEmailHtml({
+      meetingTitle: params.meetingTitle,
+      scheduledDate: params.scheduledDate,
+      durationMinutes: params.durationMinutes,
+      location,
+      agenda: params.agenda,
+      department: params.department,
+      recipientEmail: email,
+    });
+
+    let messageId = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    let delivered = false;
+
+    if (resendApiKey) {
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: config.emailFrom,
+            to: [email],
+            subject,
+            html,
+            attachments: [
+              {
+                filename: "invite.ics",
+                content: base64Ics,
+                contentType: "text/calendar",
+              }
+            ]
+          }),
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          messageId = resData.id || messageId;
+          delivered = true;
+          console.log(`[EmailEngine] Invitation email dispatched to ${email} (${messageId})`);
+        } else {
+          console.warn(`[EmailEngine] Resend API returned status ${response.status} for ${email}`);
+        }
+      } catch (err: any) {
+        console.error(`[EmailEngine Invitation Error for ${email}]`, err.message);
+      }
+    } else {
+      console.log(`[EmailEngine Mock Invitation] To: ${email} | Subject: ${subject} | ICS Attachment size: ${icsContent.length} bytes`);
+      delivered = true;
+    }
+
+    try {
+      await db.notification.create({
+        data: {
+          recipient: email,
+          subject,
+          body: `Meeting invitation sent for '${params.meetingTitle}' scheduled on ${params.scheduledDate}`,
+          type: "MEETING_INVITATION",
+          read: false,
+        },
+      });
+    } catch (dbErr: any) {
+      console.warn("[EmailEngine Invitation DB Save Note]", dbErr.message);
+    }
+
+    results.push({
+      recipient: email,
+      success: true,
+      messageId,
+      delivered,
+    });
+  }
+
+  return results;
+}

@@ -108,8 +108,9 @@ export function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMee
 
       if (onSuccess) onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to schedule meeting.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to schedule meeting.";
+      setError(msg);
     } finally {
       setSubmitting(false);
     }

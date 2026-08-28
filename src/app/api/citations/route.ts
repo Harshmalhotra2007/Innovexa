@@ -17,8 +17,9 @@ export async function GET(req: Request) {
       orderBy: { createdAt: "asc" },
     });
     return NextResponse.json(citations);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch citations";
     console.error("GET /api/citations error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

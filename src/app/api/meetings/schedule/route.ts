@@ -65,30 +65,64 @@ export async function POST(req: Request) {
     // Start background worker to ensure auto-launch at scheduled time
     startMeetingSchedulerWorker();
 
-    // Auto-enqueue 15-minute pre-meeting email reminder
-    const firstParticipant = participants.split(",")[0]?.trim() || "team@innovexa.com";
-    const reminderJob = await enqueuePreMeetingReminder(
-      {
+    // Send meeting invitation email to all participants immediately
+    const participantList = (participants || "")
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter((p: string) => p.length > 0 && p.includes("@"));
+
+    let invitationResults: unknown[] = [];
+    if (participantList.length > 0) {
+      const { sendMeetingInvitationEmails } = await import("@/lib/email-engine");
+      invitationResults = await sendMeetingInvitationEmails({
         meetingId: meeting.id,
         meetingTitle: meeting.title,
         scheduledDate: targetDateTime,
+        durationMinutes,
         googleMeetLink,
-        recipientEmail: firstParticipant,
+        recipientEmails: participantList,
         agenda: meeting.agenda || undefined,
         department,
-      },
-      15
-    );
+      }).catch((e) => {
+        console.error("Failed to send meeting invitations:", e);
+        return [];
+      });
+    }
+
+    // Auto-enqueue 15-minute pre-meeting email reminder for all valid participants
+    const reminderJobs: unknown[] = [];
+    for (const participant of participantList) {
+      try {
+        const job = await enqueuePreMeetingReminder(
+          {
+            meetingId: meeting.id,
+            meetingTitle: meeting.title,
+            scheduledDate: targetDateTime,
+            googleMeetLink: googleMeetLink || "",
+            recipientEmail: participant,
+            agenda: meeting.agenda || undefined,
+            department,
+          },
+          15
+        );
+        reminderJobs.push(job);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Failed to enqueue reminder for ${participant}:`, msg);
+      }
+    }
 
     return NextResponse.json({
       status: "success",
       message: "Meeting scheduled successfully",
       meeting,
       googleMeetLink,
-      reminderJob,
+      invitationResults,
+      reminderJobs,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to schedule meeting";
     console.error("[Schedule Meeting API Error]", err);
-    return NextResponse.json({ error: err.message || "Failed to schedule meeting" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

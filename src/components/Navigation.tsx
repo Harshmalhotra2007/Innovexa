@@ -18,13 +18,24 @@ import {
   FolderGit2
 } from "lucide-react";
 
+export interface AppNotification {
+  id: string;
+  recipient?: string;
+  subject: string;
+  body: string;
+  type?: string;
+  sentAt?: string;
+  read?: boolean;
+  taskId?: string;
+}
+
 export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const [username, setUsername] = useState<string>("Guest User");
   const [role, setRole] = useState<string>("participant");
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);

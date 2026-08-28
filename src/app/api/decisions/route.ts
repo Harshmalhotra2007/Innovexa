@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const department = searchParams.get("department");
 
-    const where: any = {};
+    const where: Prisma.DecisionWhereInput = {};
     if (department && department !== "All") {
       where.department = department;
     }
@@ -24,9 +25,10 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(decisions);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch decisions";
     console.error("[Decisions API] GET error:", error);
-    return NextResponse.json({ error: error.message || "Failed to fetch decisions" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -71,9 +73,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, decision: newDecision }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create decision";
     console.error("[Decisions API] POST error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create decision" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -91,8 +94,9 @@ export async function DELETE(req: Request) {
     });
 
     return NextResponse.json({ success: true, message: "Decision deleted successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to delete decision";
     console.error("[Decisions API] DELETE error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete decision" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

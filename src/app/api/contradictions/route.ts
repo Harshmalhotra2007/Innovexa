@@ -8,17 +8,18 @@ export async function GET() {
     const contradictions = await db.contradiction.findMany({
       include: {
         decision1: {
-          include: { meeting: true }
+          include: { meeting: true },
         },
         decision2: {
-          include: { meeting: true }
+          include: { meeting: true },
         },
       },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(contradictions);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch contradictions";
     console.error("GET /api/contradictions error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

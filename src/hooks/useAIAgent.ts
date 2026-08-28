@@ -22,10 +22,14 @@ export interface ActionItemData {
   id?: string;
   meetingId?: string;
   task: string;
+  title?: string;
   assignee?: string;
+  ownerName?: string;
   dueDate?: string | null;
+  deadline?: string | Date | null;
   status?: string;
   priority?: string;
+  description?: string;
 }
 
 export interface CitationData {
