@@ -1,52 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { validateAudioBuffer } from "@/lib/audio-validator";
 import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 const MAX_AUDIO_CHUNK_SIZE = 25 * 1024 * 1024; // 25MB (Whisper limit)
 
-export async function POST(req: Request) {
-  try {
-    const contentType = req.headers.get("content-type") || "";
-    let meetingId = "";
-    let chunkIndex = 0;
-    let speakerHint = "Operations Lead";
-    let audioFile: File | null = null;
-    let rawDirectText = "";
-
-    if (contentType.includes("application/json")) {
-      const jsonBody = await req.json().catch(() => ({}));
-      meetingId = jsonBody.meetingId || "";
-      chunkIndex = jsonBody.chunkIndex || 0;
-      speakerHint = jsonBody.speakerHint || "Operations Lead";
-      rawDirectText = jsonBody.text || "";
-    } else {
-      const formData = await req.formData();
-      meetingId = (formData.get("meetingId") as string) || "";
-      chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
-      speakerHint = (formData.get("speakerHint") as string) || "Operations Lead";
-      audioFile = formData.get("audio") as File | null;
-      rawDirectText = (formData.get("directText") as string) || "";
-    }
-
-    if (!meetingId) {
-      return NextResponse.json({ error: "meetingId is required" }, { status: 400 });
-    }
-
-    // Calculate timestamp mm:ss
-    const totalSecs = chunkIndex * 4;
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-
-    let transcribedText = rawDirectText ? rawDirectText.trim() : "";
-    let transcriptionSource = rawDirectText ? "native_stt" : "none";
-
-    // If audioFile is provided and no directText, run through Groq or OpenAI Whisper
-    if (!transcribedText && audioFile) {
-      if (audioFile.size > MAX_AUDIO_CHUNK_SIZE) {
 export async function runWhisperAudioTranscription({
   audioBuffer,
   mimeType = "audio/webm",
@@ -223,7 +182,7 @@ export async function POST(req: Request) {
       transcriptionSource = result.source;
     }
 
-    if (isHallucinatedSilence || transcribedText.trim().length === 0) {
+    if (!transcribedText || transcribedText.trim().length === 0) {
       return NextResponse.json({
         success: true,
         meetingId,
