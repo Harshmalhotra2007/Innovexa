@@ -57,11 +57,8 @@ function formatTimestamp(seconds) {
 }
 
 function getMockSegments() {
-  return [
-    { speaker: "Speaker 1", text: "Welcome team. Let's initiate the meeting protocol.", timestamp: "00:00", start: 0, end: 5 },
-    { speaker: "Speaker 2", text: "We need to set up the standalone WebSocket listener.", timestamp: "00:05", start: 5, end: 15 },
-    { speaker: "Speaker 3", text: "I will align the frontend dashboard with the theme colors.", timestamp: "00:15", start: 15, end: 30 }
-  ];
+  // Return empty array when local transcription fails to prevent injecting unrelated conversations
+  return [];
 }
 
 module.exports = { transcribeWithWhisper };

@@ -6,6 +6,7 @@ jest.mock("../src/lib/db", () => ({
   db: {
     meeting: {
       findUnique: jest.fn(),
+      create: jest.fn(),
     },
     liveKitRoom: {
       findUnique: jest.fn(),
@@ -98,6 +99,7 @@ describe("EgressPipelineValidator - Pipeline API Validation", () => {
 
   it("should return 404 when meeting is not found in database", async () => {
     (db.meeting.findUnique as jest.Mock).mockResolvedValue(null);
+    (db.meeting.create as jest.Mock).mockRejectedValue(new Error("DB creation failed"));
 
     const result = await EgressPipelineValidator.validate({
       roomName: "room-not-found",

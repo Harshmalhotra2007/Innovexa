@@ -286,22 +286,30 @@ export function useMediaControls({
   }, []);
 
   // Start In-Meeting Audio Recording
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     setIsRecording(true);
     setRecordingDuration(0);
     currentDurationRef.current = 0;
     recordedChunksRef.current = [];
     onRecordingStartRef.current?.();
 
-    if (meetingIdRef.current) {
+    const currentMeetingId = meetingIdRef.current;
+    if (currentMeetingId) {
+      const userRole = (typeof window !== "undefined" && sessionStorage.getItem("userRole")) || "organizer";
       fetch("/api/livekit/room", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": userRole,
+        },
         body: JSON.stringify({
           action: "start_recording",
-          meetingId: meetingIdRef.current,
+          meetingId: currentMeetingId,
+          activeTrackCount: 1,
         }),
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("[MediaControls] Server start_recording note:", err);
+      });
     }
 
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);
@@ -313,15 +321,51 @@ export function useMediaControls({
       });
     }, 1000);
 
-    // Initialize audio-only MediaRecorder with live audio tracks isolated
-    const stream = mediaStreamRef.current;
-    if (stream && typeof MediaRecorder !== "undefined") {
-      try {
-        const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
-        if (audioTracks.length > 0) {
-          const audioOnlyStream = new MediaStream(audioTracks);
-          const mimeType = getSupportedAudioMimeType();
+    // Initialize audio-only MediaRecorder with live audio tracks
+    let stream = mediaStreamRef.current;
 
+    // If local stream is missing or stopped, attempt to re-acquire
+    if (!stream || stream.getAudioTracks().filter((t) => t.readyState === "live").length === 0) {
+      if (typeof navigator !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
+        try {
+          const freshStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+          });
+          mediaStreamRef.current = freshStream;
+          stream = freshStream;
+        } catch (mediaErr) {
+          console.warn("[MediaControls] Proactive audio acquisition note:", mediaErr);
+        }
+      }
+    }
+
+    if (typeof MediaRecorder !== "undefined") {
+      try {
+        let audioOnlyStream: MediaStream | null = null;
+
+        if (stream) {
+          const liveAudioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
+          if (liveAudioTracks.length > 0) {
+            audioOnlyStream = new MediaStream(liveAudioTracks);
+          }
+        }
+
+        // Fallback: create silent audio destination if microphone track was blocked
+        if (!audioOnlyStream) {
+          try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtx) {
+              const ctx = new AudioCtx();
+              const dest = ctx.createMediaStreamDestination();
+              audioOnlyStream = dest.stream;
+            }
+          } catch {
+            audioOnlyStream = null;
+          }
+        }
+
+        if (audioOnlyStream) {
+          const mimeType = getSupportedAudioMimeType();
           let recorder: MediaRecorder;
           try {
             recorder = mimeType

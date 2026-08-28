@@ -289,11 +289,7 @@ function formatTimestamp(seconds) {
 }
 
 function getFallbackTranscript() {
-  return [
-    { speaker: "Dr. Vikram Seth (Dept Lead)", text: "Welcome team. Let's initiate the Innovexa AI Meeting Agent protocol.", timestamp: "00:00" },
-    { speaker: "Alex Mercer (Senior Architect)", text: "We need to set up the standalone WebSockets listener for real-time status streaming.", timestamp: "00:15" },
-    { speaker: "Sarah Jenkins (Lead UI/UX)", text: "I will align the frontend dashboard cards with the Tactical Steel Slate colors.", timestamp: "00:30" }
-  ];
+  return [];
 }
 
 function getDefaultSummary(title) {

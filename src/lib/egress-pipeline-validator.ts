@@ -96,9 +96,26 @@ export class EgressPipelineValidator {
 
     // 5. Database Meeting & Room Verification
     try {
-      const meeting = await db.meeting.findUnique({
+      let meeting = await db.meeting.findUnique({
         where: { id: sanitizedId },
       });
+
+      if (!meeting) {
+        // Auto-provision meeting record for instant/ad-hoc sessions if possible
+        try {
+          meeting = await db.meeting.create({
+            data: {
+              id: sanitizedId,
+              title: `Meeting (${sanitizedRoom})`,
+              date: new Date(),
+              status: "ongoing",
+              department: "General",
+            },
+          });
+        } catch {
+          meeting = null;
+        }
+      }
 
       if (!meeting) {
         return {

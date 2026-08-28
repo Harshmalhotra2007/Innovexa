@@ -185,6 +185,58 @@ export function useAIAgent(meetingId: string) {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
 
+      // Initialize Browser Native SpeechRecognition for immediate real-time live captions
+      if (typeof window !== "undefined") {
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRec) {
+          try {
+            const recognition = new SpeechRec();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = (event: any) => {
+              const current = event.resultIndex;
+              const text = event.results[current][0]?.transcript;
+              if (text && text.trim().length > 0) {
+                const cleanText = text.trim();
+                const nowSecs = tabRecordSeconds;
+                const mins = Math.floor(nowSecs / 60);
+                const secs = nowSecs % 60;
+                const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+
+                const liveSeg = {
+                  speaker: "Presenter (Live)",
+                  text: cleanText,
+                  timestamp,
+                };
+
+                setAgent((prev) => ({
+                  ...prev,
+                  transcript: [...(prev.transcript || []), liveSeg],
+                }));
+
+                // Post live recognized text to whisper route for DB persistence
+                fetch("/api/whisper/transcribe", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    meetingId,
+                    speakerHint: "Presenter (Live)",
+                    text: cleanText,
+                  }),
+                }).catch(() => {});
+              }
+            };
+
+            recognition.onerror = (e: any) => console.warn("[AIAgent SpeechRec Note]", e.error);
+            recognition.start();
+            (eventSourceRef as any).currentRecognition = recognition;
+          } catch (recErr) {
+            console.warn("[AIAgent SpeechRec Init Note]", recErr);
+          }
+        }
+      }
+
       const targetBitrate = audioQuality === "high" ? 128000 : audioQuality === "low" ? 32000 : 64000;
       const recorder = new MediaRecorder(stream, { audioBitsPerSecond: targetBitrate });
       mediaRecorderRef.current = recorder;
@@ -200,6 +252,7 @@ export function useAIAgent(meetingId: string) {
           formData.append("chunk", event.data, `chunk_${currentChunkIndex}.webm`);
           formData.append("meetingId", meetingId);
           formData.append("chunkIndex", currentChunkIndex.toString());
+          formData.append("speakerHint", "Presenter");
 
           fetch("/api/recordings/stream-chunk", {
             method: "POST",
@@ -208,11 +261,15 @@ export function useAIAgent(meetingId: string) {
             .then(async (res) => {
               if (res.ok) {
                 const data = await res.json();
-                if (data.segment) {
-                  setAgent((prev) => ({
-                    ...prev,
-                    transcript: [...(prev.transcript || []), data.segment],
-                  }));
+                if (data.segment && data.segment.text && data.segment.text.trim().length > 0) {
+                  setAgent((prev) => {
+                    const exists = (prev.transcript || []).some((t) => t.text === data.segment.text);
+                    if (exists) return prev;
+                    return {
+                      ...prev,
+                      transcript: [...(prev.transcript || []), data.segment],
+                    };
+                  });
                 }
               }
             })
@@ -221,6 +278,11 @@ export function useAIAgent(meetingId: string) {
       };
 
       recorder.onstop = async () => {
+        if ((eventSourceRef as any).currentRecognition) {
+          try { (eventSourceRef as any).currentRecognition.stop(); } catch {}
+          (eventSourceRef as any).currentRecognition = null;
+        }
+
         const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
 
@@ -245,6 +307,10 @@ export function useAIAgent(meetingId: string) {
   };
 
   const stopTabAudioCapture = () => {
+    if ((eventSourceRef as any).currentRecognition) {
+      try { (eventSourceRef as any).currentRecognition.stop(); } catch {}
+      (eventSourceRef as any).currentRecognition = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }

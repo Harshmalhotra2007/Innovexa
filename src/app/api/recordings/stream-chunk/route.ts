@@ -4,6 +4,8 @@ import { validateAudioBuffer } from "@/lib/audio-validator";
 import fs from "fs";
 import path from "path";
 
+import { runWhisperAudioTranscription } from "@/app/api/whisper/transcribe/route";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -16,6 +18,8 @@ export async function POST(req: Request) {
     meetingId = (formData.get("meetingId") as string) || "";
     chunkIndex = parseInt((formData.get("chunkIndex") as string) || "0", 10);
     const chunkFile = formData.get("chunk") as File | null;
+    const speakerHint = (formData.get("speakerHint") as string) || "Participant";
+    const language = (formData.get("language") as string) || "";
 
     if (!meetingId) {
       return NextResponse.json({ error: "meetingId is required for chunk streaming" }, { status: 400 });
@@ -35,34 +39,73 @@ export async function POST(req: Request) {
       }
     }
 
-    // Generate real-time diarized caption segment for progressive display
+    // Transcribe real-time audio chunk via Whisper
+    const transcriptionResult = await runWhisperAudioTranscription({
+      audioBuffer: chunkBuffer,
+      mimeType: chunkFile.type || "audio/webm",
+      chunkIndex,
+      language: language || undefined,
+      promptHint: "Meeting conversation transcript and action items.",
+    });
+
     const mins = Math.floor((chunkIndex * 2) / 60);
     const secs = (chunkIndex * 2) % 60;
     const timestamp = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 
-    const newSegment = {
-      speaker: chunkIndex % 2 === 0 ? "Speaker 1 (Host)" : "Speaker 2 (Participant)",
-      text: `[Live Stream Segment ${chunkIndex + 1}] Capturing real-time audio stream context...`,
-      timestamp,
-    };
+    const transcribedText = transcriptionResult.text ? transcriptionResult.text.trim() : "";
 
-    // Update DB agent transcript atomically
-    const existingAgent = await db.aIAgent.findUnique({ where: { meetingId } });
-    if (existingAgent) {
-      const currentTranscript = Array.isArray(existingAgent.transcript)
-        ? (existingAgent.transcript as any[])
-        : [];
-      
-      const updatedTranscript = [...currentTranscript, newSegment];
+    let newSegment = null;
+    if (transcribedText.length > 0) {
+      newSegment = {
+        speaker: speakerHint,
+        text: transcribedText,
+        timestamp,
+        order: chunkIndex + 1,
+      };
 
-      await db.aIAgent.update({
-        where: { meetingId },
-        data: {
-          status: "recording",
-          transcript: updatedTranscript,
-          updatedAt: new Date(),
-        },
-      });
+      // Save segment to MeetingSegment database model
+      try {
+        await db.meetingSegment.create({
+          data: {
+            meetingId,
+            speaker: newSegment.speaker,
+            text: newSegment.text,
+            timestamp: newSegment.timestamp,
+            order: newSegment.order,
+            type: "discussion",
+          },
+        });
+      } catch (segErr) {
+        console.warn("[Stream Chunk MeetingSegment Note]", segErr);
+      }
+
+      // Update DB agent transcript atomically
+      const existingAgent = await db.aIAgent.findUnique({ where: { meetingId } });
+      if (existingAgent) {
+        const currentTranscript = Array.isArray(existingAgent.transcript)
+          ? (existingAgent.transcript as any[])
+          : [];
+        
+        const updatedTranscript = [...currentTranscript, newSegment];
+
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: {
+            status: "recording",
+            transcript: updatedTranscript,
+            updatedAt: new Date(),
+          },
+        });
+      }
+    } else {
+      // Just keep recording status updated without appending empty/fake segments
+      const existingAgent = await db.aIAgent.findUnique({ where: { meetingId } });
+      if (existingAgent && existingAgent.status !== "recording") {
+        await db.aIAgent.update({
+          where: { meetingId },
+          data: { status: "recording", updatedAt: new Date() },
+        });
+      }
     }
 
     return NextResponse.json({
@@ -70,6 +113,7 @@ export async function POST(req: Request) {
       meetingId,
       chunkIndex,
       receivedBytes: chunkBuffer.length,
+      isSilent: !newSegment,
       segment: newSegment,
     });
   } catch (err: any) {
