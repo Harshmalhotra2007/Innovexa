@@ -54,8 +54,8 @@ export async function POST(req: Request) {
 
       // Only attempt Whisper API if audio contains actual data (> 500 bytes)
       if (audioBuffer.length > 500) {
-        const groqApiKey = process.env.GROQ_API_KEY;
-        const openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+        const groqApiKey = config.groqApiKey;
+        const openaiApiKey = config.openaiApiKey;
 
         // 1. Try Groq Whisper (Ultra-fast real-time transcription)
         if (groqApiKey && groqApiKey.trim().length > 10) {

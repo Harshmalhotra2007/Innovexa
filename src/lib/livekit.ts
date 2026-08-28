@@ -25,8 +25,8 @@ export async function generateLiveKitToken({
   participantIdentity,
   isPublisher = true,
 }: GenerateTokenParams): Promise<string> {
-  const apiKey = config.livekitApiKey || process.env.LIVEKIT_API_KEY || "devkey";
-  const apiSecret = config.livekitApiSecret || process.env.LIVEKIT_API_SECRET || "secret_dev_key_innovexa_native";
+  const apiKey = config.livekitApiKey;
+  const apiSecret = config.livekitApiSecret;
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity: participantIdentity,

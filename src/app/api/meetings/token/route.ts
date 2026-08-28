@@ -42,9 +42,9 @@ export async function POST(req: Request) {
     const name = participantName?.trim() || "Participant";
     const participantIdentity = identity?.trim() || `user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const apiKey = config.livekitApiKey || process.env.LIVEKIT_API_KEY || "devkey";
-    const apiSecret = config.livekitApiSecret || process.env.LIVEKIT_API_SECRET || "secret_dev_key_innovexa_native";
-    const serverUrl = config.livekitWsUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL || "wss://demo.livekit.cloud";
+    const apiKey = config.livekitApiKey;
+    const apiSecret = config.livekitApiSecret;
+    const serverUrl = config.livekitWsUrl;
 
     // Create LiveKit access token with room permissions
     const at = new AccessToken(apiKey, apiSecret, {
