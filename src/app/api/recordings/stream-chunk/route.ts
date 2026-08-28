@@ -4,7 +4,7 @@ import { validateAudioBuffer } from "@/lib/audio-validator";
 import fs from "fs";
 import path from "path";
 
-import { runWhisperAudioTranscription } from "@/app/api/whisper/transcribe/route";
+import { runWhisperAudioTranscription } from "@/lib/whisper-transcriber";
 
 export const dynamic = "force-dynamic";
 
