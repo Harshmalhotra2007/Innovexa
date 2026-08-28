@@ -13,5 +13,8 @@ export async function register() {
 
     const { startMeetingSchedulerWorker } = await import("./lib/meeting-scheduler");
     startMeetingSchedulerWorker();
+
+    const { startTaskSLAMonitorWorker } = await import("./lib/task-sla-monitor");
+    startTaskSLAMonitorWorker();
   }
 }

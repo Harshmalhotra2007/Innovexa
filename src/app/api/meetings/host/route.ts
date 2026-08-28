@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { generateLiveKitToken } from "@/lib/livekit";
 import { startRoomEgress } from "@/lib/livekit-egress";
 import { config } from "@/lib/config";
+import { apiHandler } from "@/lib/api-handler";
 
 export async function POST(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { title, department, agenda } = body;
 
@@ -50,41 +51,31 @@ export async function POST(req: Request) {
         status: "recording",
         transcript: [],
       },
-    }).catch(() => {});
+    });
 
     // 4. Generate LiveKit token if configured
     let token: string | undefined;
     if (config.isLiveKitConfigured) {
-      try {
-        token = await generateLiveKitToken({
-          roomName,
-          participantName: "Lead Organizer",
-          participantIdentity: `host-${meeting.id}`,
-          isPublisher: true,
-        });
+      token = await generateLiveKitToken({
+        roomName,
+        participantName: "Lead Organizer",
+        participantIdentity: `host-${meeting.id}`,
+        isPublisher: true,
+      });
 
-        // Start egress recording asynchronously
-        startRoomEgress(roomName, meeting.id).catch((err) =>
-          console.warn(`[POST /api/meetings/host] Async egress start failed for ${meeting.id}:`, err)
-        );
-      } catch (tokenErr) {
-        console.warn("[POST /api/meetings/host] LiveKit token generation note:", tokenErr);
-      }
+      // Start egress recording asynchronously
+      startRoomEgress(roomName, meeting.id).catch((err) =>
+        console.warn(`[POST /api/meetings/host] Async egress start failed for ${meeting.id}:`, err)
+      );
     }
 
-    return NextResponse.json({
+    return {
       message: "Instant meeting created successfully",
       meetingId: meeting.id,
       status: meeting.status,
       roomName,
       token,
       isConfigured: config.isLiveKitConfigured,
-    });
-  } catch (error: any) {
-    console.error("[POST /api/meetings/host]", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to host instant meeting" },
-      { status: 500 }
-    );
-  }
+    };
+  });
 }

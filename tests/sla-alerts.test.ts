@@ -111,6 +111,44 @@ describe("SLA Escalation Engine & Notification Loop", () => {
     expect(summary.newEscalatedCount).toBe(1);
     expect(db.task.updateMany).toHaveBeenCalledTimes(2);
   });
+
+  it("should promote a 10-day overdue Level 0 task directly to Level 2 (Escalated) in one pass", async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+
+    (db.task.findMany as jest.Mock).mockResolvedValueOnce([
+      {
+        id: "t-10d",
+        title: "Legacy Refactor 10d Overdue",
+        ownerName: "Dev Veteran",
+        ownerEmail: "vet@innovexa.com",
+        department: "Engineering",
+        priority: "Critical",
+        status: "Pending",
+        deadline: tenDaysAgo,
+        escalationLevel: 0,
+      },
+    ]);
+
+    (db.department.findMany as jest.Mock).mockResolvedValueOnce([
+      { name: "Engineering", managerName: "Rajesh Kumar", code: "ENG" },
+    ]);
+
+    (db.task.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (db.notification.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+    const summary = await checkAndEscalateOverdueTasks();
+
+    expect(summary.checkedCount).toBe(1);
+    expect(summary.newOverdueCount).toBe(0);
+    expect(summary.newEscalatedCount).toBe(1);
+    expect(db.task.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["t-10d"] } },
+      data: expect.objectContaining({
+        status: "Escalated",
+        escalationLevel: 2,
+      }),
+    });
+  });
 });
 
 describe("Notifications API Route", () => {

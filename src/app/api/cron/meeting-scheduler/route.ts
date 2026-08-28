@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
 import { processSchedulerTick, getSchedulerStatus } from "@/lib/meeting-scheduler";
+import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function isAuthorizedCronRequest(req: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET || config.cronSecret;
+  if (!cronSecret) {
+    return true;
+  }
+  const authHeader = req.headers.get("authorization");
+  return authHeader === `Bearer ${cronSecret}`;
+}
+
+export async function GET(req: Request) {
+  if (!isAuthorizedCronRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized: Invalid or missing CRON_SECRET" }, { status: 401 });
+  }
+
   try {
     const tickResult = await processSchedulerTick();
     const status = getSchedulerStatus();
@@ -12,14 +26,15 @@ export async function GET() {
       workerStatus: status,
       tickResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to process scheduler tick";
     return NextResponse.json(
-      { status: "error", message: error.message || "Failed to process scheduler tick" },
+      { status: "error", message },
       { status: 500 }
     );
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(req: Request) {
+  return GET(req);
 }

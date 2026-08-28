@@ -45,62 +45,64 @@ export async function checkAndEscalateOverdueTasks(): Promise<EscalationCheckSum
     const isPastDeadline = task.deadline < now;
     const hoursOverdue = (now.getTime() - task.deadline.getTime()) / (1000 * 60 * 60);
 
-    // Rule 1: Deadline passed & Level 0 -> Mark as Overdue
-    if (isPastDeadline && task.escalationLevel === 0) {
-      level1TaskIds.push(task.id);
-      const recipientEmail = task.ownerEmail || `${task.ownerName.toLowerCase().replace(/[^a-z]/g, "")}@innovexa.com`;
-      
-      level1NotifsData.push({
-        taskId: task.id,
-        recipient: recipientEmail,
-        subject: `⚠️ Task Overdue: ${task.title}`,
-        body: `Your action item '${task.title}' was due on ${task.deadline.toLocaleDateString()}. Please complete or update status immediately.`,
-        type: "Warning",
-      });
+    if (isPastDeadline) {
+      // Rule 1: Overdue by >= 24 hours & not yet Level 2 -> Jump straight to Level 2 (Escalated)
+      if (hoursOverdue >= 24 && task.escalationLevel < 2) {
+        const managerName = deptManagerMap.get(task.department) || "Department Lead";
+        const managerEmail = `manager.${task.department.toLowerCase().replace(/[^a-z]/g, "")}@innovexa.com`;
+        level2TaskIds.push(task.id);
 
-      // Dispatch automated SLA warning email
-      sendSLAEscalationEmail({
-        taskId: task.id,
-        taskTitle: task.title,
-        ownerName: task.ownerName,
-        ownerEmail: task.ownerEmail || undefined,
-        recipientEmail,
-        recipientName: task.ownerName,
-        department: task.department,
-        priority: task.priority,
-        type: "Warning",
-        hoursOverdue: Math.max(0.1, hoursOverdue),
-        deadline: task.deadline,
-      }).catch((e) => console.warn("[SLA Warning Email Dispatch Note]", e.message));
-    }
-    // Rule 2: Overdue by > 24 hours & Level 1 -> Mark as Escalated
-    else if (hoursOverdue >= 24 && task.escalationLevel <= 1) {
-      const managerName = deptManagerMap.get(task.department) || "Department Lead";
-      const managerEmail = `manager.${task.department.toLowerCase().replace(/[^a-z]/g, "")}@innovexa.com`;
-      level2TaskIds.push(task.id);
+        level2NotifsData.push({
+          taskId: task.id,
+          recipient: managerEmail,
+          subject: `🚨 SLA Escalation Alert: ${task.title}`,
+          body: `Action item '${task.title}' owned by ${task.ownerName} is ${Math.floor(hoursOverdue)} hours overdue. Escalated to ${managerName}.`,
+          type: "Escalation",
+        });
 
-      level2NotifsData.push({
-        taskId: task.id,
-        recipient: managerEmail,
-        subject: `🚨 SLA Escalation Alert: ${task.title}`,
-        body: `Action item '${task.title}' owned by ${task.ownerName} is ${Math.floor(hoursOverdue)} hours overdue. Escalated to ${managerName}.`,
-        type: "Escalation",
-      });
+        // Dispatch automated SLA manager escalation email
+        sendSLAEscalationEmail({
+          taskId: task.id,
+          taskTitle: task.title,
+          ownerName: task.ownerName,
+          ownerEmail: task.ownerEmail || undefined,
+          recipientEmail: managerEmail,
+          recipientName: managerName,
+          department: task.department,
+          priority: task.priority,
+          type: "Escalation",
+          hoursOverdue,
+          deadline: task.deadline,
+        }).catch((e) => console.warn("[SLA Escalation Email Dispatch Note]", e.message));
+      }
+      // Rule 2: Past deadline (< 24 hours) & Level 0 -> Mark as Level 1 (Overdue)
+      else if (task.escalationLevel === 0) {
+        level1TaskIds.push(task.id);
+        const recipientEmail = task.ownerEmail || `${task.ownerName.toLowerCase().replace(/[^a-z]/g, "")}@innovexa.com`;
 
-      // Dispatch automated SLA manager escalation email
-      sendSLAEscalationEmail({
-        taskId: task.id,
-        taskTitle: task.title,
-        ownerName: task.ownerName,
-        ownerEmail: task.ownerEmail || undefined,
-        recipientEmail: managerEmail,
-        recipientName: managerName,
-        department: task.department,
-        priority: task.priority,
-        type: "Escalation",
-        hoursOverdue,
-        deadline: task.deadline,
-      }).catch((e) => console.warn("[SLA Escalation Email Dispatch Note]", e.message));
+        level1NotifsData.push({
+          taskId: task.id,
+          recipient: recipientEmail,
+          subject: `⚠️ Task Overdue: ${task.title}`,
+          body: `Your action item '${task.title}' was due on ${task.deadline.toLocaleDateString()}. Please complete or update status immediately.`,
+          type: "Warning",
+        });
+
+        // Dispatch automated SLA warning email
+        sendSLAEscalationEmail({
+          taskId: task.id,
+          taskTitle: task.title,
+          ownerName: task.ownerName,
+          ownerEmail: task.ownerEmail || undefined,
+          recipientEmail,
+          recipientName: task.ownerName,
+          department: task.department,
+          priority: task.priority,
+          type: "Warning",
+          hoursOverdue: Math.max(0.1, hoursOverdue),
+          deadline: task.deadline,
+        }).catch((e) => console.warn("[SLA Warning Email Dispatch Note]", e.message));
+      }
     }
   }
 

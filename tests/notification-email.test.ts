@@ -1,4 +1,4 @@
-import { generateReminderEmailHtml, sendMeetingReminderEmail } from "../src/lib/email-engine";
+import { generateReminderEmailHtml, sendMeetingReminderEmail, generateICSFile, sendMeetingInvitationEmails } from "../src/lib/email-engine";
 import { enqueuePreMeetingReminder, getNotificationQueueStatus } from "../src/lib/notification-queue";
 
 describe("Pre-Meeting Reminder & Transactional Email Engine Tests", () => {
@@ -52,5 +52,49 @@ describe("Pre-Meeting Reminder & Transactional Email Engine Tests", () => {
     expect(result.success).toBe(true);
     expect(result.recipient).toBe("security@innovexa.com");
     expect(result.delivered).toBe(true);
+  });
+
+  it("should generate a valid RFC 5545 iCalendar (.ics) string", () => {
+    const ics = generateICSFile({
+      meetingId: "meet-invite-123",
+      title: "Q4 Roadmap Architecture Sync",
+      description: "Review micro-services and Redis delayed queue",
+      startDate: "2026-08-28T10:00:00.000Z",
+      durationMinutes: 45,
+      location: "https://meet.google.com/abc-defg-hij",
+      organizerEmail: "notifications@innovexa.com",
+      attendees: ["dev1@innovexa.com", "dev2@innovexa.com"],
+    });
+
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("VERSION:2.0");
+    expect(ics).toContain("METHOD:REQUEST");
+    expect(ics).toContain("UID:meet-invite-123");
+    expect(ics).toContain("SUMMARY:Q4 Roadmap Architecture Sync");
+    expect(ics).toContain("LOCATION:https://meet.google.com/abc-defg-hij");
+    expect(ics).toContain("ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=dev1@innovexa.com:MAILTO:dev1@innovexa.com");
+    expect(ics).toContain("END:VEVENT");
+    expect(ics).toContain("END:VCALENDAR");
+  });
+
+  it("should dispatch meeting invitations to all participants and create notification logs", async () => {
+    const results = await sendMeetingInvitationEmails({
+      meetingId: "meet-invite-999",
+      meetingTitle: "Sprint Planning",
+      scheduledDate: new Date().toISOString(),
+      durationMinutes: 30,
+      googleMeetLink: "https://meet.google.com/xyz-uvwx-rst",
+      recipientEmails: ["alice@innovexa.com", "bob@innovexa.com"],
+      agenda: "Planning task distribution",
+      department: "Product",
+    });
+
+    expect(results.length).toBe(2);
+    expect(results[0].recipient).toBe("alice@innovexa.com");
+    expect(results[1].recipient).toBe("bob@innovexa.com");
+    expect(results[0].success).toBe(true);
+    expect(results[1].success).toBe(true);
+    expect(results[0].delivered).toBe(true);
+    expect(results[1].delivered).toBe(true);
   });
 });

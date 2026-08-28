@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
 import { checkAndEscalateOverdueTasks } from "@/lib/escalation-engine";
 import { db } from "@/lib/db";
+import { config } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+function isAuthorizedCronRequest(req: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET || config.cronSecret;
+  if (!cronSecret) {
+    return true;
+  }
+  const authHeader = req.headers.get("authorization");
+  return authHeader === `Bearer ${cronSecret}`;
+}
+
+export async function POST(req: Request) {
+  if (!isAuthorizedCronRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized: Invalid or missing CRON_SECRET" }, { status: 401 });
+  }
+
   try {
     const summary = await checkAndEscalateOverdueTasks();
 
@@ -38,7 +52,11 @@ export async function POST() {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!isAuthorizedCronRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized: Invalid or missing CRON_SECRET" }, { status: 401 });
+  }
+
   try {
     const summary = await checkAndEscalateOverdueTasks();
 

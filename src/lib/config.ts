@@ -49,6 +49,7 @@ interface ConfigRaw {
   REDIS_URL?: string;
   REDIS_PORT?: string;
   REDIS_PASSWORD?: string;
+  CRON_SECRET?: string;
 
   // Next.js built-ins
   NEXT_RUNTIME?: string;
@@ -64,6 +65,7 @@ export interface Config {
   isProduction: boolean;
   isDevelopment: boolean;
   isTest: boolean;
+  cronSecret?: string;
 
   // Bot Services
   meetBotUrl: string;
@@ -190,6 +192,7 @@ export function createConfig(env: ConfigRaw = {}): Config {
     REDIS_URL,
     REDIS_PORT,
     REDIS_PASSWORD,
+    CRON_SECRET,
     NEXT_RUNTIME,
   } = env;
 
@@ -272,6 +275,7 @@ export function createConfig(env: ConfigRaw = {}): Config {
     redisUrl: REDIS_URL ?? DEFAULTS.redisUrl,
     redisPort: REDIS_PORT ? parseInt(REDIS_PORT, 10) : DEFAULTS.redisPort,
     redisPassword: REDIS_PASSWORD,
+    cronSecret: CRON_SECRET,
 
     // Next.js
     nextRuntime: NEXT_RUNTIME,
@@ -314,6 +318,7 @@ export function getConfig(): Config {
       REDIS_URL: process.env.REDIS_URL,
       REDIS_PORT: process.env.REDIS_PORT,
       REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+      CRON_SECRET: process.env.CRON_SECRET,
       NEXT_RUNTIME: process.env.NEXT_RUNTIME,
     });
   }
