@@ -96,6 +96,20 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
 
   const formatTimer = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
+  const updateItemStatus = async (taskId?: string, newStatus?: string) => {
+    if (!taskId || !newStatus) return;
+    try {
+      await fetch(`/api/tasks/${taskId}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      fetchActionItems();
+    } catch (e) {
+      console.warn("[AIAgentPanel Status Update Note]", e);
+    }
+  };
+
   const TABS = [
     { key: "transcript", label: "Transcript", icon: FileText,   count: agent.transcript?.length ?? 0 },
     { key: "tasks",      label: "AI Tasks",   icon: ListChecks, count: taskCount },
@@ -463,12 +477,10 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                                 {/* Top row: Title + check */}
                                 <div className="flex items-start gap-2.5">
                                   <button
-                                    onClick={() => {
-                                      // We'd need to add a handler for status changes here
-                                    }}
+                                    onClick={() => updateItemStatus(item.id, isDone ? "Pending" : "Completed")}
                                     className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                                       isDone
-                                        ? "border-[var(--teal)] bg-[var(--teal)] text-[var(--teal)]"
+                                        ? "border-[var(--teal)] bg-[var(--teal)] text-white"
                                         : "border-[var(--border)] bg-transparent text-transparent hover:border-[var(--teal)] hover:bg-[var(--teal)]/10"
                                     }`}
                                     title={isDone ? "Mark pending" : "Mark complete"}
@@ -480,7 +492,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                                   </p>
                                 </div>
 
-                                {/* Badges row */}
+                                {/* Badges & Status Selector row */}
                                 <div className="flex flex-wrap items-center gap-1.5 font-mono text-[9px]">
                                   {(item.ownerName ?? item.assignee) && (
                                     <span className="flex items-center gap-1 text-[var(--text-dim)] bg-[var(--panel-alt)] px-2 py-0.5 rounded border border-[var(--border)]">
@@ -490,15 +502,26 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                                   <span className={`px-2 py-0.5 rounded border font-bold uppercase ${priorityClass(item.priority)}`}>
                                     {item.priority ?? "Medium"}
                                   </span>
-                                  <span className={`px-2 py-0.5 rounded border font-bold uppercase ${
-                                    taskStatus === "Completed"  ? "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
-                                    : taskStatus === "Overdue"  ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
-                                    : taskStatus === "In Progress" ? "bg-[var(--primary)]/12 text-[var(--primary)] border-[var(--primary)]/30"
-                                    : taskStatus === "Escalated" ? "bg-orange-500/12 text-orange-500 border-orange-500/30"
-                                    : "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
-                                  }`}>
-                                    {taskStatus}
-                                  </span>
+
+                                  {/* Quick Status Dropdown */}
+                                  <select
+                                    value={taskStatus}
+                                    onChange={(e) => updateItemStatus(item.id, e.target.value)}
+                                    className={`px-1.5 py-0.5 rounded border font-mono text-[9px] font-bold uppercase cursor-pointer ${
+                                      taskStatus === "Completed"  ? "bg-[var(--teal)]/12 text-[var(--teal)] border-[var(--teal)]/30"
+                                      : taskStatus === "Overdue"  ? "bg-[var(--red)]/12 text-[var(--red)] border-[var(--red)]/30"
+                                      : taskStatus === "In Progress" ? "bg-[var(--primary)]/12 text-[var(--primary)] border-[var(--primary)]/30"
+                                      : taskStatus === "Escalated" ? "bg-orange-500/12 text-orange-500 border-orange-500/30"
+                                      : "bg-[var(--amber)]/12 text-[var(--amber)] border-[var(--amber)]/30"
+                                    }`}
+                                  >
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Overdue">Overdue</option>
+                                    <option value="Escalated">Escalated</option>
+                                  </select>
+
                                   {item.deadline && (
                                     <span className={`flex items-center gap-0.5 font-bold ${
                                       isUrgent ? "text-[var(--red)]" : isDone ? "text-[var(--text-faint)]" : d !== null && d <= 2 ? "text-[var(--amber)]" : "text-[var(--teal)]"

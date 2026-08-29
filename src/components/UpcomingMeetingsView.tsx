@@ -133,7 +133,8 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
           minute: "2-digit",
         });
 
-        const meetLink = meet.googleMeetLink || `https://meet.google.com/test-${meet.id.substring(0, 8)}`;
+        const isGoogleMeet = !!meet.googleMeetLink;
+        const meetLink = meet.googleMeetLink || `/meeting/innovexa-meeting-${meet.id}?meetingId=${meet.id}`;
         const duration = meet.durationMinutes || meet.durationMins || 30;
 
         return (
@@ -162,31 +163,45 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
                 <span>({duration} mins)</span>
               </div>
 
-              {/* Google Meet Link */}
+              {/* Google Meet Link or Native Room Indicator */}
               <div className="p-2 rounded bg-[var(--panel-alt)] border border-[var(--border)] text-[11px] flex items-center justify-between">
-                <span className="text-[var(--teal)] font-bold truncate">{meetLink}</span>
-                <a
-                  href={meetLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[var(--text-dim)] hover:text-[var(--teal)] ml-2 flex items-center gap-1"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <span className="text-[var(--teal)] font-bold truncate">
+                  {isGoogleMeet ? meetLink : "Innovexa Native Video Room"}
+                </span>
+                {isGoogleMeet && (
+                  <a
+                    href={meetLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[var(--text-dim)] hover:text-[var(--teal)] ml-2 flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
               </div>
             </div>
 
             {/* Quick Actions */}
             <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between gap-2">
-              <a
-                href={meetLink}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
-              >
-                <Video className="w-3.5 h-3.5" />
-                <span>JOIN GOOGLE MEET</span>
-              </a>
+              {isGoogleMeet ? (
+                <a
+                  href={meetLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>JOIN GOOGLE MEET</span>
+                </a>
+              ) : (
+                <Link
+                  href={meetLink}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>JOIN LIVE ROOM</span>
+                </Link>
+              )}
 
               <div className="flex items-center gap-2">
                 <Link
