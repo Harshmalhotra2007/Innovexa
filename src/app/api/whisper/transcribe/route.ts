@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         mimeType: audioFile.type || "audio/webm",
         chunkIndex,
         language: language || "en",
-        promptHint: "Meeting conversation, action items, decisions, operational alignment.",
+        promptHint: "This is a business meeting recording. Speakers discuss operational topics, action items, decisions, and project alignment. Clear professional speech. Do not generate auto-generated captions, subtitles, or meta-commentary.",
       });
 
       transcribedText = result.text;
