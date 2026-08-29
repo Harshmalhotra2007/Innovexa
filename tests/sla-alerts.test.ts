@@ -1,6 +1,6 @@
 import { generateSLAEscalationEmailHtml, sendSLAEscalationEmail } from "../src/lib/email-engine";
 import { checkAndEscalateOverdueTasks } from "../src/lib/escalation-engine";
-import { GET, PATCH } from "../src/app/api/notifications/route";
+import { GET, POST, PATCH } from "../src/app/api/notifications/route";
 import { db } from "../src/lib/db";
 import { config } from "../src/lib/config";
 
@@ -186,7 +186,8 @@ describe("Notifications API Route", () => {
       },
     ]);
 
-    const res = await GET();
+    const req = new Request("http://localhost/api/notifications?email=dev1@innovexa.com");
+    const res = await GET(req);
     expect(res.status).toBe(200);
 
     const data = await res.json();
@@ -195,22 +196,20 @@ describe("Notifications API Route", () => {
     expect(data.notifications.length).toBe(2);
   });
 
-  it("should mark notifications as read on PATCH with markAllRead", async () => {
+  it("should mark notifications as read on POST with markAllRead", async () => {
     (db.notification.updateMany as jest.Mock).mockResolvedValueOnce({ count: 5 });
 
-    const req = new Request("http://localhost/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
+    const req = new Request("http://localhost/api/notifications?email=dev1@innovexa.com&action=mark-all-read", {
+      method: "POST",
     });
 
-    const res = await PATCH(req);
+    const res = await POST(req);
     expect(res.status).toBe(200);
 
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(db.notification.updateMany).toHaveBeenCalledWith({
-      where: { read: false },
+      where: { recipient: "dev1@innovexa.com", read: false },
       data: { read: true },
     });
   });

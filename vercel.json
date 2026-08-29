@@ -1,4 +1,4 @@
-{
+﻿{
   "buildCommand": "prisma generate && next build",
   "framework": "nextjs",
   "crons": [
@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/meeting-scheduler",
       "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/cron/sla-monitor",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

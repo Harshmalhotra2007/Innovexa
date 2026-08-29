@@ -19,52 +19,6 @@ export interface UseWhisperPipelineOptions {
   onAudioChunkRecorded?: (chunk: Blob) => void;
 }
 
-function getSupportedAudioMimeType(): string {
-  if (typeof MediaRecorder === "undefined") return "";
-  const types = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/mp4",
-    "audio/aac",
-  ];
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      return type;
-    }
-  }
-  return "";
-}
-
-interface ISpeechRecognitionEvent {
-  resultIndex: number;
-  results: {
-    [index: number]: {
-      [subIndex: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
-
-interface ISpeechRecognitionInstance {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-}
-
-type SpeechRecognitionConstructor = new () => ISpeechRecognitionInstance;
-
-interface WindowWithSpeechRec extends Window {
-  SpeechRecognition?: SpeechRecognitionConstructor;
-  webkitSpeechRecognition?: SpeechRecognitionConstructor;
-}
-
 export function useWhisperPipeline({
   meetingId,
   mediaStream,
@@ -85,9 +39,7 @@ export function useWhisperPipeline({
   const isPipelineActiveRef = useRef<boolean>(false);
 
   const onSegmentReceivedRef = useRef(onSegmentReceived);
-  onSegmentReceivedRef.current = onSegmentReceived;
   const onAudioChunkRecordedRef = useRef(onAudioChunkRecorded);
-  onAudioChunkRecordedRef.current = onAudioChunkRecorded;
 
   // Send an audio blob chunk to the Whisper API route
   const sendChunkToWhisper = useCallback(
@@ -122,7 +74,7 @@ export function useWhisperPipeline({
           }
         }
       } catch (err: unknown) {
-        console.warn("[Whisper Pipeline Notice]", err);
+        console.debug("[Whisper Pipeline] Error sending chunk:", err);
       }
     },
     [meetingId, speakerHint]
@@ -157,7 +109,7 @@ export function useWhisperPipeline({
       setChunksTranscribed((prev) => prev + 1);
       onSegmentReceivedRef.current?.(segment);
 
-      // Save segment in database
+      // Save segment in database (non-blocking)
       fetch("/api/whisper/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,7 +120,7 @@ export function useWhisperPipeline({
           text: cleanText,
           language: "en",
         }),
-      }).catch(() => {});
+      }).catch(() => {/* Ignore errors */});
     },
     [meetingId, speakerHint]
   );
@@ -204,7 +156,7 @@ export function useWhisperPipeline({
                 const lower = cleanTranscript.toLowerCase();
 
                 // Skip obvious artifacts
-                if (
+                const isArtifact =
                   lower === "you" ||
                   lower === "you." ||
                   lower === "thank you" ||
@@ -225,20 +177,15 @@ export function useWhisperPipeline({
                   lower.startsWith("auto ") ||
                   lower.startsWith("generated ") ||
                   lower.includes("subtitle") ||
-                  lower.includes("caption")
-                ) {
-                  console.log(`[SpeechRecognition] Filtered artifact: "${cleanTranscript}"`);
-                  return;
-                }
+                  lower.includes("caption");
 
-                handleRecognizedText(cleanTranscript);
+                if (!isArtifact) {
+                  handleRecognizedText(cleanTranscript);
+                }
               }
             };
 
-            recognition.onerror = (event: { error: string }) => {
-              console.warn("[SpeechRecognition Notice]", event.error);
-            };
-
+            recognition.onerror = () => {/* Ignore */};
             recognition.onend = () => {
               // Auto restart if pipeline is still active
               if (isPipelineActiveRef.current) {
@@ -251,12 +198,12 @@ export function useWhisperPipeline({
             recognition.start();
             recognitionRef.current = recognition;
           } catch (recInitErr) {
-            console.warn("[SpeechRecognition Init Notice]", recInitErr);
+            console.debug("[Whisper Pipeline] SpeechRecognition init failed:", recInitErr);
           }
         }
       }
 
-      // 2. Start audio track isolation and MediaRecorder for streaming chunks & audio buffering
+      // 2. Start audio track isolation and MediaRecorder for streaming chunks
       const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
       if (audioTracks.length > 0) {
         const audioOnlyStream = new MediaStream(audioTracks);
@@ -278,7 +225,6 @@ export function useWhisperPipeline({
           if (event.data && event.data.size > 500 && isPipelineActiveRef.current) {
             onAudioChunkRecordedRef.current?.(event.data);
             const currentIndex = chunkIndexRef.current++;
-            // Send each chunk directly - MediaRecorder produces properly formatted segments
             sendChunkToWhisper(event.data, currentIndex);
           }
         };
@@ -289,7 +235,7 @@ export function useWhisperPipeline({
       isPipelineActiveRef.current = true;
       setIsTranscribing(true);
     } catch (err: unknown) {
-      console.warn("[Whisper Pipeline Notice]", err);
+      console.debug("[Whisper Pipeline] Error starting pipeline:", err);
       setLastError(null);
     }
   }, [mediaStream, chunkIntervalMs, sendChunkToWhisper, handleRecognizedText]);
@@ -331,4 +277,52 @@ export function useWhisperPipeline({
     stopPipeline,
     clearSegments: () => setSegments([]),
   };
+}
+
+// Helper function to get supported audio mime type
+function getSupportedAudioMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/aac",
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return "";
+}
+
+// Helper interface for SpeechRecognition (defined outside to avoid recreation)
+interface ISpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [subIndex: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface ISpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => ISpeechRecognitionInstance;
+
+interface WindowWithSpeechRec extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
 }

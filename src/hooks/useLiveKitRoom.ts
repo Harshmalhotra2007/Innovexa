@@ -46,9 +46,9 @@ export function useLiveKitRoom({
         adaptiveStream: true,
         dynacast: true,
         audioCaptureDefaults: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true,
+          autoGainControl: false,
+          echoCancellation: true,  // Keep echo cancellation to prevent feedback loops
+          noiseSuppression: false,
         },
       });
 

@@ -15,17 +15,23 @@ export async function runWhisperAudioTranscription({
   language,
   promptHint,
 }: WhisperTranscriptionOptions): Promise<{ text: string; source: string }> {
-  let transcribedText = "";
-  let transcriptionSource = "none";
-
-  if (!audioBuffer || audioBuffer.length <= 100) {
+  // Early exit for invalid audio
+  if (!audioBuffer || audioBuffer.length < 200) {
     return { text: "", source: "none" };
   }
 
-  const groqApiKey = config.groqApiKey;
-  const openaiApiKey = config.openaiApiKey;
+  const groqApiKey = config.groqApiKey?.trim();
+  const openaiApiKey = config.openaiApiKey?.trim();
 
-  // Clean mimeType to standard extensions for Groq/OpenAI FormData
+  // Validate API keys
+  const hasGroqKey = Boolean(groqApiKey && groqApiKey.length > 10 && !groqApiKey.includes("your-groq"));
+  const hasOpenAIKey = Boolean(openaiApiKey && openaiApiKey.length > 10 && !openaiApiKey.includes("your-openai"));
+
+  if (!hasGroqKey && !hasOpenAIKey) {
+    return { text: "", source: "none" };
+  }
+
+  // Clean mimeType to standard extensions
   const cleanMime = mimeType.split(";")[0].trim() || "audio/webm";
   const ext = cleanMime.includes("mp4")
     ? "mp4"
@@ -38,124 +44,99 @@ export async function runWhisperAudioTranscription({
     : "webm";
 
   const effectiveLanguage = language && language !== "auto" ? language : "en";
-  const effectivePrompt = promptHint || "English meeting transcript with clear speech, operational alignment, decisions, and action items.";
+  const effectivePrompt = promptHint || "Professional meeting transcription. Focus on spoken content, action items, decisions, and operational topics. Ignore background noise and non-speech audio.";
 
-  // 1. Try Groq Whisper (Ultra-fast real-time transcription)
-  if (groqApiKey && groqApiKey.trim().length > 10) {
+  // Try Groq Whisper first (faster)
+  if (hasGroqKey) {
     try {
-      const groqFormData = new FormData();
-      const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime });
-      groqFormData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
-      groqFormData.append("model", "whisper-large-v3-turbo");
-      groqFormData.append("language", effectiveLanguage);
-      groqFormData.append("prompt", effectivePrompt);
-      groqFormData.append("response_format", "json");
-
-      const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${groqApiKey}` },
-        body: groqFormData,
-      });
-
-      if (groqRes.ok) {
-        const resJson = await groqRes.json();
-        if (resJson.text && resJson.text.trim().length > 0) {
-          transcribedText = resJson.text.trim();
-          transcriptionSource = "groq_whisper_v3";
-        }
+      const result = await transcribeWithGroq(audioBuffer, cleanMime, ext, chunkIndex, effectiveLanguage, effectivePrompt);
+      if (result.text) {
+        return result;
       }
-    } catch (groqErr) {
-      console.warn("[Groq Whisper Notice]", groqErr);
+    } catch (error) {
+      const err = error as Error;
+      console.debug("[Whisper Transcriber] Groq attempt failed:", err.message);
     }
   }
 
-  // 2. Try OpenAI Whisper (if Groq not configured or didn't return text)
-  if (!transcribedText && openaiApiKey && openaiApiKey.trim().length > 10 && !openaiApiKey.includes("your-openai")) {
+  // Fallback to OpenAI Whisper
+  if (hasOpenAIKey) {
     try {
-      const whisperFormData = new FormData();
-      const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime });
-      whisperFormData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
-      whisperFormData.append("model", "whisper-1");
-      whisperFormData.append("language", effectiveLanguage);
-      whisperFormData.append("prompt", effectivePrompt);
-
-      const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${openaiApiKey}` },
-        body: whisperFormData,
-      });
-
-      if (whisperRes.ok) {
-        const resJson = await whisperRes.json();
-        if (resJson.text && resJson.text.trim().length > 0) {
-          transcribedText = resJson.text.trim();
-          transcriptionSource = "openai_whisper";
-        }
+      const result = await transcribeWithOpenAI(audioBuffer, cleanMime, ext, chunkIndex, effectiveLanguage, effectivePrompt);
+      if (result.text) {
+        return result;
       }
-    } catch (whisperErr) {
-      console.warn("[OpenAI Whisper Notice]", whisperErr);
+    } catch (error) {
+      const err = error as Error;
+      console.debug("[Whisper Transcriber] OpenAI attempt failed:", err.message);
     }
   }
 
-  // Enhanced filtering for hallucinations, silence, and nonsense transcriptions
-  const lower = transcribedText.toLowerCase().trim();
+  // If we get here, both services failed or returned empty text
+  return { text: "", source: "none" };
+}
 
-  // Check for empty or very short transcriptions
-  if (!transcribedText || transcribedText.trim().length < 2) {
-    console.log(`[Whisper Transcriber] Empty or too short transcription: "${transcribedText}"`);
-    return { text: "", source: transcriptionSource };
+async function transcribeWithGroq(
+  audioBuffer: Buffer,
+  cleanMime: string,
+  ext: string,
+  chunkIndex: number,
+  language: string,
+  prompt: string
+): Promise<{ text: string; source: string }> {
+  const blob = new Blob([audioBuffer as unknown as BlobPart], { type: cleanMime });
+  const formData = new FormData();
+
+  formData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
+  formData.append("model", "whisper-large-v3-turbo");
+  formData.append("language", language);
+  formData.append("prompt", prompt);
+  formData.append("response_format", "json");
+
+  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.groqApiKey}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Groq API error: ${res.status}`);
   }
 
-  // Check for common hallucination patterns
-  const isCommonHallucination =
-    lower === "you" ||
-    lower === "you." ||
-    lower === "thank you." ||
-    lower === "thank you" ||
-    lower === "bye." ||
-    lower === "bye" ||
-    lower.includes("thank you for watching") ||
-    lower.includes("subscribe to my channel") ||
-    lower.includes("subtitles by") ||
-    lower.includes("capturing real-time audio") ||
-    lower.includes("live stream segment") ||
-    lower.includes("amara.org") ||
-    lower.includes("http://") ||
-    lower.includes("https://") ||
-    lower.includes("auto-generated") ||
-    lower.includes("auto generated") ||
-    lower.includes("auto-generated captions") ||
-    lower.includes("auto generated captions") ||
-    lower.includes("captions by") ||
-    lower.includes("generated by") ||
-    lower.includes("whisper") ||
-    lower.includes("transcription") ||
-    lower === "auto" ||
-    lower === "auto-generated." ||
-    lower === "auto generated." ||
-    lower.startsWith("auto ") ||
-    lower.startsWith("generated ");
+  const resJson = await res.json();
+  const text = resJson.text?.trim() ?? "";
 
-  // Check for repetitive patterns (common in Whisper hallucinations)
-  const words = lower.split(/\s+/);
-  const isRepetitive = words.length >= 3 &&
-    new Set(words).size <= Math.max(2, Math.floor(words.length * 0.3)); // More than 70% repetition
+  return { text, source: text ? "groq_whisper_v3" : "none" };
+}
 
-  // Check for gibberish (high ratio of non-alphabetic characters or unusual patterns)
-  const alphaRatio = [...lower].filter(c => c.match(/[a-z\s]/i)).length / lower.length;
-  const isLikelyGibberish = alphaRatio < 0.6 && lower.length > 10; // Less than 60% alphabetic/space chars
+async function transcribeWithOpenAI(
+  audioBuffer: Buffer,
+  cleanMime: string,
+  ext: string,
+  chunkIndex: number,
+  language: string,
+  prompt: string
+): Promise<{ text: string; source: string }> {
+  const blob = new Blob([audioBuffer as unknown as BlobPart], { type: cleanMime });
+  const formData = new FormData();
 
-  const isHallucinatedSilence = isCommonHallucination || isRepetitive || isLikelyGibberish;
+  formData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
+  formData.append("model", "whisper-1");
+  formData.append("language", language);
+  formData.append("prompt", prompt);
 
-  if (isHallucinatedSilence) {
-    console.log(`[Whisper Transcriber] Filtered hallucination/nonsense: "${transcribedText}" (common: ${isCommonHallucination}, repetitive: ${isRepetitive}, gibberish: ${isLikelyGibberish})`);
-    return { text: "", source: transcriptionSource };
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.openaiApiKey}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new Error(`OpenAI API error: ${res.status}`);
   }
 
-  // Log successful transcription for debugging
-  if (transcribedText.length > 0) {
-    console.log(`[Whisper Transcriber] Successful transcription (${transcriptionSource}): "${transcribedText.substring(0, 100)}${transcribedText.length > 100 ? '...' : ''}"`);
-  }
+  const resJson = await res.json();
+  const text = resJson.text?.trim() ?? "";
 
-  return { text: transcribedText, source: transcriptionSource };
+  return { text, source: text ? "openai_whisper" : "none" };
 }

@@ -140,9 +140,9 @@ export function useMediaControls({
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
+              echoCancellation: true,  // Keep echo cancellation to prevent feedback loops
+              noiseSuppression: false,
+              autoGainControl: false,
               sampleRate: 16000,
               channelCount: 1,
             },
@@ -152,9 +152,9 @@ export function useMediaControls({
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
+                echoCancellation: true,  // Keep echo cancellation to prevent feedback loops
+                noiseSuppression: false,
+                autoGainControl: false,
                 sampleRate: 16000,
                 channelCount: 1,
               },

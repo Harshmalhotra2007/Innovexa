@@ -1,6 +1,7 @@
 "use client";
 
 import { Sidebar } from "./Sidebar";
+import { NotificationBell } from "./NotificationBell";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <span className="px-2.5 py-0.5 rounded font-mono text-[10px] uppercase font-bold bg-[var(--teal)]/12 text-[var(--teal)] border border-[var(--teal)]/30 hidden sm:inline-block">
               STAGING PREVIEW
             </span>
@@ -35,4 +37,3 @@ export function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
-
