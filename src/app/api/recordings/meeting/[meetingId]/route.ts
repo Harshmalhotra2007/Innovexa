@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { meetingId: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ meetingId: string }> }) {
+  const params = await props.params;
   try {
     const { meetingId } = params;
 

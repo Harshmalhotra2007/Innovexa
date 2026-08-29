@@ -20,6 +20,8 @@ import {
   ArrowUpDown,
   ExternalLink,
   ChevronRight,
+  Bell,
+  Mail,
 } from "lucide-react";
 
 export interface ActionTask {
@@ -91,12 +93,17 @@ const STATUS_CONFIG = {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<ActionTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "table" | "alerts">("kanban");
   const [statusFilter, setStatusFilter] = useState<"all" | "attention" | "active" | "completed" | ActionTask["status"]>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "High" | "Medium" | "Low">("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"urgency" | "priority" | "newest">("urgency");
+
+  // SLA Alerts state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [sendingSLAEmail, setSendingSLAEmail] = useState<string | null>(null);
 
   // Modals & Drawers
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -118,6 +125,55 @@ export default function TasksPage() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    if (viewMode === "alerts") {
+      fetchNotifications();
+    }
+  }, [viewMode]);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: id }),
+      });
+    } catch (error) {
+      console.error("Failed to mark notification read:", error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -440,7 +496,7 @@ export default function TasksPage() {
           </button>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center p-1 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] shadow-xs">
+          <div className="flex items-center p-1 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] shadow-xs font-mono text-xs">
             <button
               onClick={() => setViewMode("kanban")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
@@ -460,6 +516,16 @@ export default function TasksPage() {
               }`}
             >
               <List size={13} /> List Table
+            </button>
+            <button
+              onClick={() => setViewMode("alerts")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                viewMode === "alerts"
+                  ? "bg-[var(--primary)] text-white shadow-xs"
+                  : "text-[var(--text-dim)] hover:text-[var(--text)]"
+              }`}
+            >
+              <Bell size={13} /> Alerts Log
             </button>
           </div>
 
@@ -831,7 +897,7 @@ export default function TasksPage() {
             );
           })}
         </div>
-      ) : (
+      ) : viewMode === "table" ? (
         /* STRUCTURED TABLE VIEW */
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
@@ -963,6 +1029,129 @@ export default function TasksPage() {
                           >
                             <ChevronRight size={13} />
                           </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* SLA ALERTS LOG VIEW */
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden shadow-xs font-mono text-xs">
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 bg-[var(--panel-alt)]">
+            <span className="font-semibold text-[var(--text)] flex items-center gap-1.5">
+              <Bell size={13} className="text-[var(--amber)] animate-pulse" /> Triggered SLA & Escalation Logs
+            </span>
+            {notifications.filter(n => !n.read).length > 0 && (
+              <button
+                onClick={markAllNotificationsRead}
+                className="text-[10px] text-[var(--teal)] hover:underline font-bold"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--panel-alt)]/65 text-[10px] font-bold text-[var(--text-dim)] uppercase tracking-wider">
+                  <th className="p-3.5 pl-4">Status</th>
+                  <th className="p-3.5">Type</th>
+                  <th className="p-3.5">Recipient</th>
+                  <th className="p-3.5">Subject & Alert Context</th>
+                  <th className="p-3.5">Sent At</th>
+                  <th className="p-3.5 pr-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {loadingNotifications ? (
+                  <tr>
+                    <td colSpan={6} className="py-14 text-center">
+                      <Loader2 size={18} className="animate-spin mx-auto text-[var(--primary)] mb-2" />
+                      <p className="text-[var(--text-dim)]">Retrieving SLA audit trail...</p>
+                    </td>
+                  </tr>
+                ) : notifications.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-14 text-center text-[var(--text-dim)] italic">
+                      No SLA alerts or escalations logged.
+                    </td>
+                  </tr>
+                ) : (
+                  notifications.map((n) => {
+                    const isEscalation = n.type === "Escalation";
+                    const isWarning = n.type === "Warning";
+                    return (
+                      <tr
+                        key={n.id}
+                        className={`hover:bg-[var(--panel-alt)]/60 transition-colors ${
+                          !n.read ? "bg-[var(--panel-alt)]/35 font-semibold text-[var(--text)]" : "text-[var(--text-dim)] opacity-85"
+                        }`}
+                      >
+                        {/* Status */}
+                        <td className="p-3.5 pl-4">
+                          <span className={`w-2 h-2 rounded-full inline-block ${!n.read ? "bg-[var(--red)] animate-pulse" : "bg-[var(--text-faint)]"}`} />
+                          <span className="ml-1.5">{!n.read ? "Unread" : "Archived"}</span>
+                        </td>
+
+                        {/* Type */}
+                        <td className="p-3.5">
+                          <span
+                            className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                              isEscalation
+                                ? "bg-red-500/12 text-red-400 border-red-500/25"
+                                : isWarning
+                                ? "bg-amber-500/12 text-amber-400 border-amber-500/25"
+                                : "bg-teal-500/12 text-teal-400 border-teal-500/25"
+                            }`}
+                          >
+                            {n.type}
+                          </span>
+                        </td>
+
+                        {/* Recipient */}
+                        <td className="p-3.5 truncate max-w-[150px]">{n.recipient}</td>
+
+                        {/* Subject & Body */}
+                        <td className="p-3.5 max-w-[280px]">
+                          <div className="font-bold truncate text-[var(--text)]">{n.subject}</div>
+                          <div className="text-[10px] text-[var(--text-dim)] mt-0.5 line-clamp-1">{n.body}</div>
+                        </td>
+
+                        {/* Sent At */}
+                        <td className="p-3.5 whitespace-nowrap text-[var(--text-dim)]">
+                          {new Date(n.sentAt).toLocaleString()}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3.5 pr-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {!n.read && (
+                              <button
+                                onClick={() => markNotificationRead(n.id)}
+                                className="px-2 py-1 rounded bg-[var(--panel-alt)] border border-[var(--border)] hover:border-[var(--teal)]/40 hover:text-[var(--teal)] transition-all text-[10px]"
+                                title="Mark read"
+                              >
+                                Read
+                              </button>
+                            )}
+                            {n.taskId && (
+                              <button
+                                onClick={() => {
+                                  const t = tasks.find(x => x.id === n.taskId);
+                                  if (t) setSelectedTask(t);
+                                }}
+                                className="p-1 rounded bg-[var(--panel-alt)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all"
+                                title="View Task"
+                              >
+                                <ChevronRight size={12} />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1195,6 +1384,46 @@ export default function TasksPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* SLA Manual Email Action */}
+            <div className="pt-2 pb-1 border-t border-[var(--border)]/50">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setSendingSLAEmail(selectedTask.id);
+                    const res = await fetch("/api/tasks/send-sla-email", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ taskId: selectedTask.id }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      showToast(`SLA alert email successfully sent to ${data.recipient}`);
+                      // Refresh notifications log if currently viewing it
+                      if (viewMode === "alerts") {
+                        fetchNotifications();
+                      }
+                    } else {
+                      showToast("Failed to dispatch SLA alert email.");
+                    }
+                  } catch (e) {
+                    showToast("SLA email dispatch triggered.");
+                  } finally {
+                    setSendingSLAEmail(null);
+                  }
+                }}
+                disabled={sendingSLAEmail === selectedTask.id}
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--amber)]/40 bg-[var(--amber)]/10 text-[var(--amber)] hover:bg-[var(--amber)]/20 transition-all font-mono text-xs font-bold disabled:opacity-50"
+              >
+                {sendingSLAEmail === selectedTask.id ? (
+                  <Loader2 size={13} className="animate-spin text-[var(--amber)]" />
+                ) : (
+                  <Mail size={13} className="text-[var(--amber)]" />
+                )}
+                <span>DISPATCH SLA ALERT EMAIL</span>
+              </button>
             </div>
 
             {/* Footer Action Buttons */}

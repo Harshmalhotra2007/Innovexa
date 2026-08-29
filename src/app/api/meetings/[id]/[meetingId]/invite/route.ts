@@ -5,10 +5,8 @@ import { config } from "@/lib/config";
 /**
  * Sends meeting invitation emails to participants and updates the meeting's participants field.
  */
-export async function POST(
-  req: Request,
-  { params }: { params: { meetingId: string } }
-) {
+export async function POST(req: Request, props: { params: Promise<{ meetingId: string }> }) {
+  const params = await props.params;
   try {
     const { meetingId } = params;
     const { emails } = await req.json();

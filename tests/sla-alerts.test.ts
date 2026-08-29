@@ -2,6 +2,9 @@ import { generateSLAEscalationEmailHtml, sendSLAEscalationEmail } from "../src/l
 import { checkAndEscalateOverdueTasks } from "../src/lib/escalation-engine";
 import { GET, PATCH } from "../src/app/api/notifications/route";
 import { db } from "../src/lib/db";
+import { config } from "../src/lib/config";
+
+config.resendApiKey = "";
 
 // Mock Prisma DB
 jest.mock("../src/lib/db", () => ({
@@ -9,6 +12,7 @@ jest.mock("../src/lib/db", () => ({
     task: {
       findMany: jest.fn(),
       updateMany: jest.fn(),
+      findUnique: jest.fn(),
     },
     department: {
       findMany: jest.fn(),
@@ -209,5 +213,45 @@ describe("Notifications API Route", () => {
       where: { read: false },
       data: { read: true },
     });
+  });
+});
+
+import { POST as sendSLAEmailPOST } from "../src/app/api/tasks/send-sla-email/route";
+
+describe("Manual SLA Email Dispatch API", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should successfully fetch task and send SLA warning email", async () => {
+    (db.task.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: "task-1",
+      title: "Core API Sec",
+      ownerName: "Dev One",
+      ownerEmail: "dev1@innovexa.com",
+      department: "Engineering",
+      priority: "High",
+      status: "Pending",
+      deadline: new Date(Date.now() - 3600000), // 1 hour overdue
+      escalationLevel: 0,
+    });
+
+    (db.department.findMany as jest.Mock).mockResolvedValueOnce([
+      { name: "Engineering", managerName: "Rajesh Kumar", code: "ENG" },
+    ]);
+
+    const req = new Request("http://localhost/api/tasks/send-sla-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId: "task-1" }),
+    });
+
+    const res = await sendSLAEmailPOST(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.type).toBe("Warning");
+    expect(data.recipient).toBe("dev1@innovexa.com");
   });
 });

@@ -56,7 +56,7 @@ describe("Meetings DELETE API Endpoint", () => {
       headers: { "x-user-role": "participant" },
     });
 
-    const res = await DELETE(req, { params: { id: "1" } });
+    const res = await DELETE(req, { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(403);
     const data = await res.json();
     expect(data.error).toContain("Forbidden");
@@ -68,7 +68,7 @@ describe("Meetings DELETE API Endpoint", () => {
       headers: { "x-user-role": "organizer" },
     });
 
-    const res = await DELETE(req, { params: { id: "1" } });
+    const res = await DELETE(req, { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.message).toBe("Meeting deleted successfully");
@@ -92,7 +92,7 @@ describe("Tasks Assign PATCH API Endpoint", () => {
       body: JSON.stringify({ assigneeId: "user-1" }),
     });
 
-    const res = await PATCH(req, { params: { id: "1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(403);
   });
 
@@ -109,7 +109,7 @@ describe("Tasks Assign PATCH API Endpoint", () => {
       body: JSON.stringify({ assigneeId: "user-1" }),
     });
 
-    const res = await PATCH(req, { params: { id: "1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(200);
     expect(db.task.update).toHaveBeenCalledWith({
       where: { id: "1" },
@@ -176,7 +176,7 @@ describe("AI Agent Endpoints & Security", () => {
     });
 
     const req = new Request("http://localhost/api/ai-agent/status/meet-1");
-    const res = await GET_AI_STATUS(req, { params: { meetingId: "meet-1" } });
+    const res = await GET_AI_STATUS(req, { params: Promise.resolve({ meetingId: "meet-1" }) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe("completed");
@@ -191,7 +191,7 @@ describe("AI Agent Endpoints & Security", () => {
     });
 
     const req = new Request("http://localhost/api/ai-agent/meet-1/transcript");
-    const res = await GET_AI_TRANSCRIPT(req, { params: { meetingId: "meet-1" } });
+    const res = await GET_AI_TRANSCRIPT(req, { params: Promise.resolve({ meetingId: "meet-1" }) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);

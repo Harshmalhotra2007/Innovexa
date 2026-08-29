@@ -41,7 +41,7 @@ const mockEgressClient = new EgressClient('http://test.com', 'key', 'secret') as
 describe('livekit-egress', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    livekitEgress.egressClient = mockEgressClient;
+    (livekitEgress as any).egressClient = mockEgressClient;
   });
 
   describe('isEgressConfigured', () => {
@@ -56,7 +56,7 @@ describe('livekit-egress', () => {
 
   describe('startRoomEgress', () => {
     it('should return null when egressClient is not configured', async () => {
-      livekitEgress.egressClient = null;
+      (livekitEgress as any).egressClient = null;
       const result = await startRoomEgress('test-room', 'test-meeting');
       expect(result).toBeNull();
     });
@@ -99,7 +99,7 @@ describe('livekit-egress', () => {
 
   describe('stopEgress', () => {
     it('should return false when egressClient is not configured', async () => {
-      livekitEgress.egressClient = null;
+      (livekitEgress as any).egressClient = null;
       const result = await stopEgress('test-egress-id');
       expect(result).toBe(false);
     });

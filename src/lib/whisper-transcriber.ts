@@ -97,10 +97,17 @@ export async function runWhisperAudioTranscription({
     }
   }
 
-  // Filter out silence, background noise hallucination, or dummy strings
+  // Enhanced filtering for hallucinations, silence, and nonsense transcriptions
   const lower = transcribedText.toLowerCase().trim();
-  const isHallucinatedSilence =
-    !transcribedText ||
+
+  // Check for empty or very short transcriptions
+  if (!transcribedText || transcribedText.trim().length < 2) {
+    console.log(`[Whisper Transcriber] Empty or too short transcription: "${transcribedText}"`);
+    return { text: "", source: transcriptionSource };
+  }
+
+  // Check for common hallucination patterns
+  const isCommonHallucination =
     lower === "you" ||
     lower === "you." ||
     lower === "thank you." ||
@@ -114,10 +121,29 @@ export async function runWhisperAudioTranscription({
     lower.includes("live stream segment") ||
     lower.includes("amara.org") ||
     lower.includes("http://") ||
-    lower.includes("https://");
+    lower.includes("https://") ||
+    lower.includes("auto-generated") ||
+    lower.includes("auto generated");
+
+  // Check for repetitive patterns (common in Whisper hallucinations)
+  const words = lower.split(/\s+/);
+  const isRepetitive = words.length >= 3 &&
+    new Set(words).size <= Math.max(2, Math.floor(words.length * 0.3)); // More than 70% repetition
+
+  // Check for gibberish (high ratio of non-alphabetic characters or unusual patterns)
+  const alphaRatio = [...lower].filter(c => c.match(/[a-z\s]/i)).length / lower.length;
+  const isLikelyGibberish = alphaRatio < 0.6 && lower.length > 10; // Less than 60% alphabetic/space chars
+
+  const isHallucinatedSilence = isCommonHallucination || isRepetitive || isLikelyGibberish;
 
   if (isHallucinatedSilence) {
+    console.log(`[Whisper Transcriber] Filtered hallucination/nonsense: "${transcribedText}" (common: ${isCommonHallucination}, repetitive: ${isRepetitive}, gibberish: ${isLikelyGibberish})`);
     return { text: "", source: transcriptionSource };
+  }
+
+  // Log successful transcription for debugging
+  if (transcribedText.length > 0) {
+    console.log(`[Whisper Transcriber] Successful transcription (${transcriptionSource}): "${transcribedText.substring(0, 100)}${transcribedText.length > 100 ? '...' : ''}"`);
   }
 
   return { text: transcribedText, source: transcriptionSource };

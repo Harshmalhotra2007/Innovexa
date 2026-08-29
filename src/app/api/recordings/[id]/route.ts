@@ -7,10 +7,8 @@ export const dynamic = "force-dynamic";
 /**
  * Robust Recording Audio Delivery Endpoint with CORS & Audio Header Stream
  */
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { id } = params;
     const scratchDir = path.join(process.cwd(), "scratch");

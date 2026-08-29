@@ -4,10 +4,8 @@ import { apiHandler, ApiError } from "@/lib/api-handler";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { meetingId: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ meetingId: string }> }) {
+  const params = await props.params;
   return apiHandler(req, async () => {
     const { meetingId } = params;
     if (!meetingId) {

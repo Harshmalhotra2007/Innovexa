@@ -31,7 +31,7 @@ describe("POST /api/meetings/[id]/invite API Route", () => {
       body: JSON.stringify({ emails: [] }),
     });
 
-    const res = await POST(req, { params: { id: "meet-1" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "meet-1" }) });
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toContain("Emails list (array or comma-separated string) is required");
@@ -45,7 +45,7 @@ describe("POST /api/meetings/[id]/invite API Route", () => {
       body: JSON.stringify({ emails: ["alice@innovexa.com"] }),
     });
 
-    const res = await POST(req, { params: { id: "non-existent" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "non-existent" }) });
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(data.error).toContain("Meeting not found");
@@ -76,7 +76,7 @@ describe("POST /api/meetings/[id]/invite API Route", () => {
       body: JSON.stringify({ emails: ["alice@innovexa.com", "bob@innovexa.com"] }),
     });
 
-    const res = await POST(req, { params: { id: "meet-101" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "meet-101" }) });
     expect(res.status).toBe(200);
     const data = await res.json();
 

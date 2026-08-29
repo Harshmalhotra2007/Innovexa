@@ -6,10 +6,8 @@ import { apiHandler, ApiError } from "@/lib/api-handler";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return apiHandler(async (req) => {
     const { id: meetingId } = params;
 

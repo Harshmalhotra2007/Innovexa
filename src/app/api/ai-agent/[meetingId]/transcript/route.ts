@@ -3,10 +3,8 @@ import { getAIAgentTranscript } from "@/lib/ai-agent-engine";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { meetingId: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ meetingId: string }> }) {
+  const params = await props.params;
   try {
     const { meetingId } = params;
     if (!meetingId) {

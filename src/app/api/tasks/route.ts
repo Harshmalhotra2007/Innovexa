@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       },
     });
 
-    revalidateTag("tasks");
+    revalidateTag("tasks", "max");
 
     // Enqueue SLA deadline reminder
     enqueueSLADeadlineReminder({
@@ -119,7 +119,7 @@ export async function PATCH(req: Request) {
       data: updateData,
     });
 
-    revalidateTag("tasks");
+    revalidateTag("tasks", "max");
 
     return { success: true, task: updatedTask };
   });
@@ -138,7 +138,7 @@ export async function DELETE(req: Request) {
       where: { id: taskId },
     });
 
-    revalidateTag("tasks");
+    revalidateTag("tasks", "max");
     return { success: true, message: "Task deleted successfully" };
   });
 }

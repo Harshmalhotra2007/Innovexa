@@ -10,10 +10,8 @@ function extractMeetCode(url: string | null): string | null {
   return match ? match[1].toLowerCase() : null;
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return apiHandler(req, async () => {
     const meeting = await db.meeting.findUnique({
       where: { id: params.id },
@@ -33,10 +31,8 @@ export async function GET(
   });
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return apiHandler(req, async () => {
     const role = req.headers.get("x-user-role");
     if (role !== "organizer") {
@@ -153,8 +149,8 @@ export async function DELETE(
     // Now delete the meeting record
     await db.meeting.delete({ where: { id } });
 
-    revalidateTag("meetings");
-    revalidateTag("tasks");
+    revalidateTag("meetings", "max");
+    revalidateTag("tasks", "max");
 
     return { message: "Meeting deleted successfully" };
   });

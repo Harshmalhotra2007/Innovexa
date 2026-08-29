@@ -80,7 +80,6 @@ export function useWhisperPipeline({
   const [lastError, setLastError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const headerBlobRef = useRef<Blob | null>(null);
   const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
   const chunkIndexRef = useRef<number>(0);
   const isPipelineActiveRef = useRef<boolean>(false);
@@ -200,7 +199,28 @@ export function useWhisperPipeline({
               const current = event.resultIndex;
               const transcript = event.results[current]?.[0]?.transcript;
               if (transcript && transcript.trim().length > 0) {
-                handleRecognizedText(transcript);
+                // Basic filtering for common browser STT artifacts
+                const cleanTranscript = transcript.trim();
+                const lower = cleanTranscript.toLowerCase();
+
+                // Skip obvious artifacts
+                if (
+                  lower === "you" ||
+                  lower === "you." ||
+                  lower === "thank you" ||
+                  lower === "thank you." ||
+                  lower === "bye" ||
+                  lower === "bye." ||
+                  lower.includes("auto-generated") ||
+                  lower.includes("auto generated") ||
+                  lower.includes("subtitle") ||
+                  lower.includes("caption")
+                ) {
+                  console.log(`[SpeechRecognition] Filtered artifact: "${cleanTranscript}"`);
+                  return;
+                }
+
+                handleRecognizedText(cleanTranscript);
               }
             };
 
@@ -241,24 +261,14 @@ export function useWhisperPipeline({
         }
 
         mediaRecorderRef.current = recorder;
-        headerBlobRef.current = null;
         chunkIndexRef.current = 0;
 
         recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 50 && isPipelineActiveRef.current) {
+          if (event.data && event.data.size > 500 && isPipelineActiveRef.current) {
             onAudioChunkRecordedRef.current?.(event.data);
             const currentIndex = chunkIndexRef.current++;
-
-            if (currentIndex === 0 || !headerBlobRef.current) {
-              headerBlobRef.current = event.data;
-              sendChunkToWhisper(event.data, currentIndex);
-            } else {
-              // Prepend WebM EBML header to subsequent chunk for valid STT decoding
-              const combinedBlob = new Blob([headerBlobRef.current, event.data], {
-                type: event.data.type || mimeType || "audio/webm",
-              });
-              sendChunkToWhisper(combinedBlob, currentIndex);
-            }
+            // Send each chunk directly - MediaRecorder produces properly formatted segments
+            sendChunkToWhisper(event.data, currentIndex);
           }
         };
 
@@ -277,7 +287,6 @@ export function useWhisperPipeline({
   const stopPipeline = useCallback(() => {
     isPipelineActiveRef.current = false;
     setIsTranscribing(false);
-    headerBlobRef.current = null;
 
     if (recognitionRef.current) {
       try {

@@ -5,6 +5,7 @@ import { runWhisperAudioTranscription } from "@/lib/whisper-transcriber";
 export const dynamic = "force-dynamic";
 
 const MAX_AUDIO_CHUNK_SIZE = 25 * 1024 * 1024; // 25MB (Whisper limit)
+const MIN_AUDIO_CHUNK_SIZE = 500; // Minimum 500 bytes to avoid sending empty/silent chunks
 
 export async function POST(req: Request) {
   try {
@@ -50,6 +51,18 @@ export async function POST(req: Request) {
     if (!transcribedText && audioFile) {
       if (audioFile.size > MAX_AUDIO_CHUNK_SIZE) {
         return NextResponse.json({ error: "Audio chunk exceeds maximum 25MB limit" }, { status: 400 });
+      }
+
+      // Skip very small chunks that are likely silence or noise
+      if (audioFile.size < MIN_AUDIO_CHUNK_SIZE) {
+        return NextResponse.json({
+          success: true,
+          meetingId,
+          chunkIndex,
+          isSilent: true,
+          text: "",
+          segment: null,
+        });
       }
 
       const audioBuffer = Buffer.from(await audioFile.arrayBuffer());

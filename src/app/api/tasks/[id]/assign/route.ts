@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const userRole = req.headers.get("x-user-role");
     if (userRole !== "organizer") {
@@ -37,7 +35,7 @@ export async function PATCH(
     });
 
     const { revalidateTag } = await import("next/cache");
-    revalidateTag("tasks");
+    revalidateTag("tasks", "max");
 
     return NextResponse.json(updatedTask);
   } catch (error: any) {

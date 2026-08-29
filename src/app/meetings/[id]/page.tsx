@@ -27,6 +27,9 @@ import {
   Radio,
   Activity,
   User,
+  Mail,
+  UserPlus,
+  X,
 } from "lucide-react";
 
 // ──────────────────────────────────────────────────────────
@@ -205,9 +208,54 @@ export default function MeetingDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Email Invitation State
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [sendingInvites, setSendingInvites] = useState(false);
+
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3200);
+  };
+
+  const handleSendInvites = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmails.trim()) return;
+
+    const emails = inviteEmails
+      .split(",")
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0 && e.includes("@"));
+
+    if (emails.length === 0) {
+      showToast("Please provide valid email address(es).", "error");
+      return;
+    }
+
+    setSendingInvites(true);
+    try {
+      const res = await fetch(`/api/meetings/${id}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        showToast(`Invitations sent to ${data.invitedCount || emails.length} attendee(s)!`);
+        setInviteEmails("");
+        setShowInviteModal(false);
+        fetchMeeting(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "Failed to send email invitations.", "error");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send email invitations.";
+      showToast(msg, "error");
+    } finally {
+      setSendingInvites(false);
+    }
   };
 
   useEffect(() => {
@@ -388,6 +436,74 @@ export default function MeetingDetailPage() {
         </div>
       )}
 
+      {/* Invite Attendees Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 font-sans animate-fade-in">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <div className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wider text-[var(--text)]">
+                <Mail size={16} className="text-[var(--primary)]" />
+                <span>Send Meeting Email Invitations</span>
+              </div>
+              <button
+                onClick={() => setShowInviteModal(false)}
+                className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--panel-alt)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendInvites} className="space-y-3.5">
+              <p className="text-xs text-[var(--text-dim)] font-mono leading-relaxed">
+                Invited participants will receive an email invitation with an embedded <strong>iCalendar (.ics)</strong> calendar attachment and one-click join link.
+              </p>
+
+              <div>
+                <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
+                  Participant Emails *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="e.g. alice@innovexa.com, bob@innovexa.com"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:border-[var(--primary)] focus:outline-none placeholder-[var(--text-faint)]"
+                />
+                <p className="text-[10px] text-[var(--text-faint)] font-mono mt-1">
+                  Separate multiple recipient addresses with commas.
+                </p>
+              </div>
+
+              {meeting.participants && (
+                <div className="p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-[11px] font-mono text-[var(--text-dim)]">
+                  <span className="font-bold block text-[10px] uppercase mb-1">Current Attendees:</span>
+                  <span className="line-clamp-2">{meeting.participants}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="px-4 py-2 rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-dim)] hover:bg-[var(--panel-alt)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingInvites || !inviteEmails.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--primary)] text-white text-xs font-mono font-bold hover:bg-[var(--primary)]/90 disabled:opacity-50"
+                >
+                  {sendingInvites ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  <span>{sendingInvites ? "Dispatching..." : "Send Invitations"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirm Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -465,10 +581,17 @@ export default function MeetingDetailPage() {
                   <Activity size={11} /> {meeting.durationMins}m
                 </span>
               )}
-              {meeting.participants && (
+              {meeting.participants ? (
                 <span className="flex items-center gap-1">
                   <Users size={11} /> {meeting.participants}
                 </span>
+              ) : (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-1 text-[var(--primary)] hover:underline cursor-pointer"
+                >
+                  <UserPlus size={11} /> + Invite Attendees
+                </button>
               )}
             </div>
 
@@ -481,6 +604,15 @@ export default function MeetingDetailPage() {
 
           {/* Right: Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[var(--primary)] px-3 py-2 text-xs font-mono font-bold hover:bg-[var(--primary)]/20 transition-all shadow-xs"
+              title="Send email invitations with calendar attachments (.ics)"
+            >
+              <Mail size={13} />
+              <span>INVITE</span>
+            </button>
+
             <Link
               href={`/meeting/innovexa-meeting-${id}?meetingId=${id}`}
               className="flex items-center gap-1.5 rounded-lg border border-[var(--primary)] bg-[var(--primary)] text-white px-3 py-2 text-xs font-mono font-bold hover:bg-[var(--primary-hover)] transition-all shadow-sm"

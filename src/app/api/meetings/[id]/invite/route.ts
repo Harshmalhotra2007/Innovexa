@@ -8,10 +8,8 @@ import { enqueuePreMeetingReminder } from "@/lib/notification-queue";
  * Sends meeting invitation emails with iCalendar (.ics) calendar files
  * and updates the meeting's participants list.
  */
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return apiHandler(req, async (req) => {
     const { id } = params;
     const body = await req.json().catch(() => ({}));

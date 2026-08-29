@@ -118,7 +118,7 @@ export async function POST(req: Request) {
       },
     });
 
-    revalidateTag("meetings");
+    revalidateTag("meetings", "max");
 
     return NextResponse.json(recording, { status: 201 });
   } catch (error: any) {

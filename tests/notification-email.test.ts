@@ -1,7 +1,12 @@
 import { generateReminderEmailHtml, sendMeetingReminderEmail, generateICSFile, sendMeetingInvitationEmails } from "../src/lib/email-engine";
 import { enqueuePreMeetingReminder, getNotificationQueueStatus } from "../src/lib/notification-queue";
+import { config } from "../src/lib/config";
 
 describe("Pre-Meeting Reminder & Transactional Email Engine Tests", () => {
+  beforeAll(() => {
+    config.resendApiKey = "";
+  });
+
   it("should generate valid responsive HTML containing meeting metadata and Google Meet link", () => {
     const html = generateReminderEmailHtml({
       meetingId: "test-meet-123",

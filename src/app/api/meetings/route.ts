@@ -89,8 +89,8 @@ export async function POST(req: Request) {
       });
     }
 
-    revalidateTag("meetings");
-    revalidateTag("tasks");
+    revalidateTag("meetings", "max");
+    revalidateTag("tasks", "max");
 
     // 4. Trigger Operation "Oracle Core" background indexing
     await triggerOracleCoreIndexing(newMeeting.id, transcript);

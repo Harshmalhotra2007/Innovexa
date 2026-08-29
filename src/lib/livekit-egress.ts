@@ -15,13 +15,28 @@ const httpUrl = getHttpUrl(config.livekitWsUrl);
 /**
  * Initialize LiveKit clients if credentials are provided
  */
-const egressClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
+export let egressClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
   ? new EgressClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
 
-const roomServiceClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
+export let roomServiceClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
   ? new RoomServiceClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
+
+/**
+ * Wrapper to add timeout to Promise-returning functions
+ * @param promiseFn - Function that returns a Promise
+ * @param timeoutMs - Timeout in milliseconds
+ * @returns Promise that rejects with timeout error if timeoutMs is exceeded
+ */
+const withTimeout = <T>(promiseFn: () => Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promiseFn(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+};
 
 /**
  * Start a room composite egress to record the meeting
@@ -52,13 +67,17 @@ export async function startRoomEgress(
       };
     }
 
-    const info = await egressClient.startRoomCompositeEgress(
-      roomName,
-      fileOutput as any,
-      {
-        layout: "grid",
-        audioOnly: false,
-      }
+    // Add timeout to prevent hanging egress requests
+    const info = await withTimeout(
+      () => egressClient!.startRoomCompositeEgress(
+        roomName,
+        fileOutput as any,
+        {
+          layout: "grid",
+          audioOnly: false,
+        }
+      ),
+      10000 // 10 second timeout
     );
 
     console.log(`[LiveKit Egress] Started egress ${info.egressId} for room ${roomName}`);
@@ -79,8 +98,12 @@ export async function startRoomEgress(
     }).catch(() => {});
 
     return info.egressId;
-  } catch (error) {
-    console.warn("[LiveKit Egress] Server egress start note (will fallback to client recording):", error);
+  } catch (error: any) {
+    if (error.message?.includes("timed out")) {
+      console.warn("[LiveKit Egress] Egress start timed out - server may be overloaded or unresponsive. Falling back to client-side recording.");
+    } else {
+      console.warn("[LiveKit Egress] Server egress start note (will fallback to client recording):", error);
+    }
     return null;
   }
 }

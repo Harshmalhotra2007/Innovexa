@@ -176,7 +176,7 @@ describe("Recordings Fetch GET API Endpoint", () => {
       method: "GET",
     });
 
-    const res = await GET(req, { params: { meetingId: "meeting-1" } });
+    const res = await GET(req, { params: Promise.resolve({ meetingId: "meeting-1" }) });
     expect(res.status).toBe(200);
 
     const data = await res.json();
