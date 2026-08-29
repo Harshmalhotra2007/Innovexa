@@ -39,23 +39,42 @@ export async function startRoomEgress(
   try {
     const fileName = `${meetingId}-${Date.now()}.mp4`;
 
+    const fileOutput: Record<string, unknown> = {
+      filepath: `/tmp/${fileName}`,
+    };
+
+    if (config.hasS3Storage && config.s3Bucket) {
+      fileOutput.s3 = {
+        accessKey: config.awsAccessKeyId,
+        secret: config.awsSecretAccessKey,
+        region: config.s3Region || "us-east-1",
+        bucket: config.s3Bucket,
+      };
+    }
+
     const info = await egressClient.startRoomCompositeEgress(
       roomName,
+      fileOutput as any,
       {
-        filepath: `/tmp/${fileName}`,
-      } as any,
-      undefined,
-      undefined,
-      false // audioOnly
+        layout: "grid",
+        audioOnly: false,
+      }
     );
 
     console.log(`[LiveKit Egress] Started egress ${info.egressId} for room ${roomName}`);
 
     // Update room record with egress status
-    await db.liveKitRoom.update({
+    await db.liveKitRoom.upsert({
       where: { meetingId },
-      data: {
+      update: {
         recordingOn: true,
+        status: "active",
+      },
+      create: {
+        meetingId,
+        roomName,
+        recordingOn: true,
+        status: "active",
       },
     }).catch(() => {});
 

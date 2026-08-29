@@ -37,6 +37,9 @@ export async function runWhisperAudioTranscription({
     ? "ogg"
     : "webm";
 
+  const effectiveLanguage = language && language !== "auto" ? language : "en";
+  const effectivePrompt = promptHint || "English meeting transcript with clear speech, operational alignment, decisions, and action items.";
+
   // 1. Try Groq Whisper (Ultra-fast real-time transcription)
   if (groqApiKey && groqApiKey.trim().length > 10) {
     try {
@@ -44,12 +47,8 @@ export async function runWhisperAudioTranscription({
       const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime });
       groqFormData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
       groqFormData.append("model", "whisper-large-v3-turbo");
-      if (language && language !== "auto") {
-        groqFormData.append("language", language);
-      }
-      if (promptHint) {
-        groqFormData.append("prompt", promptHint);
-      }
+      groqFormData.append("language", effectiveLanguage);
+      groqFormData.append("prompt", effectivePrompt);
       groqFormData.append("response_format", "json");
 
       const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
@@ -77,12 +76,8 @@ export async function runWhisperAudioTranscription({
       const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime });
       whisperFormData.append("file", blob, `chunk_${chunkIndex}.${ext}`);
       whisperFormData.append("model", "whisper-1");
-      if (language && language !== "auto") {
-        whisperFormData.append("language", language);
-      }
-      if (promptHint) {
-        whisperFormData.append("prompt", promptHint);
-      }
+      whisperFormData.append("language", effectiveLanguage);
+      whisperFormData.append("prompt", effectivePrompt);
 
       const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST",
@@ -103,14 +98,23 @@ export async function runWhisperAudioTranscription({
   }
 
   // Filter out silence, background noise hallucination, or dummy strings
-  const lower = transcribedText.toLowerCase();
+  const lower = transcribedText.toLowerCase().trim();
   const isHallucinatedSilence =
     !transcribedText ||
+    lower === "you" ||
+    lower === "you." ||
+    lower === "thank you." ||
+    lower === "thank you" ||
+    lower === "bye." ||
+    lower === "bye" ||
     lower.includes("thank you for watching") ||
     lower.includes("subscribe to my channel") ||
     lower.includes("subtitles by") ||
     lower.includes("capturing real-time audio") ||
-    lower.includes("live stream segment");
+    lower.includes("live stream segment") ||
+    lower.includes("amara.org") ||
+    lower.includes("http://") ||
+    lower.includes("https://");
 
   if (isHallucinatedSilence) {
     return { text: "", source: transcriptionSource };

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Room, ConnectionState } from "livekit-client";
+import { TrackPublicationGuard } from "@/lib/track-publication-guard";
 
 export interface MediaControlsOptions {
   room?: Room | null;
@@ -53,6 +54,21 @@ export function useMediaControls({
   const recordingRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const currentDurationRef = useRef<number>(0);
+
+  // Event-driven track publication guard for Egress stabilization
+  const trackGuardRef = useRef<TrackPublicationGuard>(
+    new TrackPublicationGuard({
+      requiredAudioTracks: 1,
+      requiredVideoTracks: 0,
+      trackPublishTimeoutMs: 15000,
+      onTracksReady: (audioCount, videoCount) => {
+        console.log(`[TrackPublicationGuard] Live tracks verified (Audio: ${audioCount}, Video: ${videoCount})`);
+      },
+      onError: (err) => {
+        console.warn("[TrackPublicationGuard Notice]", err.message);
+      },
+    })
+  );
 
   // Store callbacks in refs
   const onRecordingStartRef = useRef(onRecordingStart);
@@ -126,6 +142,9 @@ export function useMediaControls({
             audio: {
               echoCancellation: true,
               noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: 16000,
+              channelCount: 1,
             },
           });
         } catch (videoErr) {
@@ -135,6 +154,9 @@ export function useMediaControls({
               audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 16000,
+                channelCount: 1,
               },
             });
             setIsCameraEnabled(false);
@@ -237,6 +259,36 @@ export function useMediaControls({
     }
   }, [isScreenSharing, room]);
 
+  // Publish local media tracks to LiveKit room once room connects and media is live
+  useEffect(() => {
+    if (!room || room.state !== ConnectionState.Connected || !room.localParticipant) {
+      return;
+    }
+
+    const stream = mediaStreamRef.current;
+    if (!stream) return;
+
+    const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
+    const videoTracks = stream.getVideoTracks().filter((t) => t.readyState === "live");
+
+    // Signal publication to TrackPublicationGuard
+    if (audioTracks.length > 0) {
+      trackGuardRef.current.onTrackPublished("audio");
+    }
+    if (videoTracks.length > 0) {
+      trackGuardRef.current.onTrackPublished("video");
+    }
+    trackGuardRef.current.onConnectionEstablished();
+
+    // Enable mic and camera on LiveKit room
+    if (isMicEnabled && audioTracks.length > 0) {
+      room.localParticipant.setMicrophoneEnabled(true).catch(() => {});
+    }
+    if (isCameraEnabled && videoTracks.length > 0) {
+      room.localParticipant.setCameraEnabled(true).catch(() => {});
+    }
+  }, [room, isMicEnabled, isCameraEnabled]);
+
   // Upload the compiled audio recording to backend storage & database
   const uploadRecordingBlob = useCallback(async (blob: Blob, durationSeconds: number) => {
     const activeMeetingId = meetingIdRef.current;
@@ -293,6 +345,11 @@ export function useMediaControls({
     recordedChunksRef.current = [];
     onRecordingStartRef.current?.();
 
+    // Verify active track count to prevent zero-track race conditions
+    const currentStream = mediaStreamRef.current;
+    const activeTracks = currentStream ? currentStream.getTracks().filter((t) => t.readyState === "live").length : 1;
+    const activeTrackCount = Math.max(1, activeTracks);
+
     const currentMeetingId = meetingIdRef.current;
     if (currentMeetingId) {
       const userRole = (typeof window !== "undefined" && sessionStorage.getItem("userRole")) || "organizer";
@@ -305,11 +362,17 @@ export function useMediaControls({
         body: JSON.stringify({
           action: "start_recording",
           meetingId: currentMeetingId,
-          activeTrackCount: 1,
+          activeTrackCount,
         }),
-      }).catch((err) => {
-        console.warn("[MediaControls] Server start_recording note:", err);
-      });
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            trackGuardRef.current.markRecordingStarted();
+          }
+        })
+        .catch((err) => {
+          console.warn("[MediaControls] Server start_recording note:", err);
+        });
     }
 
     if (recordTimerRef.current) clearInterval(recordTimerRef.current);

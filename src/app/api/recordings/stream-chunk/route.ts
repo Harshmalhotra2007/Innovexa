@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       audioBuffer: chunkBuffer,
       mimeType: chunkFile.type || "audio/webm",
       chunkIndex,
-      language: language || undefined,
+      language: language || "en",
       promptHint: "Meeting conversation transcript and action items.",
     });
 

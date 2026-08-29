@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         audioBuffer,
         mimeType: audioFile.type || "audio/webm",
         chunkIndex,
-        language: language || undefined,
+        language: language || "en",
         promptHint: "Meeting conversation, action items, decisions, operational alignment.",
       });
 

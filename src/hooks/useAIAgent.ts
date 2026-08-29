@@ -55,6 +55,7 @@ interface ISpeechRecognitionEvent {
 interface ISpeechRecognitionInstance {
   continuous: boolean;
   interimResults: boolean;
+  lang: string;
   onresult: ((event: ISpeechRecognitionEvent) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   start: () => void;
@@ -87,6 +88,7 @@ export function useAIAgent(meetingId: string) {
   const [isTabRecording, setIsTabRecording] = useState(false);
   const [tabRecordSeconds, setTabRecordSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const headerBlobRef = useRef<Blob | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
@@ -232,6 +234,7 @@ export function useAIAgent(meetingId: string) {
     setErrorMsg(null);
     try {
       audioChunksRef.current = [];
+      headerBlobRef.current = null;
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
@@ -239,10 +242,21 @@ export function useAIAgent(meetingId: string) {
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000,
+            channelCount: 1,
           } as MediaTrackConstraints,
         });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000,
+            channelCount: 1,
+          },
+        });
       }
 
       // Initialize Browser Native SpeechRecognition for immediate real-time live captions
@@ -254,6 +268,7 @@ export function useAIAgent(meetingId: string) {
             const recognition = new SpeechRec();
             recognition.continuous = true;
             recognition.interimResults = false;
+            recognition.lang = "en-US";
 
             recognition.onresult = (event: ISpeechRecognitionEvent) => {
               const current = event.resultIndex;
@@ -284,6 +299,7 @@ export function useAIAgent(meetingId: string) {
                     meetingId,
                     speakerHint: "Presenter (Live)",
                     text: cleanText,
+                    language: "en",
                   }),
                 }).catch(() => {});
               }
@@ -309,11 +325,22 @@ export function useAIAgent(meetingId: string) {
 
           // Progressive Upload: Stream audio chunk to backend in real-time
           const currentChunkIndex = chunkIndex++;
+          let chunkToSend = event.data;
+          if (currentChunkIndex === 0 || !headerBlobRef.current) {
+            headerBlobRef.current = event.data;
+          } else {
+            // Prepend WebM EBML header to subsequent chunk for valid STT decoding
+            chunkToSend = new Blob([headerBlobRef.current, event.data], {
+              type: event.data.type || "audio/webm",
+            });
+          }
+
           const formData = new FormData();
-          formData.append("chunk", event.data, `chunk_${currentChunkIndex}.webm`);
+          formData.append("chunk", chunkToSend, `chunk_${currentChunkIndex}.webm`);
           formData.append("meetingId", meetingId);
           formData.append("chunkIndex", currentChunkIndex.toString());
           formData.append("speakerHint", "Presenter");
+          formData.append("language", "en");
 
           fetch("/api/recordings/stream-chunk", {
             method: "POST",

@@ -8,7 +8,7 @@ export async function GET(
   req: Request,
   { params }: { params: { meetingId: string } }
 ) {
-  return apiHandler(async (req) => {
+  return apiHandler(req, async () => {
     const { meetingId } = params;
     if (!meetingId) {
       throw new ApiError(400, "meetingId parameter is required");

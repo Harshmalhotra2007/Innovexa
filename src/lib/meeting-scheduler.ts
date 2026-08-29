@@ -89,13 +89,23 @@ export async function processSchedulerTick() {
   let slaAlerts = 0;
 
   try {
-    // 1. Check for meetings due to start (scheduledDate <= NOW + 60s)
+    // 1. Check for meetings due to start (scheduledDate <= NOW + 60s, or fallback to date if scheduledDate is null)
     const dueMeetings = await db.meeting.findMany({
       where: {
         status: "Scheduled",
-        scheduledDate: {
-          lte: new Date(now.getTime() + 60 * 1000),
-        },
+        OR: [
+          {
+            scheduledDate: {
+              lte: new Date(now.getTime() + 60 * 1000),
+            },
+          },
+          {
+            scheduledDate: null,
+            date: {
+              lte: new Date(now.getTime() + 60 * 1000),
+            },
+          },
+        ],
       },
     });
 
@@ -114,14 +124,25 @@ export async function processSchedulerTick() {
       });
     }
 
-    // 2. Check for upcoming meetings starting within 16 minutes that need pre-meeting reminders
+    // 2. Check for upcoming meetings starting within 16 minutes that need pre-meeting reminders (using scheduledDate, or date as fallback)
     const upcomingMeetings = await db.meeting.findMany({
       where: {
         status: "Scheduled",
-        scheduledDate: {
-          gte: now,
-          lte: new Date(now.getTime() + 16 * 60 * 1000),
-        },
+        OR: [
+          {
+            scheduledDate: {
+              gte: now,
+              lte: new Date(now.getTime() + 16 * 60 * 1000),
+            },
+          },
+          {
+            scheduledDate: null,
+            date: {
+              gte: now,
+              lte: new Date(now.getTime() + 16 * 60 * 1000),
+            },
+          },
+        ],
       },
     });
 
@@ -198,7 +219,10 @@ export async function processSchedulerTick() {
  * Also monitors tasks approaching deadline and sends SLA alert emails.
  */
 export function startMeetingSchedulerWorker() {
-  if (isWorkerRunning) return;
+  // @ts-ignore
+  if (global.__meetingSchedulerWorkerRunning) return;
+  // @ts-ignore
+  global.__meetingSchedulerWorkerRunning = true;
   isWorkerRunning = true;
   console.log("[MeetingScheduler] Background meeting scheduler worker started.");
 

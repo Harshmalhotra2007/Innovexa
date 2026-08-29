@@ -25,11 +25,22 @@ export class ApiError extends Error {
  * }
  */
 export async function apiHandler<T>(
-  req: Request,
-  handlerFunc: (req: Request) => Promise<T>
+  reqOrHandler: Request | ((req: Request) => Promise<T>),
+  handlerFunc?: (req: Request) => Promise<T>
 ): Promise<NextResponse> {
   try {
-    const result = await handlerFunc(req);
+    let req: Request;
+    let handler: (req: Request) => Promise<T>;
+
+    if (typeof reqOrHandler === "function") {
+      handler = reqOrHandler;
+      req = new Request("http://localhost");
+    } else {
+      req = reqOrHandler;
+      handler = handlerFunc || (async () => ({} as T));
+    }
+
+    const result = await handler(req);
 
     // If result is already a NextResponse, return it directly
     if (result instanceof NextResponse) {

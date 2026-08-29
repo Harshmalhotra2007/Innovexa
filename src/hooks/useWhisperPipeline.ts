@@ -80,6 +80,7 @@ export function useWhisperPipeline({
   const [lastError, setLastError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const headerBlobRef = useRef<Blob | null>(null);
   const recognitionRef = useRef<ISpeechRecognitionInstance | null>(null);
   const chunkIndexRef = useRef<number>(0);
   const isPipelineActiveRef = useRef<boolean>(false);
@@ -101,6 +102,7 @@ export function useWhisperPipeline({
         formData.append("meetingId", meetingId);
         formData.append("chunkIndex", index.toString());
         formData.append("speakerHint", speakerHint);
+        formData.append("language", "en");
 
         const res = await fetch("/api/whisper/transcribe", {
           method: "POST",
@@ -165,6 +167,7 @@ export function useWhisperPipeline({
           chunkIndex: currentIndex,
           speakerHint,
           text: cleanText,
+          language: "en",
         }),
       }).catch(() => {});
     },
@@ -238,13 +241,24 @@ export function useWhisperPipeline({
         }
 
         mediaRecorderRef.current = recorder;
+        headerBlobRef.current = null;
         chunkIndexRef.current = 0;
 
         recorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 50 && isPipelineActiveRef.current) {
             onAudioChunkRecordedRef.current?.(event.data);
             const currentIndex = chunkIndexRef.current++;
-            sendChunkToWhisper(event.data, currentIndex);
+
+            if (currentIndex === 0 || !headerBlobRef.current) {
+              headerBlobRef.current = event.data;
+              sendChunkToWhisper(event.data, currentIndex);
+            } else {
+              // Prepend WebM EBML header to subsequent chunk for valid STT decoding
+              const combinedBlob = new Blob([headerBlobRef.current, event.data], {
+                type: event.data.type || mimeType || "audio/webm",
+              });
+              sendChunkToWhisper(combinedBlob, currentIndex);
+            }
           }
         };
 
@@ -263,6 +277,7 @@ export function useWhisperPipeline({
   const stopPipeline = useCallback(() => {
     isPipelineActiveRef.current = false;
     setIsTranscribing(false);
+    headerBlobRef.current = null;
 
     if (recognitionRef.current) {
       try {

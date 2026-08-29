@@ -38,7 +38,9 @@ export function validateAudioBuffer(
   // 3. Inspect Magic Bytes / File Signatures
   let detectedType = mimeTypeHint;
   const isWav = buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WAVE";
-  const isWebm = buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
+  const isWebmHeader = buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
+  const isWebmCluster = buffer[0] === 0x1f && buffer[1] === 0x43 && buffer[2] === 0xb6 && buffer[3] === 0x75;
+  const isWebm = isWebmHeader || isWebmCluster || mimeTypeHint.includes("webm");
   const isOgg = buffer.toString("ascii", 0, 4) === "OggS";
   const isMp3 = (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) || (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0);
   const isFlac = buffer.toString("ascii", 0, 4) === "fLaC";

@@ -14,7 +14,7 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  return apiHandler(async (req) => {
+  return apiHandler(req, async () => {
     const meeting = await db.meeting.findUnique({
       where: { id: params.id },
       include: {
@@ -37,7 +37,7 @@ export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  return apiHandler(async (req) => {
+  return apiHandler(req, async () => {
     const role = req.headers.get("x-user-role");
     if (role !== "organizer") {
       throw new ApiError(403, "Forbidden: Requester must be an organizer");

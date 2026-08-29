@@ -9,6 +9,7 @@ import {
   MicOff,
   Sparkles,
   AlertCircle,
+  AlertTriangle,
   CircleCheck,
   Loader2,
   Square,
@@ -77,7 +78,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   const [activeTab, setActiveTab] = useState<"transcript" | "tasks" | "summary" | "settings">("transcript");
   const [showSettings, setShowSettings] = useState(false);
   const [seekTimestamp, setSeekTimestamp] = useState<number | null>(null);
-  const [taskFilter, setTaskFilter] = useState<"all" | "Pending" | "In Progress" | "Completed">("all");
+  const [taskFilter, setTaskFilter] = useState<"all" | "Pending" | "In Progress" | "Completed" | "Overdue" | "Escalated">("all");
 
   const status = agent.status;
   const meta  = STATUS_META[status] ?? STATUS_META.idle;
@@ -362,7 +363,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                 {(["all", "Pending", "In Progress", "Completed", "Overdue", "Escalated"] as const).map(f => (
                   <button
                     key={f}
-                    onClick={() => setTaskFilter(f)}
+                    onClick={() => setTaskFilter(f as any)}
                     className={`px-3 py-1.5 rounded-full text-[10px] font-mono font-bold uppercase border transition-all ${
                       taskFilter === f
                         ? "bg-[var(--primary)]/15 border-[var(--primary)]/40 text-[var(--primary)]"
@@ -376,8 +377,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
             </div>
 
             {filteredTasks.length === 0 ? (
-              {/* Empty state with illustration */}
               <div className="py-12 text-center space-y-4">
+                {/* Empty state with illustration */}
                 <div className="w-16 h-16 mx-auto rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] flex items-center justify-center">
                   {taskCount === 0 ? (
                     <ListChecks size={24} className="text-[var(--text-faint)]" />
@@ -407,8 +408,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                 )}
               </div>
             ) : (
-              {/* Mini Kanban Board */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                {/* Mini Kanban Board */}
                 {(["Pending", "In Progress", "Completed", "Overdue", "Escalated"] as const).map(statusKey => {
                   const colTasks = filteredTasks.filter(t => (t.status ?? "Pending") === statusKey);
                   const isOverdue = statusKey === "Overdue";
@@ -441,7 +442,7 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                           <div className="py-4 text-center">
                             <p className="font-mono text-[9px] text-[var(--text-faint)] italic">Drop tasks here</p>
                           </div>
-                        ) : (
+                        ) :
                           colTasks.map((item, idx) => {
                             const taskStatus = item.status ?? "Pending";
                             const isDone = taskStatus === "Completed";
@@ -516,8 +517,8 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
                                 )}
                               </div>
                             );
-                          })}
-                        )}
+                          })
+                        }
                       </div>
                     </div>
                   );

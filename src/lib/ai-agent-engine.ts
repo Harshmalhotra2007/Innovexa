@@ -65,10 +65,10 @@ export async function triggerAIAgent(
   // Always use the real Render Bot Service URL
   const botServiceUrl = config.meetBotUrl;
   
-  // Extract Google Meet URL from agenda or fallback to test room
-  const googleMeetUrl = meeting.agenda && meeting.agenda.includes("meet.google.com")
+  // Extract Google Meet URL from googleMeetLink or agenda or fallback to test room
+  const googleMeetUrl = meeting.googleMeetLink || (meeting.agenda && meeting.agenda.includes("meet.google.com")
     ? meeting.agenda
-    : `https://meet.google.com/test-${meetingId.substring(0, 8)}`;
+    : `https://meet.google.com/test-${meetingId.substring(0, 8)}`);
 
   // 2. Circuit Breaker Protected Bot Service Dispatch
   console.log(`[AIAgentEngine] Triggering bot via Circuit Breaker at ${botServiceUrl}/bot/join for URL: ${googleMeetUrl}`);
