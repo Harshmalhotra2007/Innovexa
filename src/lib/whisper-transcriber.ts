@@ -8,6 +8,33 @@ export interface WhisperTranscriptionOptions {
   promptHint?: string;
 }
 
+// Known hallucination phrases produced by Whisper on silent/background-noise audio
+const WHISPER_HALLUCINATION_PATTERNS = [
+  /subtitles by/i,
+  /amara\.org/i,
+  /thank you for watching/i,
+  /thanks for watching/i,
+  /please subscribe/i,
+  /like and subscribe/i,
+  /bye\./i,
+  /goodbye\./i,
+  /mbc/i,
+  /so far so good/i,
+  /screencastify/i,
+  /captions by/i,
+  /translated by/i,
+  /^thanks\.$/i,
+  /^thank you\.$/i,
+  /^silence$/i,
+  /^[.!\s\-\?]+$/,
+];
+
+function isHallucination(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return WHISPER_HALLUCINATION_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
 export async function runWhisperAudioTranscription({
   audioBuffer,
   mimeType = "audio/webm",
@@ -20,6 +47,8 @@ export async function runWhisperAudioTranscription({
     return { text: "", source: "none" };
   }
 
+  console.log(`[Whisper Transcriber] Transcription attempt starting for chunk #${chunkIndex} (${audioBuffer.length} bytes, type: ${mimeType})`);
+
   const groqApiKey = config.groqApiKey?.trim();
   const openaiApiKey = config.openaiApiKey?.trim();
 
@@ -28,6 +57,7 @@ export async function runWhisperAudioTranscription({
   const hasOpenAIKey = Boolean(openaiApiKey && openaiApiKey.length > 10 && !openaiApiKey.includes("your-openai"));
 
   if (!hasGroqKey && !hasOpenAIKey) {
+    console.log("[Whisper Transcriber] Neither GROQ_API_KEY nor OPENAI_API_KEY is configured. Skipping cloud transcription.");
     return { text: "", source: "none" };
   }
 
@@ -48,31 +78,44 @@ export async function runWhisperAudioTranscription({
 
   // Try Groq Whisper first (faster)
   if (hasGroqKey) {
+    console.log("[Whisper Transcriber] Using service: Groq (whisper-large-v3-turbo)");
     try {
       const result = await transcribeWithGroq(audioBuffer, cleanMime, ext, chunkIndex, effectiveLanguage, effectivePrompt);
       if (result.text) {
+        if (isHallucination(result.text)) {
+          console.log(`[Whisper Transcriber] Transcription filtered as hallucination: "${result.text}"`);
+          return { text: "", source: "filtered_hallucination" };
+        }
+        console.log(`[Whisper Transcriber] Successful transcription result (${result.source}): "${result.text}"`);
         return result;
       }
     } catch (error) {
       const err = error as Error;
-      console.debug("[Whisper Transcriber] Groq attempt failed:", err.message);
+      console.warn("[Whisper Transcriber] Groq attempt failed:", err.message);
     }
   }
 
   // Fallback to OpenAI Whisper
   if (hasOpenAIKey) {
+    console.log("[Whisper Transcriber] Using service: OpenAI (whisper-1)");
     try {
       const result = await transcribeWithOpenAI(audioBuffer, cleanMime, ext, chunkIndex, effectiveLanguage, effectivePrompt);
       if (result.text) {
+        if (isHallucination(result.text)) {
+          console.log(`[Whisper Transcriber] Transcription filtered as hallucination: "${result.text}"`);
+          return { text: "", source: "filtered_hallucination" };
+        }
+        console.log(`[Whisper Transcriber] Successful transcription result (${result.source}): "${result.text}"`);
         return result;
       }
     } catch (error) {
       const err = error as Error;
-      console.debug("[Whisper Transcriber] OpenAI attempt failed:", err.message);
+      console.warn("[Whisper Transcriber] OpenAI attempt failed:", err.message);
     }
   }
 
   // If we get here, both services failed or returned empty text
+  console.log(`[Whisper Transcriber] Chunk #${chunkIndex} processed with zero speech detected.`);
   return { text: "", source: "none" };
 }
 

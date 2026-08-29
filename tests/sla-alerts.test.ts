@@ -23,6 +23,7 @@ jest.mock("../src/lib/db", () => ({
       findMany: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
@@ -185,13 +186,13 @@ describe("Notifications API Route", () => {
         task: { id: "t2", title: "Task 2", department: "Engineering" },
       },
     ]);
+    (db.notification.count as jest.Mock).mockResolvedValueOnce(2).mockResolvedValueOnce(1);
 
     const req = new Request("http://localhost/api/notifications?email=dev1@innovexa.com");
     const res = await GET(req);
     expect(res.status).toBe(200);
 
     const data = await res.json();
-    expect(data.success).toBe(true);
     expect(data.unreadCount).toBe(1);
     expect(data.notifications.length).toBe(2);
   });

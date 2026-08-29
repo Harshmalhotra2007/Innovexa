@@ -19,6 +19,10 @@ export let egressClient = config.livekitApiKey && config.livekitApiSecret && htt
   ? new EgressClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
 
+export function setEgressClient(client: any) {
+  egressClient = client;
+}
+
 export let roomServiceClient = config.livekitApiKey && config.livekitApiSecret && httpUrl
   ? new RoomServiceClient(httpUrl, config.livekitApiKey, config.livekitApiSecret)
   : null;
@@ -198,4 +202,11 @@ export async function updateMeetingWithRecording(
  */
 export function isEgressConfigured(): boolean {
   return !!egressClient;
+}
+
+/**
+ * Setter to allow unit tests to mock the egress client.
+ */
+export function setEgressClientForTest(client: any) {
+  egressClient = client;
 }

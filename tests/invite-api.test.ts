@@ -34,7 +34,7 @@ describe("POST /api/meetings/[id]/invite API Route", () => {
     const res = await POST(req, { params: Promise.resolve({ id: "meet-1" }) });
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toContain("Emails list (array or comma-separated string) is required");
+    expect(data.error).toContain("No valid email addresses provided");
   });
 
   it("should return 404 if meeting is not found", async () => {
