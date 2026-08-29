@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { isAudioChunkSpeech, normalizeSpeechLanguage } from "@/lib/vad-analyzer";
 
 export interface WhisperSegment {
   speaker: string;
@@ -54,8 +55,8 @@ export function useWhisperPipeline({
         formData.append("audio", blob, `whisper_chunk_${index}.${ext}`);
         formData.append("meetingId", meetingId);
         formData.append("chunkIndex", index.toString());
-        formData.append("speakerHint", speakerHint);
-        formData.append("language", language ?? "en");
+        const { whisperLang } = normalizeSpeechLanguage(language);
+        formData.append("language", whisperLang || "auto");
 
         const res = await fetch("/api/whisper/transcribe", {
           method: "POST",
@@ -158,7 +159,8 @@ export function useWhisperPipeline({
             const recognition = new SpeechRec();
             recognition.continuous = true;
             recognition.interimResults = false;
-            recognition.lang = (language ?? "en") + "-US";
+            const { speechRecLang } = normalizeSpeechLanguage(language);
+            recognition.lang = speechRecLang;
 
             recognition.onresult = (event: ISpeechRecognitionEvent) => {
               const current = event.resultIndex;
@@ -234,11 +236,14 @@ export function useWhisperPipeline({
         mediaRecorderRef.current = recorder;
         chunkIndexRef.current = 0;
 
-        recorder.ondataavailable = (event) => {
+        recorder.ondataavailable = async (event) => {
           if (event.data && event.data.size > 500 && isPipelineActiveRef.current) {
             onAudioChunkRecordedRef.current?.(event.data);
-            const currentIndex = chunkIndexRef.current++;
-            sendChunkToWhisper(event.data, currentIndex);
+            const isSpeech = await isAudioChunkSpeech(event.data);
+            if (isSpeech && isPipelineActiveRef.current) {
+              const currentIndex = chunkIndexRef.current++;
+              sendChunkToWhisper(event.data, currentIndex);
+            }
           }
         };
 

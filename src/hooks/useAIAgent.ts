@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { CLEAN_AUDIO_CONSTRAINTS } from "@/lib/vad-analyzer";
 
 export interface TranscriptSegment {
   speaker: string;
@@ -239,23 +240,11 @@ export function useAIAgent(meetingId: string) {
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 16000,
-            channelCount: 1,
-          } as MediaTrackConstraints,
+          audio: CLEAN_AUDIO_CONSTRAINTS as MediaTrackConstraints,
         });
       } catch {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 16000,
-            channelCount: 1,
-          },
+          audio: CLEAN_AUDIO_CONSTRAINTS,
         });
       }
 
