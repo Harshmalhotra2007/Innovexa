@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { generateLiveKitToken, getLiveKitWsUrl, isLiveKitConfigured } from "@/lib/livekit";
+import { apiHandler, ApiError } from "@/lib/api-handler";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { meetingId, participantName, participantIdentity } = body;
 
     if (!meetingId || typeof meetingId !== "string") {
-      return NextResponse.json({ error: "meetingId is required" }, { status: 400 });
+      throw new ApiError(400, "meetingId is required");
     }
 
     // Verify meeting exists in DB
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     });
 
     if (!meeting) {
-      return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
+      throw new ApiError(404, "Meeting not found");
     }
 
     const roomName = `innovexa-meeting-${meetingId}`;
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     const wsUrl = getLiveKitWsUrl();
     const isConfigured = isLiveKitConfigured();
 
-    return NextResponse.json({
+    return {
       success: true,
       token,
       roomName,
@@ -61,10 +62,6 @@ export async function POST(req: Request) {
         identity,
         name,
       },
-    });
-  } catch (error: unknown) {
-    console.error("[LiveKit Token API Error]", error);
-    const message = error instanceof Error ? error.message : "Failed to generate LiveKit room token";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    };
+  });
 }

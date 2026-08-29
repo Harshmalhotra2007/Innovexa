@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { config } from "@/lib/config";
 import { revalidateTag } from "next/cache";
+import { apiHandler, ApiError } from "@/lib/api-handler";
 
 function extractMeetCode(url: string | null): string | null {
   if (!url) return null;
@@ -13,31 +14,33 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const meeting = await db.meeting.findUnique({
-    where: { id: params.id },
-    include: {
-      segments: { orderBy: { order: "asc" } },
-      decisions: true,
-      tasks: { orderBy: { deadline: "asc" } },
-      actionItems: true,
-    },
+  return apiHandler(async (req) => {
+    const meeting = await db.meeting.findUnique({
+      where: { id: params.id },
+      include: {
+        segments: { orderBy: { order: "asc" } },
+        decisions: true,
+        tasks: { orderBy: { deadline: "asc" } },
+        actionItems: true,
+      },
+    });
+
+    if (!meeting) {
+      throw new ApiError(404, "Meeting not found");
+    }
+
+    return meeting;
   });
-
-  if (!meeting) {
-    return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
-  }
-
-  return NextResponse.json(meeting);
 }
 
 export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
+  return apiHandler(async (req) => {
     const role = req.headers.get("x-user-role");
     if (role !== "organizer") {
-      return NextResponse.json({ error: "Forbidden: Requester must be an organizer" }, { status: 403 });
+      throw new ApiError(403, "Forbidden: Requester must be an organizer");
     }
 
     const { id } = params;
@@ -92,7 +95,7 @@ export async function DELETE(
           const listData = await listRes.json();
           const botsList: any[] = listData.data || [];
           const nonCompleted = botsList.filter((b) => b.status !== "completed" && b.status !== "failed");
-          
+
           const activeBots = nonCompleted.filter((b) => {
             if (meetCode && b.meeting_url && b.meeting_url.toLowerCase().includes(meetCode)) return true;
             if (meetingUrl && b.meeting_url && (meetingUrl.includes(b.meeting_url) || b.meeting_url.includes(meetingUrl))) return true;
@@ -153,9 +156,6 @@ export async function DELETE(
     revalidateTag("meetings");
     revalidateTag("tasks");
 
-    return NextResponse.json({ message: "Meeting deleted successfully" });
-  } catch (error: any) {
-    console.error("[DELETE /api/meetings/[id]]", error);
-    return NextResponse.json({ error: error.message || "Failed to delete meeting" }, { status: 500 });
-  }
+    return { message: "Meeting deleted successfully" };
+  });
 }

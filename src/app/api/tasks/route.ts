@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { Prisma, TaskStatus, TaskPriority } from "@prisma/client";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { enqueueSLADeadlineReminder } from "@/lib/notification-queue";
+import { apiHandler, ApiError } from "@/lib/api-handler";
 
 const getCachedTasks = (
   department: string | null,
@@ -47,7 +48,7 @@ const getCachedTasks = (
 };
 
 export async function GET(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const { searchParams } = new URL(req.url);
     const department = searchParams.get("department");
     const status = searchParams.get("status");
@@ -56,20 +57,17 @@ export async function GET(req: Request) {
     const limit = limitStr ? parseInt(limitStr, 10) : 0;
 
     const tasks = await getCachedTasks(department, status, cursor, limit);
-    return NextResponse.json(tasks);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to fetch tasks";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    return tasks;
+  });
 }
 
 export async function POST(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const body = await req.json();
     const { title, ownerName, department, priority, deadline, assigneeId } = body;
 
     if (!title || !title.trim()) {
-      return NextResponse.json({ error: "Task title is required" }, { status: 400 });
+      throw new ApiError(400, "Task title is required");
     }
 
     const newTask = await db.task.create({
@@ -97,20 +95,17 @@ export async function POST(req: Request) {
       priority: newTask.priority,
     }).catch(() => {});
 
-    return NextResponse.json({ success: true, task: newTask }, { status: 201 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to create task";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    return { success: true, task: newTask };
+  });
 }
 
 export async function PATCH(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const body = await req.json();
     const { taskId, status, priority, deadline, escalationLevel } = body;
 
     if (!taskId) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
+      throw new ApiError(400, "Task ID is required");
     }
 
     const updateData: any = {};
@@ -126,20 +121,17 @@ export async function PATCH(req: Request) {
 
     revalidateTag("tasks");
 
-    return NextResponse.json({ success: true, task: updatedTask });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to update task";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    return { success: true, task: updatedTask };
+  });
 }
 
 export async function DELETE(req: Request) {
-  try {
+  return apiHandler(async (req) => {
     const { searchParams } = new URL(req.url);
     const taskId = searchParams.get("taskId");
 
     if (!taskId) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
+      throw new ApiError(400, "Task ID is required");
     }
 
     await db.task.delete({
@@ -147,9 +139,6 @@ export async function DELETE(req: Request) {
     });
 
     revalidateTag("tasks");
-    return NextResponse.json({ success: true, message: "Task deleted successfully" });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to delete task";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    return { success: true, message: "Task deleted successfully" };
+  });
 }

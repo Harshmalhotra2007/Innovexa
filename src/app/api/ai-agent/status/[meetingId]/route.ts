@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAIAgentStatus } from "@/lib/ai-agent-engine";
+import { apiHandler, ApiError } from "@/lib/api-handler";
 
 export const dynamic = "force-dynamic";
 
@@ -7,20 +8,17 @@ export async function GET(
   req: Request,
   { params }: { params: { meetingId: string } }
 ) {
-  try {
+  return apiHandler(async (req) => {
     const { meetingId } = params;
     if (!meetingId) {
-      return NextResponse.json({ error: "meetingId parameter is required" }, { status: 400 });
+      throw new ApiError(400, "meetingId parameter is required");
     }
 
     const agent = await getAIAgentStatus(meetingId);
     if (!agent) {
-      return NextResponse.json({ status: "idle", meetingId }, { status: 200 });
+      return { status: "idle", meetingId };
     }
 
-    return NextResponse.json(agent, { status: 200 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to fetch AI agent status";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+    return agent;
+  });
 }
