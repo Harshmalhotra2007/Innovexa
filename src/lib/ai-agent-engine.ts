@@ -23,11 +23,20 @@ export interface AIAgentState {
 /**
  * Triggers the AI Meeting Agent to join, record, transcribe, and summarize a meeting.
  * Implements Idempotency Check and Circuit Breaker Pattern.
+ * @param meetingId - ID of the meeting to trigger the AI agent for
+ * @param apiKey - Optional API key for enhanced processing
+ * @returns Promise resolving to the AI agent state
+ * @throws Error if meeting is not found or agent triggering fails
  */
 export async function triggerAIAgent(
   meetingId: string,
   apiKey?: string
 ): Promise<AIAgentState> {
+  // Validate inputs
+  if (!meetingId || typeof meetingId !== 'string') {
+    throw new Error('Invalid meeting ID provided');
+  }
+
   const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
   if (!meeting) {
     throw new Error(`Meeting with ID '${meetingId}' not found.`);
@@ -64,7 +73,7 @@ export async function triggerAIAgent(
 
   // Always use the real Render Bot Service URL
   const botServiceUrl = config.meetBotUrl;
-  
+
   // Extract Google Meet URL from googleMeetLink or agenda or fallback to test room
   const googleMeetUrl = meeting.googleMeetLink || (meeting.agenda && meeting.agenda.includes("meet.google.com")
     ? meeting.agenda
@@ -72,29 +81,32 @@ export async function triggerAIAgent(
 
   // 2. Circuit Breaker Protected Bot Service Dispatch
   console.log(`[AIAgentEngine] Triggering bot via Circuit Breaker at ${botServiceUrl}/bot/join for URL: ${googleMeetUrl}`);
-  
-  botServiceCircuitBreaker.execute(async () => {
-    const res = await fetch(`${botServiceUrl}/bot/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        meetingUrl: googleMeetUrl,
-        botName: config.botName,
-        metadata: {
-          meetingId: meeting.id,
-          meetingTitle: meeting.title,
-        },
-      }),
+
+  try {
+    await botServiceCircuitBreaker.execute(async () => {
+      const res = await fetch(`${botServiceUrl}/bot/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingUrl: googleMeetUrl,
+          botName: config.botName,
+          metadata: {
+            meetingId: meeting.id,
+            meetingTitle: meeting.title,
+          },
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`Bot service returned HTTP ${res.status}`);
+      }
+      return res;
     });
-    if (!res.ok) {
-      throw new Error(`Bot service returned HTTP ${res.status}`);
-    }
-    return res;
-  }).catch((e) => {
+  } catch (e: any) {
     if (config.nodeEnv !== "test") {
-      console.error("[AIAgentEngine] Circuit breaker protected bot trigger note:", e.message);
+      console.error("[AIAgentEngine] Circuit breaker protected bot trigger failed:", e?.message || e);
     }
-  });
+    // We still return the agent even if bot trigger fails, as the agent state is tracked separately
+  }
 
   return agent as unknown as AIAgentState;
 }

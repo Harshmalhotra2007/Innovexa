@@ -77,29 +77,41 @@ export function Navigation() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
     try {
-      await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAllRead: true }),
       });
-    } catch (e) {
-      console.warn("Mark all read note:", e);
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark all as read: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Mark all read failed:", error);
+      // Revert on failure
+      fetchNotifications();
     }
   };
 
   const markNotificationRead = async (id: string) => {
+    if (!id) return;
+
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
     try {
-      await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId: id }),
       });
-    } catch (e) {
-      console.warn("Mark notification read note:", e);
+
+      if (!response.ok) {
+        throw new Error(`Failed to mark notification ${id} as read: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Mark notification read failed:", error);
     }
   };
 

@@ -82,17 +82,26 @@ export function UpcomingMeetingsView({ onRefreshNeeded }: UpcomingMeetingsViewPr
   const handleStartEarly = async (meetingId: string) => {
     setActionLoadingId(meetingId);
     try {
+      const userRole = sessionStorage.getItem("userRole") || "organizer";
       const res = await fetch("/api/ai-agent/join", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": userRole,
+        },
         body: JSON.stringify({ meetingId }),
       });
+
       if (res.ok) {
         fetchUpcomingMeetings();
         if (onRefreshNeeded) onRefreshNeeded();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || "Failed to start meeting early. Organizer permission required.");
       }
-    } catch (err) {
-      console.error("Start early error:", err);
+    } catch (error) {
+      console.error("Start early error:", error);
+      alert("Network error while starting meeting. Please try again.");
     } finally {
       setActionLoadingId(null);
     }

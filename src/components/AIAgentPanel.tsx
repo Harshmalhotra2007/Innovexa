@@ -97,16 +97,27 @@ export default function AIAgentPanel({ meetingId, meetingTitle }: AIAgentPanelPr
   const formatTimer = (s: number) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
 
   const updateItemStatus = async (taskId?: string, newStatus?: string) => {
-    if (!taskId || !newStatus) return;
+    if (!taskId || !newStatus) {
+      console.warn("[AIAgentPanel] Invalid parameters for status update:", { taskId, newStatus });
+      return;
+    }
+
     try {
-      await fetch(`/api/tasks/${taskId}/assign`, {
+      const response = await fetch(`/api/tasks/${taskId}/assign`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      fetchActionItems();
-    } catch (e) {
-      console.warn("[AIAgentPanel Status Update Note]", e);
+
+      if (!response.ok) {
+        throw new Error(`Failed to update task status: ${response.status}`);
+      }
+
+      await fetchActionItems();
+    } catch (error) {
+      console.error("[AIAgentPanel] Status update failed:", error);
+      // Optionally show a toast notification to the user
+      // setToastMessage(`Failed to update task status: ${error.message}`);
     }
   };
 

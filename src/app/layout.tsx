@@ -31,12 +31,20 @@ export const metadata: Metadata = {
 };
 
 // Start the task SLA monitoring worker on server startup
-// @ts-ignore: global variable
-if (typeof window === "undefined" && !global.__taskSLAWorkerStarted) {
+if (typeof window === "undefined") {
+  // Use a more reliable singleton pattern for server-only initialization
   // @ts-ignore: global variable
-  global.__taskSLAWorkerStarted = true;
-  startTaskSLAMonitorWorker();
-  console.log("[App Layout] Task SLA monitoring worker started on server");
+  if (!global.__taskSLAWorkerStarted) {
+    // @ts-ignore: global variable
+    global.__taskSLAWorkerStarted = true;
+    try {
+      startTaskSLAMonitorWorker();
+      console.log("[App Layout] Task SLA monitoring worker started on server");
+    } catch (error) {
+      console.error("[App Layout] Failed to start task SLA monitoring worker:", error);
+      // Don't throw here to prevent breaking the app initialization
+    }
+  }
 }
 
 export default function RootLayout({
