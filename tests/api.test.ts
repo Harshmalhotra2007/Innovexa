@@ -125,6 +125,12 @@ describe("Tasks Assign PATCH API Endpoint", () => {
 describe("AI Agent Endpoints & Security", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "joining" }),
+      text: async () => "OK",
+    } as any);
   });
 
   it("should fail POST /api/ai-agent/join if user is participant", async () => {

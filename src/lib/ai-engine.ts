@@ -35,12 +35,22 @@ export interface ExtractionResult {
 /**
  * Intelligent extraction pipeline that transforms raw audio transcript into structured decisions,
  * action items, assignees, deadlines, and discussion segments.
+ *
+ * @param transcriptText - Raw meeting transcript text
+ * @param departmentHint - Department context for better extraction (defaults to "Engineering")
+ * @param apiKey - Optional API key for LLM-powered extraction
+ * @returns Promise resolving to extracted meeting insights
  */
 export async function processMeetingTranscript(
   transcriptText: string,
   departmentHint: string = "Engineering",
   apiKey?: string
 ): Promise<ExtractionResult> {
+  // Validate inputs
+  if (!transcriptText || typeof transcriptText !== 'string') {
+    throw new Error('Invalid transcript text provided');
+  }
+
   // If API key is provided and valid, call LLM endpoint; otherwise use offline intelligence engine
   if (apiKey && apiKey.trim().length > 10) {
     try {
@@ -48,22 +58,25 @@ export async function processMeetingTranscript(
       if (llmResult) return llmResult;
     } catch (err) {
       console.warn("LLM API call failed, falling back to local NLP extraction engine:", err);
+      // Fall through to local engine
     }
   }
 
   return processWithLocalEngine(transcriptText, departmentHint);
 }
 
+/**
+ * Processes transcript using local NLP engine when LLM is not available
+ * @param transcriptText - Raw meeting transcript text
+ * @param departmentHint - Department context for better extraction
+ * @returns ExtractionResult with structured meeting data
+ */
 function processWithLocalEngine(
   transcriptText: string,
   departmentHint: string
 ): ExtractionResult {
-  const lines = (transcriptText || "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  if (!transcriptText || lines.length === 0) {
+  // Handle edge cases
+  if (!transcriptText || typeof transcriptText !== 'string' || transcriptText.trim().length === 0) {
     return {
       summary: "Meeting session concluded. Audio recording processed with executive fallback synthesis.",
       keyObjectives: ["Maintain operational alignment across engineering deliverables."],
@@ -98,6 +111,11 @@ function processWithLocalEngine(
     };
   }
 
+  const lines = transcriptText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
   const segments: ExtractedSegment[] = [];
   const decisions: ExtractedDecision[] = [];
   const actionItems: ExtractedActionItem[] = [];
@@ -109,7 +127,7 @@ function processWithLocalEngine(
     // Check speaker & timestamp patterns e.g. [00:05] John (Dept): Text
     const timeMatch = line.match(/^\[?(\d{2}:\d{2})\]?\s*([A-Za-z0-9\s.]+)(?:\(([^)]+)\))?:\s*(.*)$/);
 
-    let timestamp = `00:${orderIndex.toString().padStart(2, "0")}`;
+    let timestamp = `00:${String(orderIndex).padStart(2, "0")}`;
     let speaker = "Participant";
     let content = line;
 
