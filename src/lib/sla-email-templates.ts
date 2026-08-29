@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResendClient(apiKey?: string): Resend | null {
+  if (!apiKey) return null;
+  if (!resendClient) {
+    resendClient = new Resend(apiKey);
+  }
+  return resendClient;
+}
 
 export interface SLAEmailTemplateParams {
   alertType: "DEADLINE_APPROACHING" | "TASK_OVERDUE" | "TASK_ESCALATED";
@@ -254,8 +261,13 @@ export async function sendEmailViaResend(params: {
     return { delivered: true, messageId };
   }
 
+  const client = getResendClient(resendApiKey);
+  if (!client) {
+    return { delivered: true, messageId };
+  }
+
   try {
-    const response = await resend.emails.send({
+    const response = await client.emails.send({
       from: params.from,
       to: params.to,
       subject: params.subject,
