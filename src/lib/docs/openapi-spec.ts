@@ -1,0 +1,777 @@
+/**
+ * Innovexa Automated OpenAPI 3.1.0 Specification Generator
+ * Generates standards-compliant OpenAPI definitions reflecting all Next.js App Router API routes.
+ */
+
+export interface OpenApiEndpoint {
+  path: string;
+  method: "get" | "post" | "patch" | "delete" | "put";
+  summary: string;
+  description: string;
+  tags: string[];
+  security?: Array<Record<string, string[]>>;
+  parameters?: Array<{
+    name: string;
+    in: "query" | "path" | "header";
+    required?: boolean;
+    description?: string;
+    schema: Record<string, any>;
+  }>;
+  requestBody?: {
+    required?: boolean;
+    description?: string;
+    content: Record<string, {
+      schema: Record<string, any>;
+      example?: any;
+    }>;
+  };
+  responses: Record<string, {
+    description: string;
+    content?: Record<string, {
+      schema: Record<string, any>;
+      example?: any;
+    }>;
+  }>;
+}
+
+export const OPENAPI_METADATA = {
+  openapi: "3.1.0",
+  info: {
+    title: "Innovexa Meeting Intelligence & SLA Governance API",
+    version: "1.0.0",
+    description:
+      "Enterprise REST, Real-Time (SSE/WebSocket), and Webhook API for automated meeting transcription, action item SLA tracking, and semantic search.",
+    contact: {
+      name: "Innovexa Engineering",
+      email: "engineering@innovexa.com",
+      url: "https://innovexa.com",
+    },
+    license: {
+      name: "Proprietary",
+    },
+  },
+  servers: [
+    {
+      url: "http://localhost:3000",
+      description: "Local Development Server",
+    },
+    {
+      url: "https://innovexa-murex.vercel.app",
+      description: "Production Cloud Environment",
+    },
+  ],
+  tags: [
+    { name: "Meetings", description: "Meeting lifecycle, scheduling, invitations, and AI action item extraction" },
+    { name: "LiveKit & WebRTC", description: "LiveKit room tokens, WebRTC audio streams, and Whisper live transcription" },
+    { name: "AI Agent", description: "Stateful AI meeting bot join, status telemetry, and real-time SSE streaming" },
+    { name: "Tasks & SLA Governance", description: "Task Action board, status transitions, and automated SLA alerts" },
+    { name: "Notifications", description: "SLA audit notification trail and unread status management" },
+    { name: "Decisions & Citations", description: "Ratified decisions, timecoded citation claims, and contradiction analysis" },
+    { name: "Knowledge Base & Search", description: "Semantic search, topic clustering, and RAG Q&A synthesis" },
+    { name: "Analytics & Directory", description: "Executive ROI metrics, SLA compliance rates, and user directory" },
+    { name: "Cron & Automation", description: "Automated Vercel Cron scheduled governance and scheduler jobs" },
+    { name: "Webhooks", description: "LiveKit events, recording completion, and n8n calendar integration webhooks" },
+  ],
+  components: {
+    securitySchemes: {
+      RoleAuth: {
+        type: "apiKey",
+        in: "header",
+        name: "x-user-role",
+        description: "RBAC Role header: 'organizer' (Full Admin) or 'participant' (Read-Only)",
+      },
+      CronSecret: {
+        type: "http",
+        scheme: "bearer",
+        description: "Vercel Cron Secret authorization token",
+      },
+    },
+    schemas: {
+      Task: {
+        type: "object",
+        required: ["id", "title", "status", "priority", "department"],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string", example: "Deploy SLA escalation automation rules" },
+          ownerName: { type: "string", example: "Alex Mercer" },
+          department: { type: "string", enum: ["Engineering", "Operations", "Security", "Product", "Executive"] },
+          priority: { type: "string", enum: ["High", "Medium", "Low"] },
+          status: { type: "string", enum: ["Pending", "In Progress", "Completed", "Overdue", "Escalated"] },
+          deadline: { type: "string", format: "date-time", nullable: true },
+          escalationLevel: { type: "integer", default: 0 },
+        },
+      },
+      Meeting: {
+        type: "object",
+        required: ["id", "title", "department", "status"],
+        properties: {
+          id: { type: "string" },
+          title: { type: "string", example: "Q3 Architecture Alignment" },
+          date: { type: "string", format: "date-time" },
+          department: { type: "string" },
+          status: { type: "string", enum: ["Scheduled", "Live", "Completed"] },
+          meetUrl: { type: "string", nullable: true },
+        },
+      },
+      Notification: {
+        type: "object",
+        required: ["id", "recipient", "type", "subject", "body", "read", "sentAt"],
+        properties: {
+          id: { type: "string" },
+          recipient: { type: "string", format: "email" },
+          type: { type: "string", enum: ["Escalation", "Warning", "Resolution", "Reminder"] },
+          subject: { type: "string" },
+          body: { type: "string" },
+          read: { type: "boolean" },
+          sentAt: { type: "string", format: "date-time" },
+          taskId: { type: "string", nullable: true },
+        },
+      },
+      ErrorResponse: {
+        type: "object",
+        required: ["error"],
+        properties: {
+          error: { type: "string", example: "Resource not found or unauthorized" },
+        },
+      },
+    },
+  },
+};
+
+export const API_ENDPOINTS: OpenApiEndpoint[] = [
+  // Meetings
+  {
+    path: "/api/meetings",
+    method: "get",
+    summary: "List all meetings",
+    description: "Fetches meetings with associated tasks, decisions, and segments.",
+    tags: ["Meetings"],
+    parameters: [
+      { name: "department", in: "query", schema: { type: "string" }, description: "Filter by department" },
+      { name: "status", in: "query", schema: { type: "string", enum: ["Scheduled", "Live", "Completed"] } },
+    ],
+    responses: {
+      "200": {
+        description: "List of meetings",
+        content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Meeting" } } } },
+      },
+    },
+  },
+  {
+    path: "/api/meetings",
+    method: "post",
+    summary: "Create or ingest a meeting",
+    description: "Ingests meeting metadata, transcript segments, and extracts action items.",
+    tags: ["Meetings"],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            required: ["title"],
+            properties: {
+              title: { type: "string" },
+              department: { type: "string" },
+              date: { type: "string", format: "date-time" },
+              meetUrl: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    responses: {
+      "201": { description: "Meeting created", content: { "application/json": { schema: { $ref: "#/components/schemas/Meeting" } } } },
+    },
+  },
+  {
+    path: "/api/meetings/{id}",
+    method: "get",
+    summary: "Get meeting details",
+    description: "Returns complete meeting record with segments, decisions, and tasks.",
+    tags: ["Meetings"],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: {
+      "200": { description: "Meeting details found" },
+      "404": { description: "Meeting not found" },
+    },
+  },
+  {
+    path: "/api/meetings/{id}",
+    method: "delete",
+    summary: "Delete meeting",
+    description: "Permanently deletes a meeting and associated artifacts (Organizer only).",
+    tags: ["Meetings"],
+    security: [{ RoleAuth: ["organizer"] }],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: {
+      "200": { description: "Meeting deleted successfully" },
+      "403": { description: "Forbidden: Organizer role required" },
+    },
+  },
+  {
+    path: "/api/meetings/schedule",
+    method: "post",
+    summary: "Schedule meeting with conflict detection",
+    description: "Schedules meeting and detects calendar slot collisions.",
+    tags: ["Meetings"],
+    responses: { "200": { description: "Meeting scheduled" }, "409": { description: "Schedule slot conflict detected" } },
+  },
+  {
+    path: "/api/meetings/available-slots",
+    method: "get",
+    summary: "Query available meeting slots",
+    description: "Calculates free calendar slots for given date.",
+    tags: ["Meetings"],
+    parameters: [{ name: "date", in: "query", schema: { type: "string", format: "date" } }],
+    responses: { "200": { description: "Available time slots" } },
+  },
+  {
+    path: "/api/meetings/{id}/extract-action-items",
+    method: "post",
+    summary: "Extract action items via AI",
+    description: "Analyzes meeting transcript segments with LLM and generates structured SLA tasks.",
+    tags: ["Meetings"],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Tasks extracted successfully" } },
+  },
+  {
+    path: "/api/meetings/{id}/invite",
+    method: "post",
+    summary: "Send meeting invitations",
+    description: "Dispatches email invitations with join tokens.",
+    tags: ["Meetings"],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Invites dispatched" } },
+  },
+
+  {
+    path: "/api/livekit/token",
+    method: "get",
+    summary: "Generate LiveKit Room Token",
+    description: "Creates signed JWT access token for WebRTC audio/video room.",
+    tags: ["LiveKit & WebRTC"],
+    parameters: [
+      { name: "room", in: "query", required: true, schema: { type: "string" } },
+      { name: "username", in: "query", schema: { type: "string" } },
+    ],
+    responses: { "200": { description: "Access token generated" } },
+  },
+  {
+    path: "/api/livekit/token",
+    method: "post",
+    summary: "Generate LiveKit Token with Identity",
+    description: "Creates signed JWT token with metadata and participant identity.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Token generated" } },
+  },
+  {
+    path: "/api/livekit/room",
+    method: "get",
+    summary: "Get LiveKit Room Status",
+    description: "Fetches active participants and recording state for LiveKit room.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Room state" } },
+  },
+  {
+    path: "/api/livekit/room",
+    method: "post",
+    summary: "Manage LiveKit Room Session",
+    description: "Creates and manages active WebRTC room states.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Room state updated" } },
+  },
+  {
+    path: "/api/livekit/room",
+    method: "patch",
+    summary: "Update LiveKit Room Configuration",
+    description: "Updates recording egress or room metadata.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Room updated" } },
+  },
+  {
+    path: "/api/livekit/room",
+    method: "delete",
+    summary: "Close LiveKit Room",
+    description: "Terminates active WebRTC room session.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Room closed" } },
+  },
+  {
+    path: "/api/whisper/transcribe",
+    method: "post",
+    summary: "Transcribe audio slice with Whisper ASR",
+    description: "Transcribes live audio chunk with prompt hints and language locking.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Transcription result" } },
+  },
+  {
+    path: "/api/recordings/stream-chunk",
+    method: "post",
+    summary: "Stream audio chunk during recording",
+    description: "Appends audio slices into active recording session and returns incremental STT.",
+    tags: ["LiveKit & WebRTC"],
+    responses: { "200": { description: "Chunk processed" } },
+  },
+  {
+    path: "/api/recordings/upload",
+    method: "post",
+    summary: "Upload complete audio recording",
+    description: "Uploads meeting audio file to S3/Blob storage (Organizer only).",
+    tags: ["LiveKit & WebRTC"],
+    security: [{ RoleAuth: ["organizer"] }],
+    responses: { "201": { description: "Recording uploaded" } },
+  },
+
+  // AI Agent
+  {
+    path: "/api/ai-agent/join",
+    method: "post",
+    summary: "Dispatch AI Meeting Agent",
+    description: "Dispatches autonomous bot to join and record live meeting (Organizer only).",
+    tags: ["AI Agent"],
+    security: [{ RoleAuth: ["organizer"] }],
+    responses: { "201": { description: "Agent dispatched" }, "403": { description: "Forbidden" } },
+  },
+  {
+    path: "/api/ai-agent/status/{meetingId}",
+    method: "get",
+    summary: "Get AI Agent Telemetry Status",
+    description: "Retrieves live status, transcript chunks, and executive summary.",
+    tags: ["AI Agent"],
+    parameters: [{ name: "meetingId", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Agent status telemetry" } },
+  },
+  {
+    path: "/api/ai-agent/{meetingId}/updates",
+    method: "get",
+    summary: "Real-Time Agent Stream (SSE)",
+    description: "Server-Sent Events streaming live transcript, speaker detections, and status.",
+    tags: ["AI Agent"],
+    parameters: [{ name: "meetingId", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Text/event-stream stream active" } },
+  },
+  {
+    path: "/api/ai-agent/leave",
+    method: "post",
+    summary: "Disconnect AI Agent",
+    description: "Instructs AI bot to gracefully leave room and finalize processing.",
+    tags: ["AI Agent"],
+    responses: { "200": { description: "Agent disconnected" } },
+  },
+
+  // Tasks & SLA
+  {
+    path: "/api/tasks",
+    method: "get",
+    summary: "Fetch SLA Action Board Tasks",
+    description: "Retrieves tasks with department, priority, and SLA status filters.",
+    tags: ["Tasks & SLA Governance"],
+    parameters: [
+      { name: "department", in: "query", schema: { type: "string" } },
+      { name: "status", in: "query", schema: { type: "string", enum: ["Pending", "In Progress", "Completed", "Overdue", "Escalated"] } },
+      { name: "cursor", in: "query", schema: { type: "string" } },
+      { name: "limit", in: "query", schema: { type: "integer", default: 50 } },
+    ],
+    responses: {
+      "200": {
+        description: "Filtered task list",
+        content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Task" } } } },
+      },
+    },
+  },
+  {
+    path: "/api/tasks",
+    method: "post",
+    summary: "Create action task",
+    description: "Adds task to SLA review board and initiates reminder queue.",
+    tags: ["Tasks & SLA Governance"],
+    responses: { "200": { description: "Task created" } },
+  },
+  {
+    path: "/api/tasks",
+    method: "patch",
+    summary: "Update task status, priority, or deadline",
+    description: "Modifies task properties and triggers cache invalidation.",
+    tags: ["Tasks & SLA Governance"],
+    responses: { "200": { description: "Task updated" } },
+  },
+  {
+    path: "/api/tasks",
+    method: "delete",
+    summary: "Delete action task",
+    description: "Permanently removes task from SLA review board.",
+    tags: ["Tasks & SLA Governance"],
+    parameters: [{ name: "taskId", in: "query", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Task deleted successfully" } },
+  },
+  {
+    path: "/api/tasks/{id}/assign",
+    method: "patch",
+    summary: "Reassign task owner",
+    description: "Reassigns task assignee (Organizer only).",
+    tags: ["Tasks & SLA Governance"],
+    security: [{ RoleAuth: ["organizer"] }],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Task reassigned" } },
+  },
+  {
+    path: "/api/tasks/send-sla-email",
+    method: "post",
+    summary: "Dispatch SLA alert email",
+    description: "Dispatches on-demand or automated SLA alert email notification.",
+    tags: ["Tasks & SLA Governance"],
+    responses: { "200": { description: "SLA alert email dispatched" } },
+  },
+
+  // Notifications
+  {
+    path: "/api/notifications",
+    method: "get",
+    summary: "List SLA notifications and alert logs",
+    description: "Returns audit log of all triggered SLA escalation and reminder alerts.",
+    tags: ["Notifications"],
+    parameters: [{ name: "unreadOnly", in: "query", schema: { type: "boolean" } }],
+    responses: { "200": { description: "Notifications list and unread count" } },
+  },
+  {
+    path: "/api/notifications",
+    method: "patch",
+    summary: "Mark notifications as read",
+    description: "Marks single or all notification records as read.",
+    tags: ["Notifications"],
+    responses: { "200": { description: "Notification status updated" } },
+  },
+  {
+    path: "/api/notifications",
+    method: "post",
+    summary: "Create notification alert",
+    description: "Appends new alert event to the notification audit log.",
+    tags: ["Notifications"],
+    responses: { "201": { description: "Notification created" } },
+  },
+
+  // Decisions & Citations
+  {
+    path: "/api/decisions",
+    method: "get",
+    summary: "List ratified decisions",
+    description: "Retrieves decisions by department with rationales.",
+    tags: ["Decisions & Citations"],
+    parameters: [{ name: "department", in: "query", schema: { type: "string" } }],
+    responses: { "200": { description: "Decisions list" } },
+  },
+  {
+    path: "/api/decisions",
+    method: "post",
+    summary: "Create ratified decision",
+    description: "Records new meeting decision and rationale.",
+    tags: ["Decisions & Citations"],
+    responses: { "201": { description: "Decision created" } },
+  },
+  {
+    path: "/api/decisions",
+    method: "delete",
+    summary: "Delete decision record",
+    description: "Removes decision from log.",
+    tags: ["Decisions & Citations"],
+    responses: { "200": { description: "Decision deleted" } },
+  },
+  {
+    path: "/api/citations",
+    method: "get",
+    summary: "Get AI citations with timestamp provenance",
+    description: "Fetches verbatim speaker citations validating summary claims.",
+    tags: ["Decisions & Citations"],
+    parameters: [{ name: "meetingId", in: "query", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Citations array" } },
+  },
+  {
+    path: "/api/contradictions",
+    method: "get",
+    summary: "Detect cross-meeting contradictions",
+    description: "Scans meeting history to highlight inconsistent decisions or conflicting deadlines.",
+    tags: ["Decisions & Citations"],
+    responses: { "200": { description: "Contradictions detected" } },
+  },
+  {
+    path: "/api/topic-clusters",
+    method: "get",
+    summary: "Analyze topic clusters and trend velocity",
+    description: "Returns K-Means clustered discussion themes across meetings.",
+    tags: ["Decisions & Citations"],
+    responses: { "200": { description: "Clustered topic themes" } },
+  },
+
+  // Knowledge & Search
+  {
+    path: "/api/search",
+    method: "get",
+    summary: "Semantic search across meetings",
+    description: "Searches meeting transcripts using cosine similarity ranking.",
+    tags: ["Knowledge Base & Search"],
+    parameters: [
+      { name: "q", in: "query", required: true, schema: { type: "string" } },
+      { name: "department", in: "query", schema: { type: "string" } },
+      { name: "limit", in: "query", schema: { type: "integer", default: 6 } },
+    ],
+    responses: { "200": { description: "Ranked search results" } },
+  },
+  {
+    path: "/api/search/qa",
+    method: "post",
+    summary: "RAG Q&A knowledge synthesis",
+    description: "Synthesizes answer to natural language question with verbatim meeting citations.",
+    tags: ["Knowledge Base & Search"],
+    responses: { "200": { description: "Answer synthesis with citations" } },
+  },
+  {
+    path: "/api/search/health",
+    method: "get",
+    summary: "Check search engine health",
+    description: "Validates vector index and embedding connectivity.",
+    tags: ["Knowledge Base & Search"],
+    responses: { "200": { description: "Search health status" } },
+  },
+
+  // Analytics & Users
+  {
+    path: "/api/analytics",
+    method: "get",
+    summary: "Executive ROI & SLA compliance metrics",
+    description: "Calculates time saved, resolution rates, and SLA compliance percentages.",
+    tags: ["Analytics & Directory"],
+    responses: { "200": { description: "Executive metrics" } },
+  },
+  {
+    path: "/api/users",
+    method: "get",
+    summary: "List registered organization directory",
+    description: "Returns directory of users and assigned RBAC roles.",
+    tags: ["Analytics & Directory"],
+    responses: { "200": { description: "User directory" } },
+  },
+
+  // Cron & Automation
+  {
+    path: "/api/cron/sla-monitor",
+    method: "get",
+    summary: "SLA Monitor & Escalation Cycle (Vercel Cron)",
+    description: "Scans approaching deadlines, escalates overdue tasks, and dispatches email alerts.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "SLA cycle completed" }, "401": { description: "Unauthorized CRON_SECRET" } },
+  },
+  {
+    path: "/api/cron/sla-monitor",
+    method: "post",
+    summary: "Trigger SLA Monitor Cycle",
+    description: "Triggers on-demand SLA evaluation run.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "SLA cycle triggered" } },
+  },
+  {
+    path: "/api/cron/escalate",
+    method: "get",
+    summary: "Task Escalation Audit (Cron)",
+    description: "Evaluates overdue task SLAs and escalates to department leads.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "Escalation audit completed" } },
+  },
+  {
+    path: "/api/cron/escalate",
+    method: "post",
+    summary: "Trigger Task Escalation Audit",
+    description: "Runs manual or scheduled task escalation audit.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "Escalation audit run" } },
+  },
+  {
+    path: "/api/cron/meeting-scheduler",
+    method: "get",
+    summary: "Meeting Scheduler & Prep Dispatcher (Cron)",
+    description: "Evaluates upcoming meetings and dispatches briefings.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "Scheduler audit completed" } },
+  },
+  {
+    path: "/api/cron/meeting-scheduler",
+    method: "post",
+    summary: "Trigger Meeting Scheduler Cycle",
+    description: "Manually triggers meeting scheduler briefing dispatch.",
+    tags: ["Cron & Automation"],
+    security: [{ CronSecret: [] }],
+    responses: { "200": { description: "Scheduler triggered" } },
+  },
+
+  // Webhooks
+  {
+    path: "/api/webhooks/livekit",
+    method: "post",
+    summary: "LiveKit Webhook Receiver",
+    description: "Receives real-time WebRTC room lifecycle events.",
+    tags: ["Webhooks"],
+    responses: { "200": { description: "Webhook acknowledged" } },
+  },
+  {
+    path: "/api/webhooks/recording-complete",
+    method: "post",
+    summary: "Recording Complete Webhook",
+    description: "Triggers transcription and LLM summary pipeline when recording file finishes.",
+    tags: ["Webhooks"],
+    responses: { "200": { description: "Pipeline initiated" } },
+  },
+  {
+    path: "/api/webhooks/n8n-calendar",
+    method: "post",
+    summary: "n8n Calendar Sync Webhook",
+    description: "Receives calendar synchronization triggers from n8n automation workflows.",
+    tags: ["Webhooks"],
+    responses: { "200": { description: "Calendar sync acknowledged" } },
+  },
+
+  // Additional Endpoints for 100% Coverage
+  {
+    path: "/api/ai-agent/{meetingId}/transcript",
+    method: "get",
+    summary: "Get AI Agent Meeting Transcript",
+    description: "Retrieves complete meeting transcript processed by Whisper ASR.",
+    tags: ["AI Agent"],
+    parameters: [{ name: "meetingId", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Meeting transcript chunks" } },
+  },
+  {
+    path: "/api/docs/openapi",
+    method: "get",
+    summary: "Get OpenAPI 3.1.0 JSON Specification",
+    description: "Dynamically returns the live OpenAPI 3.1.0 JSON definition for the entire platform.",
+    tags: ["Knowledge Base & Search"],
+    responses: { "200": { description: "OpenAPI JSON Specification" } },
+  },
+  {
+    path: "/api/health/selectors",
+    method: "get",
+    summary: "Selector Health Check",
+    description: "Verifies internal selector registry integrity and active component routes.",
+    tags: ["Analytics & Directory"],
+    responses: { "200": { description: "Health check OK" } },
+  },
+  {
+    path: "/api/meeting-baas",
+    method: "post",
+    summary: "MeetingBaas Bot Join Integration",
+    description: "Dispatches MeetingBaas recording bot to join third-party meeting URL.",
+    tags: ["AI Agent"],
+    responses: { "200": { description: "MeetingBaas bot dispatched" } },
+  },
+  {
+    path: "/api/meeting-baas/leave",
+    method: "post",
+    summary: "MeetingBaas Bot Disconnect",
+    description: "Signals MeetingBaas bot to leave active meeting room.",
+    tags: ["AI Agent"],
+    responses: { "200": { description: "MeetingBaas bot disconnected" } },
+  },
+  {
+    path: "/api/meeting-baas/webhook",
+    method: "post",
+    summary: "MeetingBaas Webhook Receiver",
+    description: "Receives recording completion callbacks and audio files from MeetingBaas.",
+    tags: ["Webhooks"],
+    responses: { "200": { description: "MeetingBaas webhook processed" } },
+  },
+  {
+    path: "/api/meetings/host",
+    method: "post",
+    summary: "Generate Host Meeting Token",
+    description: "Creates host room session and returns host credentials.",
+    tags: ["Meetings"],
+    responses: { "200": { description: "Host token generated" } },
+  },
+  {
+    path: "/api/meetings/token",
+    method: "post",
+    summary: "Generate Participant Meeting Token",
+    description: "Generates attendee token for meeting room entry.",
+    tags: ["Meetings"],
+    responses: { "200": { description: "Participant token generated" } },
+  },
+  {
+    path: "/api/meetings/upcoming",
+    method: "get",
+    summary: "Get Upcoming Meetings",
+    description: "Fetches chronological list of upcoming scheduled meetings.",
+    tags: ["Meetings"],
+    responses: { "200": { description: "List of upcoming meetings" } },
+  },
+  {
+    path: "/api/meetings/{id}/{meetingId}/invite",
+    method: "post",
+    summary: "Send Meeting Invite with Context",
+    description: "Sends customized email invite with meeting room identifier.",
+    tags: ["Meetings"],
+    parameters: [
+      { name: "id", in: "path", required: true, schema: { type: "string" } },
+      { name: "meetingId", in: "path", required: true, schema: { type: "string" } },
+    ],
+    responses: { "200": { description: "Invite dispatched" } },
+  },
+  {
+    path: "/api/recordings/meeting/{meetingId}",
+    method: "get",
+    summary: "Get Meeting Audio Recordings",
+    description: "Returns all audio recordings associated with a specific meeting ID.",
+    tags: ["LiveKit & WebRTC"],
+    parameters: [{ name: "meetingId", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Recordings array" } },
+  },
+  {
+    path: "/api/recordings/{id}",
+    method: "get",
+    summary: "Get Recording by ID",
+    description: "Retrieves single recording metadata and signed playback URL.",
+    tags: ["LiveKit & WebRTC"],
+    parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+    responses: { "200": { description: "Recording metadata" } },
+  },
+  {
+    path: "/api/search/index",
+    method: "post",
+    summary: "Index Meeting Content for Semantic Search",
+    description: "Generates embeddings and indexes transcript segments into vector store.",
+    tags: ["Knowledge Base & Search"],
+    responses: { "200": { description: "Segments indexed successfully" } },
+  },
+];
+
+/**
+ * Builds and returns the complete OpenAPI 3.1.0 JSON document
+ */
+export function generateOpenApiSpec(): Record<string, any> {
+  const paths: Record<string, any> = {};
+
+  for (const endpoint of API_ENDPOINTS) {
+    if (!paths[endpoint.path]) {
+      paths[endpoint.path] = {};
+    }
+
+    paths[endpoint.path][endpoint.method] = {
+      summary: endpoint.summary,
+      description: endpoint.description,
+      tags: endpoint.tags,
+      security: endpoint.security,
+      parameters: endpoint.parameters,
+      requestBody: endpoint.requestBody,
+      responses: endpoint.responses,
+    };
+  }
+
+  return {
+    ...OPENAPI_METADATA,
+    paths,
+  };
+}

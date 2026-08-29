@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppLayout } from "@/components/AppLayout";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/react";
 import { startTaskSLAMonitorWorker } from "@/lib/task-sla-monitor";
 
 const inter = Inter({
@@ -59,6 +60,7 @@ export default function RootLayout({
           <AppLayout>{children}</AppLayout>
         </AuthGuard>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
