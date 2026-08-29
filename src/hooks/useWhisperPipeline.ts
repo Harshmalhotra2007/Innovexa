@@ -14,6 +14,7 @@ export interface UseWhisperPipelineOptions {
   meetingId: string;
   mediaStream?: MediaStream | null;
   speakerHint?: string;
+  language?: string;
   chunkIntervalMs?: number;
   onSegmentReceived?: (segment: WhisperSegment) => void;
   onAudioChunkRecorded?: (chunk: Blob) => void;
@@ -23,6 +24,7 @@ export function useWhisperPipeline({
   meetingId,
   mediaStream,
   speakerHint = "Operations Lead",
+  language,
   chunkIntervalMs = 4000,
   onSegmentReceived,
   onAudioChunkRecorded,
@@ -53,7 +55,7 @@ export function useWhisperPipeline({
         formData.append("meetingId", meetingId);
         formData.append("chunkIndex", index.toString());
         formData.append("speakerHint", speakerHint);
-        formData.append("language", "en");
+        formData.append("language", language ?? "en");
 
         const res = await fetch("/api/whisper/transcribe", {
           method: "POST",
@@ -77,7 +79,7 @@ export function useWhisperPipeline({
         console.debug("[Whisper Pipeline] Error sending chunk:", err);
       }
     },
-    [meetingId, speakerHint]
+    [meetingId, speakerHint, language]
   );
 
   // Sync real-time text recognized via SpeechRecognition
@@ -118,11 +120,11 @@ export function useWhisperPipeline({
           chunkIndex: currentIndex,
           speakerHint,
           text: cleanText,
-          language: "en",
+          language: language ?? "en",
         }),
       }).catch(() => {/* Ignore errors */});
     },
-    [meetingId, speakerHint]
+    [meetingId, speakerHint, language]
   );
 
   // Start real-time audio chunk recording and transcription
@@ -135,6 +137,17 @@ export function useWhisperPipeline({
       return;
     }
 
+    // NOTE: To avoid browser audio processing corruption (echo, autoGain, noise suppression),
+    // the mediaStream should be obtained with constraints like:
+    // navigator.mediaDevices.getUserMedia({
+    //   audio: {
+    //     echoCancellation: false,
+    //     autoGainControl: false,
+    //     noiseSuppression: false,
+    //     // ... other constraints as needed
+    //   }
+    // });
+
     try {
       // 1. Start browser Native Speech Recognition if available
       if (typeof window !== "undefined") {
@@ -145,7 +158,7 @@ export function useWhisperPipeline({
             const recognition = new SpeechRec();
             recognition.continuous = true;
             recognition.interimResults = false;
-            recognition.lang = "en-US";
+            recognition.lang = (language ?? "en") + "-US";
 
             recognition.onresult = (event: ISpeechRecognitionEvent) => {
               const current = event.resultIndex;

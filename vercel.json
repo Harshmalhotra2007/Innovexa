@@ -1,18 +1,13 @@
-﻿{
-  "buildCommand": "prisma generate && next build",
-  "framework": "nextjs",
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/escalate",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/sla-monitor",
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/meeting-scheduler",
-      "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/cron/sla-monitor",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 12 * * *"
     }
   ]
 }

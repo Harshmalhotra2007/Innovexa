@@ -93,7 +93,7 @@ const STATUS_CONFIG = {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<ActionTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "table" | "alerts">("kanban");
+  const [viewMode, setViewMode] = useState<"table" | "accordion" | "queue" | "alerts">("table");
   const [statusFilter, setStatusFilter] = useState<"all" | "attention" | "active" | "completed" | ActionTask["status"]>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "High" | "Medium" | "Low">("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
@@ -118,9 +118,6 @@ export default function TasksPage() {
   const [newPriority, setNewPriority] = useState<"High" | "Medium" | "Low">("Medium");
   const [newDeadline, setNewDeadline] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-
-  // Drag and Drop
-  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -443,18 +440,6 @@ export default function TasksPage() {
       });
   }, [tasks, searchQuery, statusFilter, priorityFilter, departmentFilter, sortBy]);
 
-  const kanbanColumns: Array<{
-    key: ActionTask["status"];
-    label: string;
-    config: (typeof STATUS_CONFIG)[keyof typeof STATUS_CONFIG];
-  }> = [
-    { key: "Pending", label: "Pending", config: STATUS_CONFIG["Pending"] },
-    { key: "In Progress", label: "In Progress", config: STATUS_CONFIG["In Progress"] },
-    { key: "Overdue", label: "Overdue", config: STATUS_CONFIG["Overdue"] },
-    { key: "Escalated", label: "Escalated", config: STATUS_CONFIG["Escalated"] },
-    { key: "Completed", label: "Completed", config: STATUS_CONFIG["Completed"] },
-  ];
-
   return (
     <div className="mx-auto max-w-[1440px] space-y-5 px-4 sm:px-6 py-6 font-sans text-[var(--text)]">
       {/* Toast Notification */}
@@ -498,16 +483,6 @@ export default function TasksPage() {
           {/* View Mode Toggle */}
           <div className="flex items-center p-1 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] shadow-xs font-mono text-xs">
             <button
-              onClick={() => setViewMode("kanban")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
-                viewMode === "kanban"
-                  ? "bg-[var(--primary)] text-white shadow-xs"
-                  : "text-[var(--text-dim)] hover:text-[var(--text)]"
-              }`}
-            >
-              <LayoutGrid size={13} /> Board
-            </button>
-            <button
               onClick={() => setViewMode("table")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
                 viewMode === "table"
@@ -516,6 +491,26 @@ export default function TasksPage() {
               }`}
             >
               <List size={13} /> List Table
+            </button>
+            <button
+              onClick={() => setViewMode("accordion")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                viewMode === "accordion"
+                  ? "bg-[var(--primary)] text-white shadow-xs"
+                  : "text-[var(--text-dim)] hover:text-[var(--text)]"
+              }`}
+            >
+              <List size={13} /> Accordion
+            </button>
+            <button
+              onClick={() => setViewMode("queue")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                viewMode === "queue"
+                  ? "bg-[var(--primary)] text-white shadow-xs"
+                  : "text-[var(--text-dim)] hover:text-[var(--text)]"
+              }`}
+            >
+              <Zap size={13} /> Queue
             </button>
             <button
               onClick={() => setViewMode("alerts")}
@@ -723,179 +718,11 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* ── KANBAN BOARD / TABLE VIEW ─────────────────────────────────── */}
+      {/* ── MAIN CONTENT AREA ─────────────────────────────────────────── */}
       {loading ? (
         <div className="py-24 text-center space-y-3 font-mono text-xs text-[var(--text-dim)]">
           <Loader2 size={24} className="animate-spin mx-auto text-[var(--primary)]" />
           <p>Loading action tasks and SLA parameters...</p>
-        </div>
-      ) : viewMode === "kanban" ? (
-        /* KANBAN BOARD VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3.5 items-start">
-          {kanbanColumns.map((col) => {
-            const colTasks = filteredTasks.filter((t) => t.status === col.key);
-            const cfg = col.config;
-
-            return (
-              <div
-                key={col.key}
-                className={`rounded-2xl border bg-[var(--panel)] p-3 min-h-[420px] flex flex-col space-y-2.5 transition-all ${
-                  draggingId ? "border-dashed hover:border-[var(--primary)]" : "border-[var(--border)]"
-                }`}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  if (draggingId) {
-                    await updateTaskStatus(draggingId, col.key);
-                    setDraggingId(null);
-                  }
-                }}
-              >
-                {/* Column Header */}
-                <div className="flex items-center justify-between px-2 py-1.5 border-b border-[var(--border)] pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--text)]">
-                      {col.label}
-                    </span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${cfg.bg} ${cfg.color}`}>
-                    {colTasks.length}
-                  </span>
-                </div>
-
-                {/* Column Cards */}
-                <div className="space-y-2 flex-1">
-                  {colTasks.length === 0 ? (
-                    <div className="py-12 text-center rounded-xl border border-dashed border-[var(--border)]/70 p-3">
-                      <p className="font-mono text-[11px] text-[var(--text-faint)] italic">
-                        No {col.label.toLowerCase()} items
-                      </p>
-                    </div>
-                  ) : (
-                    colTasks.map((task) => {
-                      const isDone = task.status === "Completed";
-                      const d = daysUntil(task.deadline);
-                      const isUrgent = d !== null && d < 0 && !isDone;
-
-                      return (
-                        <div
-                          key={task.id}
-                          draggable
-                          onDragStart={() => setDraggingId(task.id)}
-                          onDragEnd={() => setDraggingId(null)}
-                          onClick={() => setSelectedTask(task)}
-                          className={`group rounded-xl border p-3 bg-[var(--panel-alt)] hover:bg-[var(--panel)] transition-all cursor-pointer shadow-2xs hover:shadow-md ${
-                            draggingId === task.id ? "opacity-40 scale-95" : ""
-                          } ${
-                            isDone
-                              ? "border-[var(--border)] opacity-75"
-                              : isUrgent
-                              ? "border-rose-500/40 bg-rose-500/5 hover:border-rose-500/60"
-                              : "border-[var(--border)] hover:border-[var(--primary)]/50"
-                          }`}
-                        >
-                          {/* Top Row: Priority & SLA Status Chips */}
-                          <div className="flex items-center justify-between gap-1.5 mb-2">
-                            {/* Priority badge */}
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
-                                task.priority === "High"
-                                  ? "bg-rose-500/15 text-rose-500 border border-rose-500/30"
-                                  : task.priority === "Medium"
-                                  ? "bg-amber-500/15 text-amber-500 border border-amber-500/30"
-                                  : "bg-teal-500/15 text-teal-600 border border-teal-500/30"
-                              }`}
-                            >
-                              {task.priority || "Medium"}
-                            </span>
-
-                            {/* SLA Deadline Badge */}
-                            {task.deadline ? (
-                              <span
-                                className={`flex items-center gap-1 font-mono text-[9px] font-bold ${
-                                  isDone
-                                    ? "text-[var(--text-faint)]"
-                                    : isUrgent
-                                    ? "text-rose-500 animate-pulse"
-                                    : d !== null && d <= 1
-                                    ? "text-amber-500"
-                                    : "text-[var(--text-dim)]"
-                                }`}
-                              >
-                                <Clock size={10} />
-                                {isDone
-                                  ? "Resolved"
-                                  : isUrgent
-                                  ? `Overdue ${Math.abs(d!)}d`
-                                  : d === 0
-                                  ? "Due Today"
-                                  : `${d}d left`}
-                              </span>
-                            ) : (
-                              <span className="text-[9px] font-mono text-[var(--text-faint)]">No deadline</span>
-                            )}
-                          </div>
-
-                          {/* Task Title */}
-                          <p
-                            className={`text-xs font-medium leading-snug mb-2.5 ${
-                              isDone ? "line-through text-[var(--text-faint)]" : "text-[var(--text)]"
-                            }`}
-                          >
-                            {task.title}
-                          </p>
-
-                          {/* Meeting / Department context */}
-                          {(task.department || task.meeting?.title) && (
-                            <div className="flex items-center gap-1.5 text-[9px] font-mono text-[var(--text-dim)] mb-2.5">
-                              {task.department && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--panel)] border border-[var(--border)]">
-                                  <Building2 size={9} />
-                                  {task.department}
-                                </span>
-                              )}
-                              {task.meeting?.title && (
-                                <span className="truncate max-w-[120px] text-[var(--text-faint)]" title={task.meeting.title}>
-                                  • {task.meeting.title}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Bottom Row: Assignee & Complete Checkbox */}
-                          <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]/70 text-[10px] font-mono">
-                            <div className="flex items-center gap-1.5 text-[var(--text-dim)]">
-                              <div className="w-5 h-5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 flex items-center justify-center text-[9px] font-bold">
-                                {task.ownerName.charAt(0).toUpperCase()}
-                              </div>
-                              <span className="truncate max-w-[90px] font-medium">{task.ownerName}</span>
-                            </div>
-
-                            {/* Fast Complete Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateTaskStatus(task.id, isDone ? "Pending" : "Completed");
-                              }}
-                              className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                                isDone
-                                  ? "border-emerald-500 bg-emerald-500 text-white"
-                                  : "border-[var(--border)] hover:border-emerald-500 hover:text-emerald-500"
-                              }`}
-                              title={isDone ? "Mark Pending" : "Mark Completed"}
-                            >
-                              {isDone && <CheckCircle2 size={12} />}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            );
-          })}
         </div>
       ) : viewMode === "table" ? (
         /* STRUCTURED TABLE VIEW */
@@ -1085,29 +912,30 @@ export default function TasksPage() {
                   notifications.map((n) => {
                     const isEscalation = n.type === "Escalation";
                     const isWarning = n.type === "Warning";
+                    const rowClassName = "hover:bg-[var(--panel-alt)]/60 transition-colors " + (!n.read ? "bg-[var(--panel-alt)]/35 font-semibold text-[var(--text)]" : "text-[var(--text-dim)] opacity-85");
+                    const statusDotClassName = !n.read ? "w-2 h-2 rounded-full inline-block bg-[var(--red)] animate-pulse" : "w-2 h-2 rounded-full inline-block bg-[var(--text-faint)]";
+                    const typeClassName = "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border " + (
+                      isEscalation
+                        ? "bg-red-500/12 text-red-400 border-red-500/25"
+                        : isWarning
+                        ? "bg-amber-500/12 text-amber-400 border-amber-500/25"
+                        : "bg-teal-500/12 text-teal-400 border-teal-500/25"
+                    );
                     return (
                       <tr
                         key={n.id}
-                        className={`hover:bg-[var(--panel-alt)]/60 transition-colors ${
-                          !n.read ? "bg-[var(--panel-alt)]/35 font-semibold text-[var(--text)]" : "text-[var(--text-dim)] opacity-85"
-                        }`}
+                        className={rowClassName}
                       >
                         {/* Status */}
                         <td className="p-3.5 pl-4">
-                          <span className={`w-2 h-2 rounded-full inline-block ${!n.read ? "bg-[var(--red)] animate-pulse" : "bg-[var(--text-faint)]"}`} />
+                          <span className={statusDotClassName} />
                           <span className="ml-1.5">{!n.read ? "Unread" : "Archived"}</span>
                         </td>
 
                         {/* Type */}
                         <td className="p-3.5">
                           <span
-                            className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                              isEscalation
-                                ? "bg-red-500/12 text-red-400 border-red-500/25"
-                                : isWarning
-                                ? "bg-amber-500/12 text-amber-400 border-amber-500/25"
-                                : "bg-teal-500/12 text-teal-400 border-teal-500/25"
-                            }`}
+                            className={typeClassName}
                           >
                             {n.type}
                           </span>
@@ -1154,295 +982,11 @@ export default function TasksPage() {
                           </div>
                         </td>
                       </tr>
-                    );
+                    )
                   })
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── CREATE TASK MODAL ─────────────────────────────────────────── */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--panel)] border border-[var(--border)] p-6 shadow-2xl space-y-4 animate-fade-in font-sans">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <div className="flex items-center gap-2 font-display text-base font-bold text-[var(--text)] uppercase">
-                <Plus size={18} className="text-[var(--primary)]" />
-                <span>Create Action Task</span>
-              </div>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--panel-alt)]"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTask} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
-                  Task Title *
-                </label>
-                <input
-                  required
-                  placeholder="e.g. Implement security guardrails on API endpoint"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
-                    Assignee
-                  </label>
-                  <input
-                    placeholder="e.g. Lead Engineer"
-                    value={newOwner}
-                    onChange={(e) => setNewOwner(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
-                    Department
-                  </label>
-                  <select
-                    value={newDepartment}
-                    onChange={(e) => setNewDepartment(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:border-[var(--primary)] focus:outline-none cursor-pointer"
-                  >
-                    <option value="Engineering">Engineering</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Security">Security</option>
-                    <option value="Product">Product</option>
-                    <option value="Executive">Executive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
-                    Priority
-                  </label>
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:border-[var(--primary)] focus:outline-none cursor-pointer"
-                  >
-                    <option value="High">High Priority</option>
-                    <option value="Medium">Medium Priority</option>
-                    <option value="Low">Low Priority</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono font-bold text-[var(--text-dim)] uppercase mb-1">
-                    Target Deadline
-                  </label>
-                  <input
-                    type="date"
-                    value={newDeadline}
-                    onChange={(e) => setNewDeadline(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] focus:border-[var(--primary)] focus:outline-none cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-dim)] hover:bg-[var(--panel-alt)]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating || !newTitle.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--primary)] text-white text-xs font-mono font-bold hover:bg-[var(--primary)]/90 disabled:opacity-50"
-                >
-                  {isCreating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  <span>{isCreating ? "Saving..." : "Create Task"}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── TASK DETAIL & SLA REVIEW DRAWER / MODAL ───────────────────── */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[var(--panel)] border border-[var(--border)] p-6 shadow-2xl space-y-4 animate-fade-in font-sans">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
-                    STATUS_CONFIG[selectedTask.status]?.bg || ""
-                  } ${STATUS_CONFIG[selectedTask.status]?.color || ""}`}
-                >
-                  {selectedTask.status}
-                </span>
-                <span className="font-mono text-xs text-[var(--text-dim)]">ID: {selectedTask.id.slice(-6)}</span>
-              </div>
-
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="p-1 rounded-lg text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--panel-alt)]"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Task Title */}
-            <div>
-              <h2 className="text-base font-bold text-[var(--text)] leading-snug">{selectedTask.title}</h2>
-              {selectedTask.meeting?.title && (
-                <p className="text-xs text-[var(--primary)] font-mono mt-1 flex items-center gap-1">
-                  <ExternalLink size={11} /> Source: {selectedTask.meeting.title}
-                </p>
-              )}
-            </div>
-
-            {/* SLA Status Card */}
-            <div className="p-3.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono font-bold">
-                <span className="text-[var(--text-dim)] uppercase">SLA Resolution Status:</span>
-                <span className={STATUS_CONFIG[selectedTask.status]?.color}>{selectedTask.status}</span>
-              </div>
-              <p className="text-[11px] text-[var(--text-dim)] leading-relaxed">
-                {STATUS_CONFIG[selectedTask.status]?.description}
-              </p>
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl border border-[var(--border)] space-y-1">
-                <span className="font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase block">Assignee</span>
-                <div className="flex items-center gap-1.5 font-medium text-[var(--text)]">
-                  <User size={13} className="text-[var(--primary)]" />
-                  <span>{selectedTask.ownerName}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-[var(--border)] space-y-1">
-                <span className="font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase block">Department</span>
-                <div className="flex items-center gap-1.5 font-medium text-[var(--text)]">
-                  <Building2 size={13} className="text-[var(--primary)]" />
-                  <span>{selectedTask.department || "Operations"}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-[var(--border)] space-y-1">
-                <span className="font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase block">Priority</span>
-                <select
-                  value={selectedTask.priority || "Medium"}
-                  onChange={(e) => updateTaskDetails(selectedTask.id, { priority: e.target.value as any })}
-                  className="w-full bg-transparent font-mono text-xs font-bold text-[var(--text)] focus:outline-none cursor-pointer"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-
-              <div className="p-3 rounded-xl border border-[var(--border)] space-y-1">
-                <span className="font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase block">Target Deadline</span>
-                <input
-                  type="date"
-                  value={selectedTask.deadline ? selectedTask.deadline.split("T")[0] : ""}
-                  onChange={(e) => updateTaskDetails(selectedTask.id, { deadline: e.target.value || null })}
-                  className="w-full bg-transparent font-mono text-xs text-[var(--text)] focus:outline-none cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Quick Status Buttons */}
-            <div>
-              <span className="font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase block mb-1.5">
-                Update Status
-              </span>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                {(["Pending", "In Progress", "Overdue", "Escalated", "Completed"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => updateTaskStatus(selectedTask.id, s)}
-                    className={`px-2 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all ${
-                      selectedTask.status === s
-                        ? "bg-[var(--primary)] text-white shadow-xs"
-                        : "bg-[var(--panel-alt)] border border-[var(--border)] text-[var(--text-dim)] hover:text-[var(--text)]"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* SLA Manual Email Action */}
-            <div className="pt-2 pb-1 border-t border-[var(--border)]/50">
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    setSendingSLAEmail(selectedTask.id);
-                    const res = await fetch("/api/tasks/send-sla-email", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ taskId: selectedTask.id }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      showToast(`SLA alert email successfully sent to ${data.recipient}`);
-                      // Refresh notifications log if currently viewing it
-                      if (viewMode === "alerts") {
-                        fetchNotifications();
-                      }
-                    } else {
-                      showToast("Failed to dispatch SLA alert email.");
-                    }
-                  } catch (e) {
-                    showToast("SLA email dispatch triggered.");
-                  } finally {
-                    setSendingSLAEmail(null);
-                  }
-                }}
-                disabled={sendingSLAEmail === selectedTask.id}
-                className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--amber)]/40 bg-[var(--amber)]/10 text-[var(--amber)] hover:bg-[var(--amber)]/20 transition-all font-mono text-xs font-bold disabled:opacity-50"
-              >
-                {sendingSLAEmail === selectedTask.id ? (
-                  <Loader2 size={13} className="animate-spin text-[var(--amber)]" />
-                ) : (
-                  <Mail size={13} className="text-[var(--amber)]" />
-                )}
-                <span>DISPATCH SLA ALERT EMAIL</span>
-              </button>
-            </div>
-
-            {/* Footer Action Buttons */}
-            <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-              <button
-                onClick={() => handleDeleteTask(selectedTask.id)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 text-xs font-mono transition-all"
-              >
-                <Trash2 size={13} />
-                <span>Delete Task</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="px-4 py-1.5 rounded-xl bg-[var(--panel-alt)] border border-[var(--border)] text-xs font-mono text-[var(--text)] hover:bg-[var(--panel)]"
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}

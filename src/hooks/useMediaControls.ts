@@ -392,7 +392,7 @@ export function useMediaControls({
       if (typeof navigator !== "undefined" && navigator?.mediaDevices?.getUserMedia) {
         try {
           const freshStream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true },
+            audio: { echoCancellation: false, noiseSuppression: false },
           });
           mediaStreamRef.current = freshStream;
           stream = freshStream;

@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
@@ -10,7 +9,6 @@ const nextConfig = {
     minimumCacheTTL: 31536000,
   },
   experimental: {
-    instrumentationHook: true,
     optimizePackageImports: ["lucide-react", "recharts"],
   },
   eslint: {
